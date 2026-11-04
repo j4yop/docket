@@ -33,8 +33,8 @@ that no longer governs.
 ## What the user does
 
 1. Ask the employee question and set the context: country, role, plan.
-2. Add up to four policy documents. Each has a jurisdiction, effective date, and an
-   "overrides" flag. The examples are prefilled; every field is editable.
+2. Add up to six policy documents. Each has a jurisdiction, effective date, and an
+   "overrides" flag. The workspace opens blank; the worked examples are a separate tab.
 3. Paste the draft the assistant wants to send.
 4. Run the check.
 
@@ -102,11 +102,20 @@ The app was pressure-tested on real documents before it was built. Three finding
   no fixture the app depends on.
 - The example corpus is input, not logic. Edit any field, delete a document, or paste your
   own text; the same pipeline runs.
+- **Import / Export** a case as JSON. A judge can bring a case from their own machine.
+- **Request sent** shows the exact JSON posted to `/api/check`, with **Copy as cURL**.
+- **Live** in the header reports the server's Clocked configuration; every verdict carries a
+  timestamp, credit count, latency and number of Clocked calls.
+- **Six policies** per case, per-field counters, and inline validation with focus.
+- **Light and dark themes**, keyboard-operable tabs, visible focus, 12px minimum functional
+  text, and `prefers-reduced-motion` support.
 - The claim table, conflict list, authority trace, credit count and latency all come from
   the current request.
 - "Raw Clocked responses" shows exactly what the API returned for this run.
 - Re-running the same input produces the same decision because the inputs are the same,
   not because the answer is cached.
+
+![A return-policy case typed into the blank form, not loaded from the examples](docs/custom-case.png)
 
 ## Run locally
 
@@ -186,7 +195,7 @@ curl -s https://docket-tau.vercel.app/api/check \
 
 ## What the result shows
 
-- **A scenario card**, not a blank form: the judge sees what each example tests before clicking.
+- **A custom-first workspace**: the form opens blank. Worked examples are one tab away, and loading one switches back to the editable form with every field filled.
 - **A one-sentence verdict**: "2 of 2 claims contradict France annex. Rewrite before this reaches an employee."
 - **A cost line**: "One check: 9 credits · 2.2s · 3 Clocked calls · 0 of 2 claims supported."
 - **A before/after panel**: the draft with contradicted claims struck through, beside the governing clauses that must replace them.

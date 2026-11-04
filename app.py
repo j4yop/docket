@@ -12,6 +12,7 @@ import json
 import os
 import time
 import traceback
+from datetime import datetime, timezone
 import uuid
 from pathlib import Path
 from typing import Awaitable, Callable, Literal
@@ -72,7 +73,7 @@ class CheckRequest(BaseModel):
     country: str = Field(default="", max_length=40)
     role: str = Field(default="", max_length=60)
     plan: str = Field(default="", max_length=60)
-    documents: list[DocumentIn] = Field(min_length=1, max_length=4)
+    documents: list[DocumentIn] = Field(min_length=1, max_length=6)
 
 
 Emit = Callable[[str, dict], Awaitable[None]]
@@ -172,6 +173,7 @@ async def run_check(req: CheckRequest, emit: Emit | None = None) -> dict:
 
     def complete(decision: Decision, reasons: list[str], codes: list[str], **extra) -> dict:
         payload = {
+            "checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "question": req.question,
             "draft": req.draft,
             "context": {"country": req.country, "role": req.role, "plan": req.plan},
@@ -265,7 +267,10 @@ async def run_check(req: CheckRequest, emit: Emit | None = None) -> dict:
             }
             for doc in authority.superseded
         ],
-        "trace": authority.trace,
+        "trace": sorted(
+            authority.trace,
+            key=lambda row: {"governing": 0, "superseded": 1, "out of scope": 2}.get(row.get("outcome"), 3),
+        ),
         "error": authority.error,
     }
     await finish(

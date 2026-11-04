@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Docket — the publish gate for service-desk answers</title>
   <meta name="description" content="Prove which policy governs, check every claim, and hold the AI answer that would cite a superseded rule." />
-  <link rel="stylesheet" href="/static/app.css?v=20261104c" />
+  <link rel="stylesheet" href="/static/app.css?v=20261104d" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23eff1ec'/><path d='M7 12V7h5M20 7h5v5M25 20v5h-5M12 25H7v-5' fill='none' stroke='%230b5b4a' stroke-width='2'/><circle cx='16' cy='16' r='2.5' fill='%230b5b4a'/></svg>" />
 </head>
 <body>
@@ -21,8 +21,10 @@
       <span class="tagline">Policy control for AI answers</span>
     </a>
     <div class="top-actions">
+      <span class="live" id="live" data-state="checking"><i></i><span id="live-text">Connecting</span></span>
       <span class="credits"><span id="credit-total">0</span> credits</span>
-      <a class="quiet" href="#how">How it works</a>
+      <a class="quiet how-link" href="#how">How it works</a>
+      <button type="button" class="quiet theme-toggle" id="theme-toggle" aria-label="Switch to dark mode">Dark</button>
     </div>
   </header>
 
@@ -43,52 +45,70 @@
           <span class="status" id="input-status">Ready</span>
         </div>
 
-        <div class="cases-head">
-          <span class="cases-label">Pick a case</span>
-          <button type="button" class="clear-link" id="clear">Clear</button>
-        </div>
-        <div class="cases" id="scenarios" aria-label="Example cases"></div>
-
-        <div class="field">
-          <label for="question">Employee question</label>
-          <input id="question" type="text" autocomplete="off" placeholder="Does an employee in France need approval to expense a monitor?" />
+        <div class="mode-switch" role="tablist" aria-label="Input mode">
+          <button type="button" role="tab" id="tab-case" aria-selected="true" aria-controls="panel-case" data-mode="case">Your case</button>
+          <button type="button" role="tab" id="tab-examples" aria-selected="false" aria-controls="panel-examples" data-mode="examples">Examples</button>
         </div>
 
-        <fieldset class="context">
-          <legend>Employee context</legend>
-          <div class="context-grid">
-            <div class="field">
-              <label for="country">Country</label>
-              <input id="country" type="text" autocomplete="off" placeholder="FR" />
-            </div>
-            <div class="field">
-              <label for="role">Role</label>
-              <input id="role" type="text" autocomplete="off" placeholder="Employee" />
-            </div>
-            <div class="field">
-              <label for="plan">Plan</label>
-              <input id="plan" type="text" autocomplete="off" placeholder="Standard" />
+        <div id="panel-case" role="tabpanel" aria-labelledby="tab-case">
+          <div class="case-bar">
+            <span class="case-note" id="case-note">Your own policies, question and draft.</span>
+            <div class="case-actions">
+              <button type="button" class="text-button" id="import-case">Import</button>
+              <button type="button" class="text-button" id="export-case">Export</button>
+              <button type="button" class="text-button" id="clear">Clear</button>
+              <input type="file" id="import-file" accept="application/json" hidden />
             </div>
           </div>
-        </fieldset>
 
-        <fieldset class="documents">
-          <legend>Policies <span id="doc-count">1 of 4</span></legend>
-          <div id="doc-list"></div>
-          <button type="button" class="text-button add-doc" id="add-doc">Add policy</button>
-        </fieldset>
+          <div class="field">
+            <label for="question">Employee question</label>
+            <input id="question" type="text" autocomplete="off" maxlength="2000" placeholder="e.g. How long do I have to return a defective item?" />
+          </div>
 
-        <div class="field">
-          <label for="draft">Draft answer <span class="field-note">what the assistant is about to send</span></label>
-          <textarea id="draft" rows="4" placeholder="Paste the answer the assistant drafted…"></textarea>
+          <fieldset class="context">
+            <legend>Employee context</legend>
+            <div class="context-grid">
+              <div class="field">
+                <label for="country">Country</label>
+                <input id="country" type="text" autocomplete="off" maxlength="40" placeholder="e.g. DE" />
+              </div>
+              <div class="field">
+                <label for="role">Role</label>
+                <input id="role" type="text" autocomplete="off" maxlength="60" placeholder="e.g. Contractor" />
+              </div>
+              <div class="field">
+                <label for="plan">Plan</label>
+                <input id="plan" type="text" autocomplete="off" maxlength="60" placeholder="e.g. Standard" />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="documents">
+            <legend>Policies <span id="doc-count">1 of 6</span></legend>
+            <div id="doc-list"></div>
+            <button type="button" class="text-button add-doc" id="add-doc">Add policy</button>
+          </fieldset>
+
+          <div class="field">
+            <label for="draft">Draft answer <span class="field-note">what the assistant is about to send</span></label>
+            <textarea id="draft" rows="4" maxlength="10000" placeholder="e.g. Defective items can be returned within 30 days."></textarea>
+            <div class="counter" id="draft-count">0 / 10,000</div>
+          </div>
+
+          <div class="run-row">
+            <p class="error" id="error" role="alert" hidden></p>
+            <button type="button" class="primary" id="run">
+              Run check <kbd>⌘↵</kbd>
+            </button>
+          </div>
         </div>
 
-        <div class="run-row">
-          <p class="error" id="error" role="alert" hidden></p>
-          <button type="button" class="primary" id="run">
-            Run check <kbd>⌘↵</kbd>
-          </button>
+        <div id="panel-examples" role="tabpanel" aria-labelledby="tab-examples" hidden>
+          <p class="panel-copy">Three worked cases. Load one, then edit any field.</p>
+          <div class="cases" id="scenarios" aria-label="Example cases"></div>
         </div>
+
       </section>
 
       <!-- ------------------------------------------------------------ RESULT -->
@@ -113,9 +133,10 @@
           </svg>
           <p class="empty-title">No check yet.</p>
           <p class="empty-copy">
-            Pick a case above. The verdict appears here with the governing document,
-            the claim table, and the conflicting clause.
+            Fill in your case, or open Examples. The verdict appears here with the
+            governing document, the claim table, and the conflicting clause.
           </p>
+          <button type="button" class="text-button empty-action" id="empty-examples">Open examples</button>
           <dl class="empty-legend">
             <div><dt>Publish</dt><dd>Every counted claim is supported by the governing document.</dd></div>
             <div><dt>Rewrite</dt><dd>A claim is contradicted or unsupported.</dd></div>
@@ -187,6 +208,15 @@
             </div>
             <div id="rerank"></div>
           </section>
+
+          <details class="raw" id="request-block">
+            <summary>Request sent</summary>
+            <div class="raw-actions">
+              <button type="button" class="text-button" id="copy-request">Copy JSON</button>
+              <button type="button" class="text-button" id="copy-curl">Copy as cURL</button>
+            </div>
+            <pre id="request-json"></pre>
+          </details>
 
           <details class="raw" id="raw-block">
             <summary>Raw Clocked responses</summary>
@@ -263,6 +293,6 @@
     <span>Synthetic examples · key server-side · <a href="https://clocked.rezolve.ai/docs" target="_blank" rel="noreferrer">Clocked docs</a></span>
   </footer>
 
-  <script src="/static/app.js?v=20261104c" defer></script>
+  <script src="/static/app.js?v=20261104d" defer></script>
 </body>
 </html>

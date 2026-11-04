@@ -5,6 +5,16 @@ const $ = (selector) => document.querySelector(selector);
 const ui = {
   scenarios: $("#scenarios"),
   clear: $("#clear"),
+  emptyExamples: $("#empty-examples"),
+  tabCase: $("#tab-case"),
+  tabExamples: $("#tab-examples"),
+  panelCase: $("#panel-case"),
+  panelExamples: $("#panel-examples"),
+  caseNote: $("#case-note"),
+  importCase: $("#import-case"),
+  exportCase: $("#export-case"),
+  importFile: $("#import-file"),
+  draftCount: $("#draft-count"),
   question: $("#question"),
   country: $("#country"),
   role: $("#role"),
@@ -14,6 +24,7 @@ const ui = {
   addDoc: $("#add-doc"),
   draft: $("#draft"),
   run: $("#run"),
+  runRow: $(".run-row"),
   error: $("#error"),
   inputStatus: $("#input-status"),
   stepper: $("#stepper"),
@@ -40,11 +51,17 @@ const ui = {
   rerank: $("#rerank"),
   raw: $("#raw"),
   copyJson: $("#copy-json"),
+  requestJson: $("#request-json"),
+  copyRequest: $("#copy-request"),
+  copyCurl: $("#copy-curl"),
+  themeToggle: $("#theme-toggle"),
+  live: $("#live"),
+  liveText: $("#live-text"),
   auditBody: $("#audit-body"),
   creditTotal: $("#credit-total"),
 };
 
-const state = { documents: [], samples: [], busy: false, last: null, streaming: true, allowedText: "" };
+const state = { documents: [], samples: [], busy: false, last: null, streaming: true, allowedText: "", mode: "case", lastPayload: null };
 
 const blankDoc = () => ({
   title: "",
@@ -62,8 +79,11 @@ const DECISIONS = {
 
 /* ------------------------------------------------------------------ init */
 async function init() {
+  initTheme();
   state.documents = [blankDoc()];
   renderDocs();
+  updateDraftCount();
+  setMode("case", "Your own policies, question and draft.");
   bind();
   await Promise.all([loadSamples(), loadAudit(), loadStats(), checkHealth()]);
 }
@@ -84,7 +104,7 @@ function bind() {
   });
 
   ui.addDoc.addEventListener("click", () => {
-    if (state.documents.length >= 4) return;
+    if (state.documents.length >= 6) return;
     state.documents.push(blankDoc());
     renderDocs();
     const inputs = ui.docList.querySelectorAll(".doc-title");
@@ -93,6 +113,64 @@ function bind() {
 
   ui.run.addEventListener("click", run);
   ui.clear.addEventListener("click", clearAll);
+
+  if ("IntersectionObserver" in window) {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const stuck = entry.isIntersecting || entry.boundingClientRect.top < 0;
+        ui.runRow.classList.toggle("is-stuck", stuck);
+      },
+      { rootMargin: "0px 0px -30% 0px", threshold: 0 }
+    );
+    observer.observe(ui.draft);
+  }
+
+  ui.tabCase.addEventListener("click", () => setMode("case"));
+  ui.tabExamples.addEventListener("click", () => setMode("examples"));
+  ui.emptyExamples.addEventListener("click", () => setMode("examples"));
+  for (const tab of [ui.tabCase, ui.tabExamples]) {
+    tab.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const target = state.mode === "case" ? "examples" : "case";
+      setMode(target);
+      (target === "case" ? ui.tabCase : ui.tabExamples).focus();
+    });
+  }
+
+  ui.draft.addEventListener("input", () => {
+    updateDraftCount();
+    ui.draft.removeAttribute("aria-invalid");
+    ui.draft.classList.remove("is-invalid");
+  });
+  ui.question.addEventListener("input", () => {
+    ui.question.removeAttribute("aria-invalid");
+    ui.question.classList.remove("is-invalid");
+  });
+
+  ui.importCase.addEventListener("click", () => ui.importFile.click());
+  ui.importFile.addEventListener("change", async () => {
+    const file = ui.importFile.files && ui.importFile.files[0];
+    if (file) await importCase(file);
+    ui.importFile.value = "";
+  });
+  ui.exportCase.addEventListener("click", exportCase);
+  ui.themeToggle.addEventListener("click", toggleTheme);
+
+  ui.copyRequest.addEventListener("click", async () => {
+    if (!state.lastPayload) return;
+    await navigator.clipboard.writeText(JSON.stringify(state.lastPayload, null, 2));
+    ui.copyRequest.textContent = "Copied";
+    setTimeout(() => (ui.copyRequest.textContent = "Copy JSON"), 1400);
+  });
+  ui.copyCurl.addEventListener("click", async () => {
+    if (!state.lastPayload) return;
+    const body = JSON.stringify(state.lastPayload).replaceAll("'", "'\\''");
+    const command = `curl -s ${location.origin}/api/check \\\n  -H 'Content-Type: application/json' \\\n  -d '${body}'`;
+    await navigator.clipboard.writeText(command);
+    ui.copyCurl.textContent = "Copied";
+    setTimeout(() => (ui.copyCurl.textContent = "Copy as cURL"), 1400);
+  });
 
   document.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
@@ -114,6 +192,123 @@ function bind() {
     ui.copyAllowed.textContent = "Copied";
     setTimeout(() => (ui.copyAllowed.textContent = "Copy allowed text"), 1400);
   });
+}
+
+/* ------------------------------------------------------------------ modes */
+function setMode(mode, note) {
+  state.mode = mode;
+  const isCase = mode === "case";
+  ui.tabCase.setAttribute("aria-selected", String(isCase));
+  ui.tabExamples.setAttribute("aria-selected", String(!isCase));
+  ui.panelCase.hidden = !isCase;
+  ui.panelExamples.hidden = isCase;
+  ui.emptyExamples.hidden = !isCase;
+  if (note !== undefined) {
+    ui.caseNote.textContent = note;
+    ui.caseNote.dataset.state = note.startsWith("Example") || note.startsWith("Imported") ? "example" : "";
+  }
+}
+
+/* ------------------------------------------------------------------ theme */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem("docket-theme", theme);
+  } catch {
+    /* storage can be unavailable; the theme still applies */
+  }
+  ui.themeToggle.textContent = theme === "dark" ? "Light" : "Dark";
+  ui.themeToggle.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+}
+
+function initTheme() {
+  let saved = null;
+  try {
+    saved = localStorage.getItem("docket-theme");
+  } catch {
+    saved = null;
+  }
+  const preferred = saved || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  applyTheme(preferred);
+}
+
+function toggleTheme() {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+}
+
+/* --------------------------------------------------------------- counters */
+function updateDraftCount() {
+  ui.draftCount.textContent = `${ui.draft.value.length.toLocaleString()} / 10,000`;
+}
+
+/* --------------------------------------------------------------- validity */
+function markInvalid(element) {
+  clearInvalid();
+  if (!element) return;
+  element.classList.add("is-invalid");
+  element.setAttribute("aria-invalid", "true");
+  element.focus();
+}
+
+function clearInvalid() {
+  document.querySelectorAll(".is-invalid").forEach((element) => {
+    element.classList.remove("is-invalid");
+    element.removeAttribute("aria-invalid");
+  });
+}
+
+/* ------------------------------------------------------------ import/export */
+function exportCase() {
+  const payload = collect();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `docket-case-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function importCase(file) {
+  let payload;
+  try {
+    payload = JSON.parse(await file.text());
+  } catch {
+    showError("That file is not valid JSON.");
+    return;
+  }
+  if (!payload || typeof payload !== "object" || !Array.isArray(payload.documents) || !payload.documents.length) {
+    showError("Expected a JSON case with a non-empty documents array.");
+    return;
+  }
+
+  ui.question.value = String(payload.question || "").slice(0, 2000);
+  ui.country.value = String(payload.country || "").slice(0, 40);
+  ui.role.value = String(payload.role || "").slice(0, 60);
+  ui.plan.value = String(payload.plan || "").slice(0, 60);
+  ui.draft.value = String(payload.draft || "").slice(0, 10000);
+  state.documents = payload.documents.slice(0, 6).map((doc) => ({
+    title: String(doc.title || "").slice(0, 120),
+    jurisdiction: String(doc.jurisdiction || "Global").slice(0, 20),
+    effective_date: String(doc.effective_date || "").slice(0, 10),
+    precedence: Number(doc.precedence) || 0,
+    text: String(doc.text || "").slice(0, 60000),
+  }));
+  if (!state.documents.length) state.documents = [blankDoc()];
+
+  renderDocs();
+  updateDraftCount();
+  clearError();
+  clearInvalid();
+  setMode("case", "Imported case — edit anything.");
+  ui.result.hidden = true;
+  ui.empty.hidden = false;
+  resetStages();
+  setRunStatus("idle", "Idle");
+  ui.inputStatus.textContent = "Ready";
+  ui.inputStatus.dataset.state = "";
 }
 
 /* --------------------------------------------------------------- documents */
@@ -138,6 +333,7 @@ function renderDocs() {
     const title = document.createElement("input");
     title.type = "text";
     title.className = "doc-title";
+    title.maxLength = 120;
     title.id = `doc-title-${index}`;
     title.placeholder = "Document title";
     title.value = doc.title;
@@ -160,6 +356,7 @@ function renderDocs() {
     const jurisdiction = document.createElement("input");
     jurisdiction.type = "text";
     jurisdiction.id = `doc-jurisdiction-${index}`;
+    jurisdiction.maxLength = 20;
     jurisdiction.placeholder = "Global or FR";
     jurisdiction.value = doc.jurisdiction;
     jurisdiction.dataset.field = "jurisdiction";
@@ -193,18 +390,23 @@ function renderDocs() {
     const body = document.createElement("textarea");
     body.id = `doc-text-${index}`;
     body.rows = 4;
+    body.maxLength = 60000;
     body.placeholder = "Paste the policy text…";
     body.value = doc.text;
     body.dataset.field = "text";
     body.dataset.index = String(index);
     body.setAttribute("aria-label", `Document ${index + 1} text`);
 
-    card.append(head, meta, body);
+    const counter = document.createElement("div");
+    counter.className = "counter";
+    counter.textContent = `${doc.text.length.toLocaleString()} / 60,000`;
+
+    card.append(head, meta, body, counter);
     ui.docList.appendChild(card);
   });
 
-  ui.docCount.textContent = `${state.documents.length} of 4`;
-  ui.addDoc.disabled = state.documents.length >= 4;
+  ui.docCount.textContent = `${state.documents.length} of 6`;
+  ui.addDoc.disabled = state.documents.length >= 6;
   ui.inputStatus.textContent = state.documents.length ? "ready" : "empty";
   ui.inputStatus.dataset.state = state.documents.length ? "done" : "";
 }
@@ -217,6 +419,13 @@ function onDocEdit(event) {
   const fieldName = target.dataset.field;
   state.documents[index][fieldName] =
     fieldName === "precedence" ? Number(target.value) : target.value;
+
+  if (fieldName === "text") {
+    const counter = target.closest(".doc")?.querySelector(".counter");
+    if (counter) counter.textContent = `${target.value.length.toLocaleString()} / 60,000`;
+  }
+  target.classList.remove("is-invalid");
+  target.removeAttribute("aria-invalid");
 }
 
 /* ----------------------------------------------------------------- samples */
@@ -244,7 +453,11 @@ async function loadSamples() {
       blurb.className = "scenario-blurb";
       blurb.textContent = sample.blurb || "";
 
-      button.append(tag, title, blurb);
+      const action = document.createElement("span");
+      action.className = "scenario-load";
+      action.textContent = "Load case";
+
+      button.append(tag, title, blurb, action);
       button.addEventListener("click", () => loadSample(sample.id));
       ui.scenarios.appendChild(button);
     }
@@ -271,10 +484,15 @@ async function loadSample(id) {
       text: doc.text,
     }));
     renderDocs();
+    updateDraftCount();
     document.querySelectorAll(".scenario").forEach((b) => {
       b.setAttribute("aria-pressed", String(b.dataset.id === id));
     });
     clearError();
+    clearInvalid();
+    resetStages();
+    setRunStatus("idle", "Idle");
+    setMode("case", "Example loaded — edit any field.");
     ui.result.hidden = true;
     ui.empty.hidden = false;
     ui.verdictCard.dataset.state = "hold";
@@ -292,13 +510,15 @@ function clearAll() {
   ui.draft.value = "";
   state.documents = [blankDoc()];
   renderDocs();
+  updateDraftCount();
   document.querySelectorAll(".scenario").forEach((b) => b.setAttribute("aria-pressed", "false"));
   clearError();
+  clearInvalid();
+  setMode("case", "Your own policies, question and draft.");
   ui.result.hidden = true;
   ui.empty.hidden = false;
   resetStages();
-  ui.runStatus.textContent = "idle";
-  ui.runStatus.dataset.state = "";
+  setRunStatus("idle", "Idle");
 }
 
 /* -------------------------------------------------------------------- run */
@@ -320,12 +540,22 @@ function collect() {
 }
 
 function validate(payload) {
-  if (payload.question.length < 3) return "Enter the employee question.";
-  if (payload.draft.length < 3) return "Paste the draft answer the assistant wants to send.";
-  if (!payload.documents.length) return "Add at least one policy document.";
+  if (payload.question.length < 3) {
+    return { message: "Enter the employee question.", focus: ui.question };
+  }
+  if (payload.draft.length < 3) {
+    return { message: "Paste the draft answer the assistant wants to send.", focus: ui.draft };
+  }
+  if (!payload.documents.length) {
+    return { message: "Add at least one policy document.", focus: ui.addDoc };
+  }
   for (const [index, doc] of payload.documents.entries()) {
-    if (!doc.title) return `Document ${index + 1} needs a title.`;
-    if (doc.text.length < 20) return `Document ${index + 1} needs at least 20 characters of policy text.`;
+    if (!doc.title) {
+      return { message: `Policy ${index + 1} needs a title.`, focus: document.querySelector(`#doc-title-${index}`) };
+    }
+    if (doc.text.length < 20) {
+      return { message: `Policy ${index + 1} needs at least 20 characters of policy text.`, focus: document.querySelector(`#doc-text-${index}`) };
+    }
   }
   return null;
 }
@@ -335,11 +565,14 @@ async function run() {
   const payload = collect();
   const problem = validate(payload);
   if (problem) {
-    showError(problem);
+    showError(problem.message);
+    markInvalid(problem.focus);
     return;
   }
 
   clearError();
+  clearInvalid();
+  state.lastPayload = payload;
   state.busy = true;
   ui.run.disabled = true;
   ui.error.hidden = true;
@@ -511,7 +744,12 @@ function renderResult(result, elapsed) {
   ui.verdictSentence.textContent = result.headline || meta.sub;
   const calls = result.api_calls || 0;
   const seconds = ((result.latency_ms || 0) / 1000).toFixed(1);
-  ui.verdictMeta.textContent = `One check: ${formatCredits(result.credits)} credits · ${seconds}s · ${calls} calls · ${supportText}`;
+  const checked = result.checked_at
+    ? new Date(result.checked_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : "";
+  const firstLine = `${checked ? `Checked ${checked} · ` : ""}${formatCredits(result.credits)} credits`;
+  const secondLine = `${seconds}s · ${calls} calls · ${supportText}`;
+  ui.verdictMeta.innerHTML = `${firstLine}<br>${secondLine}`;
 
   ui.reasons.innerHTML = "";
   for (const reason of result.reasons || []) {
@@ -527,6 +765,7 @@ function renderResult(result, elapsed) {
   renderRerank(result);
 
   ui.raw.textContent = JSON.stringify(result.raw || {}, null, 2);
+  ui.requestJson.textContent = JSON.stringify(state.lastPayload || {}, null, 2);
   ui.stepper.style.setProperty("--progress", "1");
   setRunStatus(meta.status, meta.status === "error" ? "held" : "complete");
 
@@ -894,11 +1133,15 @@ async function checkHealth() {
     const response = await fetch("/api/health");
     const health = await response.json();
     state.streaming = health.streaming !== false;
-    if (!health.clocked_configured) {
+    const configured = health.clocked_configured !== false;
+    ui.live.dataset.state = configured ? "live" : "offline";
+    ui.liveText.textContent = configured ? "Live" : "Offline";
+    if (!configured) {
       showError("This server has no CLOCKED_API_KEY. Add it to .env and restart.");
     }
   } catch {
-    /* ignore */
+    ui.live.dataset.state = "offline";
+    ui.liveText.textContent = "Offline";
   }
 }
 
