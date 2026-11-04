@@ -263,6 +263,10 @@ tests/             authority and policy tests
 No framework beyond FastAPI, Uvicorn and HTTPX. The frontend is hand-written HTML, CSS and
 JavaScript with no dependencies. All example content is synthetic.
 
+Typefaces: **IBM Plex Sans** and **IBM Plex Mono**, self-hosted from Google Fonts under the
+SIL Open Font License. No images or stock assets are used; the stamp, reticle and pipeline
+diagram are CSS and inline geometry.
+
 ## What I would do with another week
 
 - PDF input through Clocked's PDF mode, with the same gate.

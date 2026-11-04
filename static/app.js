@@ -22,7 +22,8 @@ const ui = {
   result: $("#result"),
   verdictCard: $("#verdict-card"),
   verdictWord: $("#verdict-word"),
-  verdictSub: $("#verdict-sub"),
+  stamp: $("#stamp"),
+  stampRef: $("#stamp-ref"),
   verdictSentence: $("#verdict-sentence"),
   verdictMeter: $("#verdict-meter"),
   verdictMeta: $("#verdict-meta"),
@@ -149,7 +150,7 @@ function renderDocs() {
     remove.className = "doc-remove";
     remove.dataset.index = String(index);
     remove.setAttribute("aria-label", `Remove document ${index + 1}`);
-    remove.textContent = "×";
+    remove.textContent = "Remove";
 
     head.append(title, remove);
 
@@ -248,7 +249,7 @@ async function loadSamples() {
       ui.scenarios.appendChild(button);
     }
   } catch {
-    ui.scenarios.innerHTML = '<span class="examples-label">Scenarios unavailable</span>';
+    ui.scenarios.innerHTML = '<span class="cases-empty">Scenarios unavailable.</span>';
   }
 }
 
@@ -447,6 +448,7 @@ function handleEvent({ name, data }, elapsed) {
 
 /* ----------------------------------------------------------------- stages */
 function resetStages() {
+  ui.stepper.style.setProperty("--progress", "0");
   ui.stepper.querySelectorAll("li").forEach((item) => {
     item.dataset.status = "";
     item.querySelector(".step-meta").textContent = item.dataset.step === "authority" ? "rule" : "";
@@ -467,6 +469,10 @@ function renderStage(stage) {
     meta.textContent = bits.join(" · ") || "done";
   } else if (stage.status === "skipped") meta.textContent = "skipped";
   else if (stage.status === "error") meta.textContent = "failed";
+
+  const steps = [...ui.stepper.querySelectorAll("li")];
+  const settled = steps.filter((item) => ["done", "skipped"].includes(item.dataset.status)).length;
+  ui.stepper.style.setProperty("--progress", String(settled / steps.length));
 }
 
 function setRunStatus(stateName, text) {
@@ -482,22 +488,30 @@ function renderResult(result, elapsed) {
   ui.result.hidden = false;
   ui.verdictCard.dataset.state = result.decision;
   ui.verdictWord.textContent = meta.word;
-  ui.verdictSub.textContent = meta.sub;
+  if (ui.stampRef) {
+    const year = new Date().getFullYear();
+    ui.stampRef.textContent = `CC-${year}-${String(result.id || 0).padStart(4, "0")}`;
+  }
+  if (ui.stamp) {
+    ui.stamp.classList.remove("is-stamped");
+    void ui.stamp.offsetWidth;
+    ui.stamp.classList.add("is-stamped");
+  }
 
   const grounded =
     result.verify && typeof result.verify.grounded === "number" ? result.verify.grounded : null;
-  ui.verdictMeter.style.width = grounded === null ? "0%" : `${Math.round(grounded * 100)}%`;
+  ui.verdictMeter.style.transform = `scaleX(${grounded === null ? 0 : grounded})`;
 
   const claims = result.verify?.claims || [];
   const counted = claims.filter((c) => c.counted !== false && c.kind !== "not_a_claim");
   const supported = counted.filter((c) => (c.verdict || "").toLowerCase() === "supported").length;
   const supportText = counted.length
-    ? `${supported} of ${counted.length} claims supported`
-    : "support not evaluated";
+    ? `${supported}/${counted.length} supported`
+    : "not evaluated";
   ui.verdictSentence.textContent = result.headline || meta.sub;
   const calls = result.api_calls || 0;
   const seconds = ((result.latency_ms || 0) / 1000).toFixed(1);
-  ui.verdictMeta.textContent = `One check: ${formatCredits(result.credits)} credits · ${seconds}s · ${calls} Clocked calls · ${supportText}`;
+  ui.verdictMeta.textContent = `One check: ${formatCredits(result.credits)} credits · ${seconds}s · ${calls} calls · ${supportText}`;
 
   ui.reasons.innerHTML = "";
   for (const reason of result.reasons || []) {
@@ -513,10 +527,16 @@ function renderResult(result, elapsed) {
   renderRerank(result);
 
   ui.raw.textContent = JSON.stringify(result.raw || {}, null, 2);
+  ui.stepper.style.setProperty("--progress", "1");
   setRunStatus(meta.status, meta.status === "error" ? "held" : "complete");
 
   ui.result.tabIndex = -1;
   ui.result.focus({ preventScroll: true });
+
+  if (window.matchMedia("(max-width: 1080px)").matches) {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    ui.result.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }
 }
 
 function markDraft(container, draft, claims) {
@@ -551,6 +571,7 @@ function markDraft(container, draft, claims) {
     if (range.verdict === "not_stated") mark.className = "unsupported";
     mark.textContent = draft.slice(range.start, range.end);
     container.appendChild(mark);
+    requestAnimationFrame(() => mark.classList.add("is-in"));
     position = range.end;
   }
   if (position < draft.length) {

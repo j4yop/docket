@@ -3,57 +3,51 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Docket — nothing reaches an employee until the sources agree</title>
-  <meta name="description" content="A publish gate for service-desk knowledge. Resolve which policy governs, show where sources disagree, and verify every claim before an AI answer ships." />
-  <link rel="stylesheet" href="/static/app.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230d5c4d'/><path d='M9 16.5l4.2 4.2L23 11' fill='none' stroke='%23fffdf8' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+  <title>Docket — the publish gate for service-desk answers</title>
+  <meta name="description" content="Prove which policy governs, check every claim, and hold the AI answer that would cite a superseded rule." />
+  <link rel="stylesheet" href="/static/app.css?v=20261104c" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23eff1ec'/><path d='M7 12V7h5M20 7h5v5M25 20v5h-5M12 25H7v-5' fill='none' stroke='%230b5b4a' stroke-width='2'/><circle cx='16' cy='16' r='2.5' fill='%230b5b4a'/></svg>" />
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
 
   <header class="topbar">
     <a class="brand" href="/" aria-label="Docket home">
-      <span class="mark" aria-hidden="true"></span>
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/>
+        <circle cx="12" cy="12" r="2.2" fill="currentColor"/>
+      </svg>
       <span class="wordmark">Docket</span>
-      <span class="tagline">Publish gate for service-desk knowledge</span>
+      <span class="tagline">Policy control for AI answers</span>
     </a>
     <div class="top-actions">
-      <span class="credits" title="Clocked credits spent by checks on this instance">
-        <span id="credit-total">0</span><span class="credit-label">credits</span>
-      </span>
+      <span class="credits"><span id="credit-total">0</span> credits</span>
       <a class="quiet" href="#how">How it works</a>
     </div>
   </header>
 
   <main id="main">
     <section class="hero">
-      <p class="eyebrow">Clocked Build Challenge · Best Use of Verify, Compare, or Rerank</p>
-      <h1>The newest policy is often<br /><em>not</em> the governing one.</h1>
+      <h1>The newest policy is often<br class="br-mobile" /> <em>not</em><br class="br-desktop" /> the governing one.</h1>
       <p class="lede">
-        Docket is the publish gate for service-desk answers. Paste the policies, the question, and the
-        draft your assistant is about to send. It proves which document governs, checks every claim, and
-        holds the answer that would cite a superseded rule.
+        Paste the policies, the question, and the draft. Docket proves which one governs
+        — and holds the answer that doesn't.
       </p>
-      <div class="hero-notes">
-        <span><b>Authority</b> is resolved by rule, not by a model</span>
-        <span><b>Compare</b> runs at clause level, where it is accurate</span>
-        <span><b>Every verdict</b> is computed live from Clocked</span>
-      </div>
     </section>
 
     <div class="desk">
-      <!-- ---------------------------------------------------------- INPUT -->
-      <section class="card input-card" aria-labelledby="input-heading">
-        <div class="card-head">
-          <h2 id="input-heading"><span class="num">01</span> The input</h2>
-          <span class="status" id="input-status">ready</span>
+      <!-- ------------------------------------------------------------- INPUT -->
+      <section class="col input-col" aria-labelledby="input-heading">
+        <div class="col-head">
+          <h2 id="input-heading">The input</h2>
+          <span class="status" id="input-status">Ready</span>
         </div>
 
-        <div class="scenarios-head">
-          <span class="examples-label">Start with a scenario</span>
+        <div class="cases-head">
+          <span class="cases-label">Pick a case</span>
           <button type="button" class="clear-link" id="clear">Clear</button>
         </div>
-        <div class="scenarios" id="scenarios" aria-label="Example scenarios"></div>
+        <div class="cases" id="scenarios" aria-label="Example cases"></div>
 
         <div class="field">
           <label for="question">Employee question</label>
@@ -61,7 +55,7 @@
         </div>
 
         <fieldset class="context">
-          <legend>Employee context <span>used to resolve which policy applies</span></legend>
+          <legend>Employee context</legend>
           <div class="context-grid">
             <div class="field">
               <label for="country">Country</label>
@@ -79,13 +73,13 @@
         </fieldset>
 
         <fieldset class="documents">
-          <legend>Policy documents <span id="doc-count">1 of 4</span></legend>
+          <legend>Policies <span id="doc-count">1 of 4</span></legend>
           <div id="doc-list"></div>
-          <button type="button" class="secondary" id="add-doc">+ Add document</button>
+          <button type="button" class="text-button add-doc" id="add-doc">Add policy</button>
         </fieldset>
 
         <div class="field">
-          <label for="draft">Draft answer <span class="label-note">what the assistant is about to send</span></label>
+          <label for="draft">Draft answer <span class="field-note">what the assistant is about to send</span></label>
           <textarea id="draft" rows="4" placeholder="Paste the answer the assistant drafted…"></textarea>
         </div>
 
@@ -97,11 +91,11 @@
         </div>
       </section>
 
-      <!-- --------------------------------------------------------- RESULT -->
-      <section class="card result-card" aria-labelledby="result-heading">
-        <div class="card-head">
-          <h2 id="result-heading"><span class="num">02</span> The verdict</h2>
-          <span class="status" id="run-status">idle</span>
+      <!-- ------------------------------------------------------------ RESULT -->
+      <section class="col result-col" aria-labelledby="result-heading">
+        <div class="col-head">
+          <h2 id="result-heading">The verdict</h2>
+          <span class="status" id="run-status">Idle</span>
         </div>
 
         <ol class="stepper" id="stepper" aria-label="Check progress">
@@ -112,36 +106,43 @@
         </ol>
 
         <div class="empty" id="empty">
-          <div class="empty-mark" aria-hidden="true">
-            <span></span><span></span><span></span>
-          </div>
+          <svg class="reticle" viewBox="0 0 64 64" aria-hidden="true">
+            <path d="M10 24V10h14M40 10h14v14M54 40v14H40M24 54H10V40" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <circle cx="32" cy="32" r="5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <circle cx="32" cy="32" r="1.4" fill="currentColor"/>
+          </svg>
           <p class="empty-title">No check yet.</p>
           <p class="empty-copy">
-            Load an example or paste your own documents. The verdict appears here with the authority trace,
-            the conflicting clauses, and a claim-by-claim table.
+            Pick a case above. The verdict appears here with the governing document,
+            the claim table, and the conflicting clause.
           </p>
-          <ul class="empty-list">
-            <li><b>Publish</b> — every counted claim is supported by the governing document.</li>
-            <li><b>Rewrite</b> — a claim is contradicted or unsupported.</li>
-            <li><b>Hold</b> — authority is ambiguous or a check could not finish.</li>
-          </ul>
+          <dl class="empty-legend">
+            <div><dt>Publish</dt><dd>Every counted claim is supported by the governing document.</dd></div>
+            <div><dt>Rewrite</dt><dd>A claim is contradicted or unsupported.</dd></div>
+            <div><dt>Hold</dt><dd>Authority is ambiguous or a check could not finish.</dd></div>
+          </dl>
         </div>
 
         <div id="result" hidden>
           <div class="verdict" id="verdict-card" data-state="hold">
-            <div class="verdict-top">
-              <span class="verdict-word" id="verdict-word" aria-live="polite">—</span>
-              <span class="verdict-sub" id="verdict-sub"></span>
+            <div class="stamp" id="stamp">
+              <span class="stamp-word" id="verdict-word" aria-live="polite">—</span>
+              <span class="stamp-ref" id="stamp-ref">CC-0000</span>
             </div>
-            <p class="verdict-sentence" id="verdict-sentence"></p>
-            <div class="verdict-meter" aria-hidden="true"><span id="verdict-meter"></span></div>
-            <div class="verdict-meta" id="verdict-meta"></div>
+            <div class="verdict-copy">
+              <p class="verdict-sentence" id="verdict-sentence"></p>
+              <p class="verdict-meta" id="verdict-meta"></p>
+            </div>
           </div>
+          <div class="support-meter" aria-hidden="true"><span id="verdict-meter"></span></div>
 
           <ul class="reasons" id="reasons"></ul>
 
           <section class="block" aria-labelledby="delivery-heading">
-            <h3 id="delivery-heading">What would ship</h3>
+            <div class="block-head">
+              <h3 id="delivery-heading">What would ship</h3>
+              <span class="block-note">draft / gate</span>
+            </div>
             <div class="delivery-grid">
               <div class="delivery-pane">
                 <div class="pane-label">Assistant draft</div>
@@ -150,35 +151,47 @@
               <div class="delivery-pane">
                 <div class="pane-label" id="allowed-label">What Docket allows</div>
                 <div class="pane-text" id="allowed-view"></div>
-                <button type="button" class="secondary small" id="copy-allowed" hidden>Copy allowed text</button>
+                <button type="button" class="text-button" id="copy-allowed" hidden>Copy allowed text</button>
               </div>
             </div>
           </section>
 
           <section class="block" aria-labelledby="authority-heading">
-            <h3 id="authority-heading">Authority trace</h3>
+            <div class="block-head">
+              <h3 id="authority-heading">Authority</h3>
+              <span class="block-note">jurisdiction / precedence / date</span>
+            </div>
             <div id="authority"></div>
           </section>
 
           <section class="block" aria-labelledby="claims-heading">
-            <h3 id="claims-heading">Claim check <span class="count" id="claim-count"></span></h3>
+            <div class="block-head">
+              <h3 id="claims-heading">Claims</h3>
+              <span class="block-note" id="claim-count"></span>
+            </div>
             <div id="claims"></div>
           </section>
 
           <section class="block" id="conflicts-block" aria-labelledby="conflicts-heading" hidden>
-            <h3 id="conflicts-heading">Where the sources disagree</h3>
+            <div class="block-head">
+              <h3 id="conflicts-heading">Conflicts</h3>
+              <span class="block-note">governing / superseded</span>
+            </div>
             <div id="conflicts"></div>
           </section>
 
-          <section class="block" id="rerank-block" aria-labelledby="rerank-heading">
-            <h3 id="rerank-heading">Source selection</h3>
+          <section class="block" aria-labelledby="rerank-heading">
+            <div class="block-head">
+              <h3 id="rerank-heading">Source selection</h3>
+              <span class="block-note">rerank</span>
+            </div>
             <div id="rerank"></div>
           </section>
 
           <details class="raw" id="raw-block">
-            <summary>Raw Clocked responses <span class="summary-note">what the API actually returned</span></summary>
+            <summary>Raw Clocked responses</summary>
             <div class="raw-actions">
-              <button type="button" class="secondary small" id="copy-json">Copy JSON</button>
+              <button type="button" class="text-button" id="copy-json">Copy JSON</button>
             </div>
             <pre id="raw"></pre>
           </details>
@@ -186,34 +199,34 @@
       </section>
     </div>
 
-    <!-- --------------------------------------------------------------- HOW -->
-    <section class="how" id="how" aria-labelledby="how-heading">
-      <div class="how-head">
+    <!-- -------------------------------------------------------------- HOW -->
+    <section class="pipeline" id="how" aria-labelledby="how-heading">
+      <div class="pipeline-head">
         <h2 id="how-heading">How the decision is made</h2>
-        <p>Three model judgments, one rule engine, and a verdict you can defend.</p>
+        <p>Three model judgments, one rule engine, one verdict you can defend.</p>
       </div>
-      <div class="how-grid">
-        <article>
-          <span class="how-num">01</span>
+      <ol class="pipeline-track">
+        <li>
+          <span class="node">01</span>
           <h3>Authority is a rule</h3>
-          <p>Jurisdiction, precedence and effective date pick the governing document. A tie becomes <b>Hold</b>; the app never asks a model which policy wins.</p>
-        </article>
-        <article>
-          <span class="how-num">02</span>
+          <p>Jurisdiction, precedence and effective date pick the governing document. A tie becomes Hold.</p>
+        </li>
+        <li>
+          <span class="node">02</span>
           <h3>Rerank selects the clause</h3>
-          <p>The governing rule is passed in the instructions. Rerank returns <code>use</code>, <code>expand</code> or <code>skip</code> for every candidate clause, with a reason.</p>
-        </article>
-        <article>
-          <span class="how-num">03</span>
+          <p>The governing rule is passed in the instructions. Rerank returns use, expand or skip for every candidate.</p>
+        </li>
+        <li>
+          <span class="node">03</span>
           <h3>Compare shows the conflict</h3>
-          <p>Only the governing and superseded clauses are compared. Short, aligned passages are where Compare is accurate and cheap; whole documents are not.</p>
-        </article>
-        <article>
-          <span class="how-num">04</span>
+          <p>Only the governing and superseded clauses are compared. Short, aligned passages are where Compare is accurate.</p>
+        </li>
+        <li>
+          <span class="node">04</span>
           <h3>Verify decides</h3>
-          <p>Every counted claim in the draft is marked supported, contradicted or not stated. One bad claim is enough to force a rewrite.</p>
-        </article>
-      </div>
+          <p>Every counted claim is marked supported, contradicted or not stated. One bad claim forces a rewrite.</p>
+        </li>
+      </ol>
       <div class="api-note">
         <div>
           <h3>Use it from an agent</h3>
@@ -226,11 +239,11 @@
       </div>
     </section>
 
-    <!-- ------------------------------------------------------------- AUDIT -->
+    <!-- ------------------------------------------------------------ AUDIT -->
     <section class="audit" aria-labelledby="audit-heading">
-      <div class="card-head">
-        <h2 id="audit-heading"><span class="num">03</span> Recent checks</h2>
-        <span class="status" id="audit-status">local audit log</span>
+      <div class="audit-head">
+        <h2 id="audit-heading">Recent checks</h2>
+        <span>Local audit log</span>
       </div>
       <div class="table-wrap">
         <table>
@@ -246,10 +259,10 @@
   </main>
 
   <footer class="foot">
-    <span>Docket — built for the Clocked Build Challenge, November 2026.</span>
-    <span>Synthetic examples · API key server-side · <a href="https://clocked.rezolve.ai/docs" target="_blank" rel="noreferrer">Clocked docs</a></span>
+    <span>Docket — built for the Clocked Build Challenge, November 2026. Best Use of Verify, Compare, or Rerank.</span>
+    <span>Synthetic examples · key server-side · <a href="https://clocked.rezolve.ai/docs" target="_blank" rel="noreferrer">Clocked docs</a></span>
   </footer>
 
-  <script src="/static/app.js" defer></script>
+  <script src="/static/app.js?v=20261104c" defer></script>
 </body>
 </html>
