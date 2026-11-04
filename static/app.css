@@ -163,6 +163,11 @@ main {
   color: var(--green);
 }
 
+.hero h1 em {
+  font-style: italic;
+  color: var(--green);
+}
+
 .hero h1 {
   margin: 0 0 16px;
   font-family: var(--serif);
@@ -887,4 +892,152 @@ td .pill { font-size: 8.5px; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* --------------------------------------------------------- scenario cards */
+.scenarios-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.clear-link {
+  border: 0;
+  background: none;
+  color: var(--faint);
+  font-family: var(--sans);
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 2px 0;
+  border-bottom: 1px solid transparent;
+}
+.clear-link:hover { color: var(--ink); border-bottom-color: var(--line); }
+
+.scenarios {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.scenario {
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border-radius: 10px;
+  padding: 11px 12px 10px;
+  cursor: pointer;
+  font-family: var(--sans);
+  transition: border-color 120ms ease, background 120ms ease, transform 80ms ease;
+}
+.scenario:hover { border-color: var(--green); background: #fff; }
+.scenario:active { transform: translateY(1px); }
+.scenario[aria-pressed="true"] { border-color: var(--green); background: var(--green-soft); }
+
+.scenario-tag {
+  display: block;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--green);
+  margin-bottom: 4px;
+}
+.scenario-title {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.3;
+  margin-bottom: 3px;
+}
+.scenario-blurb {
+  display: block;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* -------------------------------------------------------- verdict sentence */
+.verdict-sentence {
+  margin: 10px 0 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  max-width: 62ch;
+}
+
+/* --------------------------------------------------------- delivery panel */
+.delivery-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.delivery-pane {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  padding: 10px 12px 11px;
+  min-width: 0;
+}
+
+.pane-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 7px;
+}
+
+.pane-text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pane-text mark {
+  background: #fbe1dd;
+  color: inherit;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.pane-text mark.unsupported {
+  background: #fbf1d9;
+  text-decoration: none;
+  border-bottom: 1px dashed #a87400;
+}
+
+.allowed-quote {
+  border-left: 2px solid var(--publish);
+  padding: 1px 0 1px 9px;
+  margin: 0 0 9px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.allowed-quote:last-of-type { margin-bottom: 7px; }
+
+.delivery-empty {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+#copy-allowed { margin-top: 8px; }
+
+@media (max-width: 680px) {
+  .scenarios { grid-template-columns: 1fr; }
+  .delivery-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 680px) {
+  .hero h1 br { display: none; }
 }

@@ -28,11 +28,11 @@
   <main id="main">
     <section class="hero">
       <p class="eyebrow">Clocked Build Challenge · Best Use of Verify, Compare, or Rerank</p>
-      <h1>Nothing reaches an employee<br />until the sources agree.</h1>
+      <h1>The newest policy is often<br /><em>not</em> the governing one.</h1>
       <p class="lede">
-        Paste the policy documents, the employee question, and the draft your assistant is about to send.
-        Docket resolves which document governs, shows where the sources disagree, and checks every
-        claim before it ships.
+        Docket is the publish gate for service-desk answers. Paste the policies, the question, and the
+        draft your assistant is about to send. It proves which document governs, checks every claim, and
+        holds the answer that would cite a superseded rule.
       </p>
       <div class="hero-notes">
         <span><b>Authority</b> is resolved by rule, not by a model</span>
@@ -49,11 +49,11 @@
           <span class="status" id="input-status">ready</span>
         </div>
 
-        <div class="examples" aria-label="Example inputs">
-          <span class="examples-label">Load an example</span>
-          <span id="sample-chips"></span>
-          <button type="button" class="chip chip-quiet" id="clear">Clear</button>
+        <div class="scenarios-head">
+          <span class="examples-label">Start with a scenario</span>
+          <button type="button" class="clear-link" id="clear">Clear</button>
         </div>
+        <div class="scenarios" id="scenarios" aria-label="Example scenarios"></div>
 
         <div class="field">
           <label for="question">Employee question</label>
@@ -133,11 +133,27 @@
               <span class="verdict-word" id="verdict-word" aria-live="polite">—</span>
               <span class="verdict-sub" id="verdict-sub"></span>
             </div>
+            <p class="verdict-sentence" id="verdict-sentence"></p>
             <div class="verdict-meter" aria-hidden="true"><span id="verdict-meter"></span></div>
             <div class="verdict-meta" id="verdict-meta"></div>
           </div>
 
           <ul class="reasons" id="reasons"></ul>
+
+          <section class="block" aria-labelledby="delivery-heading">
+            <h3 id="delivery-heading">What would ship</h3>
+            <div class="delivery-grid">
+              <div class="delivery-pane">
+                <div class="pane-label">Assistant draft</div>
+                <div class="pane-text" id="draft-view"></div>
+              </div>
+              <div class="delivery-pane">
+                <div class="pane-label" id="allowed-label">What Docket allows</div>
+                <div class="pane-text" id="allowed-view"></div>
+                <button type="button" class="secondary small" id="copy-allowed" hidden>Copy allowed text</button>
+              </div>
+            </div>
+          </section>
 
           <section class="block" aria-labelledby="authority-heading">
             <h3 id="authority-heading">Authority trace</h3>

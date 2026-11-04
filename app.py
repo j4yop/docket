@@ -27,6 +27,7 @@ from authority import (
     Document,
     align_superseded,
     best_clause_for_text,
+    top_clauses_for_text,
     candidate_clauses,
     parse_date,
     resolve,
@@ -102,6 +103,45 @@ VERIFY_POLICY = (
 
 
 # --------------------------------------------------------------------------
+# headline
+# --------------------------------------------------------------------------
+def build_headline(payload: dict) -> str:
+    decision = payload.get("decision")
+    authority = payload.get("authority") or {}
+    governing = (authority.get("governing") or {}).get("title") or "the governing document"
+    verify = payload.get("verify") or {}
+    claims = [c for c in (verify.get("claims") or []) if c.get("counted", True)]
+    contradicted = [c for c in claims if (c.get("verdict") or "") == "contradicted"]
+    unsupported = [c for c in claims if (c.get("verdict") or "") == "not_stated"]
+
+    if decision == "publish":
+        if len(claims) == 1:
+            return f"The claim is supported by {governing}. This answer can ship."
+        return f"All {len(claims)} claims are supported by {governing}. This answer can ship."
+
+    if decision == "hold":
+        if authority.get("error"):
+            return "Authority is unresolved. Nothing was published."
+        if "check_failed" in (payload.get("codes") or []):
+            return "A check could not finish. Nothing was published."
+        if not verify:
+            return "The governing document does not answer this question. Nothing was published."
+        return "The answer is held for a human. Nothing was published."
+
+    if contradicted:
+        if len(contradicted) == 1:
+            return f"One claim contradicts {governing}. Rewrite before this reaches an employee."
+        return f"{len(contradicted)} of {len(claims)} claims contradict {governing}. Rewrite before this reaches an employee."
+
+    if unsupported:
+        if len(unsupported) == 1:
+            return f"One claim is not established by {governing}. Rewrite before publishing."
+        return f"{len(unsupported)} claims are not established by {governing}. Rewrite before publishing."
+
+    return f"The draft does not clear {governing}. Rewrite before publishing."
+
+
+# --------------------------------------------------------------------------
 # orchestration
 # --------------------------------------------------------------------------
 async def run_check(req: CheckRequest, emit: Emit | None = None) -> dict:
@@ -149,6 +189,11 @@ async def run_check(req: CheckRequest, emit: Emit | None = None) -> dict:
             "raw": {},
             **extra,
         }
+        payload["headline"] = build_headline(payload)
+        payload["api_calls"] = sum(
+            1 for stage in stages
+            if stage.get("status") == "done" and stage.get("stage") in {"rerank", "compare", "verify"}
+        )
         verify = payload.get("verify") or {}
         claims = verify.get("claims") or []
         contradicted = sum(1 for c in claims if (c.get("verdict") or "") == "contradicted")
@@ -491,9 +536,10 @@ async def run_check(req: CheckRequest, emit: Emit | None = None) -> dict:
         governing_clauses = [c for c in all_clauses if c.doc_id == governing.id]
         for claim in verify_res.data.get("claims") or []:
             if not claim.get("evidence"):
-                match = best_clause_for_text(claim.get("claim") or "", governing_clauses)
-                if match:
-                    claim["governing_quote"] = match.text
+                matches = top_clauses_for_text(claim.get("claim") or "", governing_clauses, limit=2)
+                if matches:
+                    claim["governing_quote"] = matches[0].text
+                    claim["governing_quotes"] = [clause.text for clause in matches]
                     claim["governing_doc"] = governing.title
         verify_payload = {
             "grounded": verify_res.data.get("grounded"),
@@ -554,7 +600,12 @@ async def index() -> FileResponse:
 
 @app.get("/api/samples")
 async def sample_list() -> list[dict]:
-    return [{"id": s["id"], "label": s["label"], "blurb": s["blurb"]} for s in SAMPLES]
+    order = {"authority": 0, "version": 1, "control": 2}
+    samples = [
+        {"id": s["id"], "label": s["label"], "blurb": s["blurb"], "tag": s.get("tag", "")}
+        for s in SAMPLES
+    ]
+    return sorted(samples, key=lambda s: order.get(s["tag"], 9))
 
 
 @app.get("/api/samples/{sample_id}")

@@ -6,9 +6,10 @@ in one click; every field can be replaced with the judge's own documents.
 
 SAMPLES = [
     {
-        "id": "france-monitor",
-        "label": "France monitor policy",
-        "blurb": "A global rule and a regional annex disagree. The draft follows the wrong one.",
+        "id": "precedence-recency",
+        "label": "Precedence over recency",
+        "tag": "authority",
+        "blurb": "A newer global policy is subordinate to an older country annex. Latest-wins publishes the wrong answer.",
         "question": "Does an employee in France need prior manager approval to expense a monitor?",
         "draft": (
             "Monitor reimbursement requires prior manager approval. "
@@ -17,12 +18,12 @@ SAMPLES = [
         "context": {"country": "FR", "role": "Employee", "plan": "Standard"},
         "documents": [
             {
-                "title": "Global equipment policy v3.2",
+                "title": "Global equipment policy v4",
                 "jurisdiction": "Global",
-                "effective_date": "2026-01-01",
+                "effective_date": "2026-06-01",
                 "precedence": 0,
                 "text": (
-                    "Global equipment policy — version 3.2, effective 1 January 2026.\n\n"
+                    "Global equipment policy — version 4, effective 1 June 2026.\n\n"
                     "Monitor reimbursement requires prior manager approval submitted through the expense portal. "
                     "Requests without approval are rejected.\n\n"
                     "Delivery is expected within 5 business days of approval."
@@ -55,6 +56,7 @@ SAMPLES = [
     {
         "id": "access-request",
         "label": "Clean access request",
+        "tag": "control",
         "blurb": "One governing source, a draft that matches it. The gate publishes.",
         "question": "Does an access request need manager approval and security training?",
         "draft": "Access requests require manager approval and completion of security training.",
@@ -77,6 +79,7 @@ SAMPLES = [
     {
         "id": "expense-update",
         "label": "Expense policy update",
+        "tag": "version",
         "blurb": "A new version changes two numbers. The draft still uses the old ones.",
         "question": "What is the deadline and receipt threshold for submitting an expense?",
         "draft": (

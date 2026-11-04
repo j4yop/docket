@@ -133,13 +133,26 @@ def resolve(documents: list[Document], country: str) -> Authority:
         )
 
     superseded = [doc for key, doc in eligible if doc.id != top_doc.id]
+    top_precedence, top_specificity, top_date = top_key
+
     for row in rows:
         if not row["applies"]:
             row["outcome"] = "out of scope"
+            row["rule_reason"] = f"Jurisdiction {row['jurisdiction']} does not match {country_norm or 'the employee'}."
         elif row["id"] == top_doc.id:
             row["outcome"] = "governing"
+            scope = "country match" if top_specificity == 2 else "global scope"
+            row["rule_reason"] = f"Selected: precedence {top_precedence}, {scope}, effective {row['effective_date'] or 'not set'}."
         else:
             row["outcome"] = "superseded"
+            if row["precedence"] < top_precedence:
+                row["rule_reason"] = f"Lower precedence ({row['precedence']} < {top_precedence})."
+            elif row["specificity"] < top_specificity:
+                row["rule_reason"] = "Less specific jurisdiction than the governing document."
+            elif (parse_date(row["effective_date"]) or date.min) < top_date:
+                row["rule_reason"] = f"Older effective date ({row['effective_date']} < {top_doc.effective_date})."
+            else:
+                row["rule_reason"] = "Superseded by the governing document."
 
     return Authority(governing=top_doc, superseded=superseded, trace=rows)
 
@@ -301,3 +314,22 @@ def best_clause_for_text(text: str, clauses: list[Clause]) -> Clause | None:
         if best is None or score > best[0]:
             best = (score, clause)
     return best[1] if best else None
+
+
+def top_clauses_for_text(text: str, clauses: list[Clause], limit: int = 2, threshold: float = 0.08) -> list[Clause]:
+    """Return the clauses that most likely state the rules a claim is about.
+
+    A draft sentence can combine two rules ("approval and training"). Showing
+    both governing clauses is more honest than picking one.
+    """
+    tokens = _tokens(text)
+    if not tokens:
+        return []
+    scored: list[tuple[float, Clause]] = []
+    for clause in clauses:
+        clause_tokens = _tokens(clause.text)
+        if not clause_tokens:
+            continue
+        scored.append((len(tokens & clause_tokens) / len(tokens | clause_tokens), clause))
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return [clause for score, clause in scored[:limit] if score >= threshold]

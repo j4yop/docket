@@ -1,6 +1,6 @@
 # Docket
 
-**Nothing reaches an employee until the sources agree.**
+**The newest policy is often not the governing one.**
 
 **Live:** <https://docket-tau.vercel.app>
 
@@ -37,6 +37,17 @@ that no longer governs.
    "overrides" flag. The examples are prefilled; every field is editable.
 3. Paste the draft the assistant wants to send.
 4. Run the check.
+
+### The three scenarios
+
+| Scenario | What it tests | Expected result |
+|---|---|---|
+| **Precedence over recency** | An older country annex overrides a newer global policy. "Latest wins" publishes the wrong answer. | REWRITE |
+| **Version supersession** | A new policy changes two numbers; the draft still uses the old ones. | REWRITE |
+| **Clean access request** | One governing source, a draft that matches it. | PUBLISH |
+
+The first scenario is the point of the product. Every freshness or time-decay tool would pick the
+newer global policy; only precedence resolution holds the draft.
 
 ## What Docket does
 
@@ -173,6 +184,16 @@ curl -s https://docket-tau.vercel.app/api/check \
   }'
 ```
 
+## What the result shows
+
+- **A scenario card**, not a blank form: the judge sees what each example tests before clicking.
+- **A one-sentence verdict**: "2 of 2 claims contradict France annex. Rewrite before this reaches an employee."
+- **A cost line**: "One check: 9 credits · 2.2s · 3 Clocked calls · 0 of 2 claims supported."
+- **A before/after panel**: the draft with contradicted claims struck through, beside the governing clauses that must replace them.
+- **An authority trace** with provenance labels: `IN FORCE`, `SUPERSEDED`, `OUT OF SCOPE`, each with the rule that decided it.
+- **A claim table** with the governing passage for every claim, including combined claims that need two clauses.
+- **Raw Clocked responses** for a technical judge.
+
 ## Failure behaviour
 
 | Failure | Behaviour |
@@ -186,6 +207,7 @@ curl -s https://docket-tau.vercel.app/api/check \
 | No governing clause | **Hold** |
 | No superseded document | Compare skipped; the decision still stands |
 | Missing draft | Validation error; no API call |
+| Check takes longer than 35 s | The browser stops waiting and says "Taking longer than expected"; the Run button is available for a retry |
 
 Every retry reuses the same `Idempotency-Key` and payload. Each endpoint gets its own key.
 
@@ -202,8 +224,8 @@ Measured on the three examples, live:
 | Case | Calls | Credits | Time |
 |---|---|---|---|
 | Clean access request | Rerank + Verify | 4 | ~0.6 s |
-| France monitor policy | Rerank + Compare + Verify | 9–10 | ~1–2 s |
-| Expense policy update | Rerank + Compare + Verify | 8–10 | ~1–2 s |
+| Precedence over recency | Rerank + Compare + Verify | 9 | ~2 s |
+| Expense policy update | Rerank + Compare + Verify | 9 | ~1.8 s |
 
 ## Limitations
 

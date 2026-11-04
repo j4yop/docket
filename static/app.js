@@ -3,7 +3,7 @@
 const $ = (selector) => document.querySelector(selector);
 
 const ui = {
-  sampleChips: $("#sample-chips"),
+  scenarios: $("#scenarios"),
   clear: $("#clear"),
   question: $("#question"),
   country: $("#country"),
@@ -23,9 +23,14 @@ const ui = {
   verdictCard: $("#verdict-card"),
   verdictWord: $("#verdict-word"),
   verdictSub: $("#verdict-sub"),
+  verdictSentence: $("#verdict-sentence"),
   verdictMeter: $("#verdict-meter"),
   verdictMeta: $("#verdict-meta"),
   reasons: $("#reasons"),
+  draftView: $("#draft-view"),
+  allowedView: $("#allowed-view"),
+  allowedLabel: $("#allowed-label"),
+  copyAllowed: $("#copy-allowed"),
   authority: $("#authority"),
   claims: $("#claims"),
   claimCount: $("#claim-count"),
@@ -38,7 +43,7 @@ const ui = {
   creditTotal: $("#credit-total"),
 };
 
-const state = { documents: [], samples: [], busy: false, last: null, streaming: true };
+const state = { documents: [], samples: [], busy: false, last: null, streaming: true, allowedText: "" };
 
 const blankDoc = () => ({
   title: "",
@@ -100,6 +105,13 @@ function bind() {
     await navigator.clipboard.writeText(JSON.stringify(state.last, null, 2));
     ui.copyJson.textContent = "Copied";
     setTimeout(() => (ui.copyJson.textContent = "Copy JSON"), 1400);
+  });
+
+  ui.copyAllowed.addEventListener("click", async () => {
+    if (!state.allowedText) return;
+    await navigator.clipboard.writeText(state.allowedText);
+    ui.copyAllowed.textContent = "Copied";
+    setTimeout(() => (ui.copyAllowed.textContent = "Copy allowed text"), 1400);
   });
 }
 
@@ -211,18 +223,32 @@ async function loadSamples() {
   try {
     const response = await fetch("/api/samples");
     state.samples = await response.json();
-    ui.sampleChips.innerHTML = "";
+    ui.scenarios.innerHTML = "";
     for (const sample of state.samples) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "chip";
-      button.textContent = sample.label;
-      button.title = sample.blurb || "";
+      button.className = "scenario";
+      button.dataset.id = sample.id;
+      button.setAttribute("aria-pressed", "false");
+
+      const tag = document.createElement("span");
+      tag.className = "scenario-tag";
+      tag.textContent = sample.tag || "scenario";
+
+      const title = document.createElement("span");
+      title.className = "scenario-title";
+      title.textContent = sample.label;
+
+      const blurb = document.createElement("span");
+      blurb.className = "scenario-blurb";
+      blurb.textContent = sample.blurb || "";
+
+      button.append(tag, title, blurb);
       button.addEventListener("click", () => loadSample(sample.id));
-      ui.sampleChips.appendChild(button);
+      ui.scenarios.appendChild(button);
     }
   } catch {
-    ui.sampleChips.innerHTML = '<span class="examples-label">Examples unavailable</span>';
+    ui.scenarios.innerHTML = '<span class="examples-label">Scenarios unavailable</span>';
   }
 }
 
@@ -244,6 +270,9 @@ async function loadSample(id) {
       text: doc.text,
     }));
     renderDocs();
+    document.querySelectorAll(".scenario").forEach((b) => {
+      b.setAttribute("aria-pressed", String(b.dataset.id === id));
+    });
     clearError();
     ui.result.hidden = true;
     ui.empty.hidden = false;
@@ -262,6 +291,7 @@ function clearAll() {
   ui.draft.value = "";
   state.documents = [blankDoc()];
   renderDocs();
+  document.querySelectorAll(".scenario").forEach((b) => b.setAttribute("aria-pressed", "false"));
   clearError();
   ui.result.hidden = true;
   ui.empty.hidden = false;
@@ -321,30 +351,45 @@ async function run() {
   setRunStatus("running", "running");
 
   const started = performance.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 35000);
   try {
     if (!state.streaming) throw new Error("streaming disabled");
     const response = await fetch("/api/check/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
     if (!response.ok || !response.body) throw new Error("stream unavailable");
     await consume(response);
-  } catch {
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      showError("Taking longer than expected. Clocked may be busy — try again.");
+      setRunStatus("error", "timed out");
+      return;
+    }
     try {
       const response = await fetch("/api/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
       const result = await response.json();
       for (const stage of result.stages || []) renderStage(stage);
       renderResult(result, performance.now() - started);
-    } catch {
-      showError("The check could not run. Nothing was published.");
-      setRunStatus("error", "failed");
+    } catch (fallbackError) {
+      if (fallbackError && fallbackError.name === "AbortError") {
+        showError("Taking longer than expected. Clocked may be busy — try again.");
+        setRunStatus("error", "timed out");
+      } else {
+        showError("The check could not run. Nothing was published.");
+        setRunStatus("error", "failed");
+      }
     }
   } finally {
+    clearTimeout(timer);
     state.busy = false;
     ui.run.disabled = false;
     ui.result.removeAttribute("aria-busy");
@@ -449,8 +494,10 @@ function renderResult(result, elapsed) {
   const supportText = counted.length
     ? `${supported} of ${counted.length} claims supported`
     : "support not evaluated";
-  const parts = [`${formatCredits(result.credits)} credits`, `${result.latency_ms} ms`, supportText];
-  ui.verdictMeta.textContent = parts.join(" · ");
+  ui.verdictSentence.textContent = result.headline || meta.sub;
+  const calls = result.api_calls || 0;
+  const seconds = ((result.latency_ms || 0) / 1000).toFixed(1);
+  ui.verdictMeta.textContent = `One check: ${formatCredits(result.credits)} credits · ${seconds}s · ${calls} Clocked calls · ${supportText}`;
 
   ui.reasons.innerHTML = "";
   for (const reason of result.reasons || []) {
@@ -459,6 +506,7 @@ function renderResult(result, elapsed) {
     ui.reasons.appendChild(item);
   }
 
+  renderDeliveryPanel(result);
   renderAuthority(result);
   renderClaims(result);
   renderConflicts(result);
@@ -469,6 +517,102 @@ function renderResult(result, elapsed) {
 
   ui.result.tabIndex = -1;
   ui.result.focus({ preventScroll: true });
+}
+
+function markDraft(container, draft, claims) {
+  const ranges = [];
+  for (const claim of claims) {
+    if (claim.counted === false || claim.kind === "not_a_claim") continue;
+    const verdict = (claim.verdict || "").toLowerCase();
+    if (verdict !== "contradicted" && verdict !== "not_stated") continue;
+    const text = claim.claim || "";
+    if (!text) continue;
+    let index = draft.indexOf(text);
+    if (index < 0) index = draft.toLowerCase().indexOf(text.toLowerCase());
+    if (index >= 0) ranges.push({ start: index, end: index + text.length, verdict });
+  }
+
+  ranges.sort((a, b) => a.start - b.start);
+  let cursor = 0;
+  const clean = [];
+  for (const range of ranges) {
+    if (range.start >= cursor) {
+      clean.push(range);
+      cursor = range.end;
+    }
+  }
+
+  let position = 0;
+  for (const range of clean) {
+    if (range.start > position) {
+      container.appendChild(document.createTextNode(draft.slice(position, range.start)));
+    }
+    const mark = document.createElement("mark");
+    if (range.verdict === "not_stated") mark.className = "unsupported";
+    mark.textContent = draft.slice(range.start, range.end);
+    container.appendChild(mark);
+    position = range.end;
+  }
+  if (position < draft.length) {
+    container.appendChild(document.createTextNode(draft.slice(position)));
+  }
+}
+
+function renderDeliveryPanel(result) {
+  ui.draftView.innerHTML = "";
+  markDraft(ui.draftView, result.draft || "", result.verify?.claims || []);
+
+  ui.allowedView.innerHTML = "";
+  ui.copyAllowed.hidden = true;
+  state.allowedText = "";
+
+  if (result.decision === "publish") {
+    ui.allowedLabel.textContent = "Cleared to publish";
+    const text = document.createElement("div");
+    text.textContent = result.draft || "";
+    ui.allowedView.appendChild(text);
+    state.allowedText = result.draft || "";
+    ui.copyAllowed.hidden = !state.allowedText;
+    return;
+  }
+
+  if (result.decision === "rewrite") {
+    ui.allowedLabel.textContent = "Required corrections";
+    const claims = (result.verify?.claims || []).filter(
+      (claim) =>
+        claim.counted !== false &&
+        ["contradicted", "not_stated"].includes((claim.verdict || "").toLowerCase())
+    );
+    if (!claims.length) {
+      const note = document.createElement("div");
+      note.className = "delivery-empty";
+      note.textContent = "No claim-level correction was returned.";
+      ui.allowedView.appendChild(note);
+      return;
+    }
+    for (const claim of claims) {
+      const evidence = evidenceList(claim.evidence);
+      const passages = claim.governing_quotes
+        || [claim.governing_quote || (evidence[0] && evidence[0].quote) || ""];
+      for (const passage of passages) {
+        const quote = document.createElement("blockquote");
+        quote.className = "allowed-quote";
+        quote.textContent = passage || "No governing passage returned.";
+        ui.allowedView.appendChild(quote);
+      }
+    }
+    const note = document.createElement("div");
+    note.className = "delivery-empty";
+    note.textContent = "Replace the struck claims with the governing clauses above before publishing.";
+    ui.allowedView.appendChild(note);
+    return;
+  }
+
+  ui.allowedLabel.textContent = "Nothing leaves Docket";
+  const note = document.createElement("div");
+  note.className = "delivery-empty";
+  note.textContent = result.headline || (result.reasons || [])[0] || "Held for a human.";
+  ui.allowedView.appendChild(note);
 }
 
 function renderAuthority(result) {
@@ -497,12 +641,13 @@ function renderAuthority(result) {
     const bits = [row.jurisdiction || "Global"];
     if (row.effective_date) bits.push(`effective ${row.effective_date}`);
     bits.push(row.precedence ? "overrides" : "normal precedence");
-    detail.textContent = `${bits.join(" · ")} — ${row.why || ""}`;
+    detail.textContent = `${bits.join(" · ")} — ${row.rule_reason || row.why || ""}`;
     body.append(title, detail);
 
     const tag = document.createElement("span");
     tag.className = "auth-tag";
-    tag.textContent = row.outcome || "out of scope";
+    const labels = { governing: "IN FORCE", superseded: "SUPERSEDED", "out of scope": "OUT OF SCOPE" };
+    tag.textContent = labels[row.outcome] || row.outcome || "OUT OF SCOPE";
 
     wrap.append(icon, body, tag);
     ui.authority.appendChild(wrap);
@@ -565,11 +710,14 @@ function renderClaims(result) {
       }
     }
 
-    if (!quotes.length && counted && claim.governing_quote) {
-      const quote = document.createElement("blockquote");
-      quote.className = "claim-evidence";
-      quote.textContent = claim.governing_quote;
-      row.appendChild(quote);
+    if (!quotes.length && counted && (claim.governing_quotes || claim.governing_quote)) {
+      const passages = claim.governing_quotes || [claim.governing_quote];
+      for (const passage of passages) {
+        const quote = document.createElement("blockquote");
+        quote.className = "claim-evidence";
+        quote.textContent = passage;
+        row.appendChild(quote);
+      }
       const source = document.createElement("div");
       source.className = "claim-source";
       source.textContent = `governing clause: ${claim.governing_doc || "source"}`;
