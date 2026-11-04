@@ -1,0 +1,25 @@
+# secrets
+.env
+.env.*
+
+# runtime state
+docket.db
+docket.db-wal
+docket.db-shm
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
+.vercel
+.env*
+
+# keep the template
+!.env.example
