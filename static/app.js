@@ -19,7 +19,9 @@ const ui = {
   country: $("#country"),
   role: $("#role"),
   plan: $("#plan"),
-  docList: $("#doc-list"),
+  docTabs: $("#doc-tabs"),
+  docEditor: $("#doc-editor"),
+  removeDoc: $("#remove-doc"),
   docCount: $("#doc-count"),
   addDoc: $("#add-doc"),
   draft: $("#draft"),
@@ -57,11 +59,18 @@ const ui = {
   themeToggle: $("#theme-toggle"),
   live: $("#live"),
   liveText: $("#live-text"),
+  modeSwitch: $(".mode-switch"),
+  controlRef: $("#control-ref"),
+  controlDocs: $("#control-docs"),
+  controlCalls: $("#control-calls"),
+  controlCredits: $("#control-credits"),
+  controlTime: $("#control-time"),
+  decisionStrip: $(".decision-strip"),
   auditBody: $("#audit-body"),
   creditTotal: $("#credit-total"),
 };
 
-const state = { documents: [], samples: [], busy: false, last: null, streaming: true, allowedText: "", mode: "case", lastPayload: null };
+const state = { documents: [], samples: [], busy: false, last: null, streaming: true, allowedText: "", mode: "case", lastPayload: null, activeDoc: 0 };
 
 const blankDoc = () => ({
   title: "",
@@ -89,26 +98,29 @@ async function init() {
 }
 
 function bind() {
-  ui.docList.addEventListener("input", onDocEdit);
-  ui.docList.addEventListener("change", onDocEdit);
-  ui.docList.addEventListener("click", (event) => {
-    const button = event.target.closest(".doc-remove");
-    if (!button) return;
-    const index = Number(button.dataset.index);
-    if (state.documents.length === 1) {
-      state.documents[0] = blankDoc();
-    } else {
-      state.documents.splice(index, 1);
-    }
+  ui.docTabs.addEventListener("click", (event) => {
+    const tab = event.target.closest(".doc-tab");
+    if (!tab) return;
+    state.activeDoc = Number(tab.dataset.index);
     renderDocs();
   });
+
+  ui.docEditor.addEventListener("input", onEditorEdit);
+  ui.docEditor.addEventListener("change", onEditorEdit);
 
   ui.addDoc.addEventListener("click", () => {
     if (state.documents.length >= 6) return;
     state.documents.push(blankDoc());
+    state.activeDoc = state.documents.length - 1;
     renderDocs();
-    const inputs = ui.docList.querySelectorAll(".doc-title");
-    inputs[inputs.length - 1]?.focus();
+    document.querySelector("#doc-title")?.focus();
+  });
+
+  ui.removeDoc.addEventListener("click", () => {
+    if (state.documents.length <= 1) return;
+    state.documents.splice(state.activeDoc, 1);
+    state.activeDoc = Math.max(0, state.activeDoc - 1);
+    renderDocs();
   });
 
   ui.run.addEventListener("click", run);
@@ -203,6 +215,7 @@ function setMode(mode, note) {
   ui.panelCase.hidden = !isCase;
   ui.panelExamples.hidden = isCase;
   ui.emptyExamples.hidden = !isCase;
+  ui.modeSwitch.style.setProperty("--tab", isCase ? "0" : "1");
   if (note !== undefined) {
     ui.caseNote.textContent = note;
     ui.caseNote.dataset.state = note.startsWith("Example") || note.startsWith("Imported") ? "example" : "";
@@ -222,6 +235,19 @@ function applyTheme(theme) {
 }
 
 function initTheme() {
+  if ("IntersectionObserver" in window) {
+    const track = document.querySelector(".pipeline-track");
+    if (track) {
+      track.classList.add("js-reveal");
+      const observer = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-in");
+          observer.disconnect();
+        }
+      }, { threshold: 0.25 });
+      observer.observe(track);
+    }
+  }
   let saved = null;
   try {
     saved = localStorage.getItem("docket-theme");
@@ -297,7 +323,7 @@ async function importCase(file) {
     text: String(doc.text || "").slice(0, 60000),
   }));
   if (!state.documents.length) state.documents = [blankDoc()];
-
+  state.activeDoc = 0;
   renderDocs();
   updateDraftCount();
   clearError();
@@ -312,116 +338,145 @@ async function importCase(file) {
 }
 
 /* --------------------------------------------------------------- documents */
-function field(labelText, id, input) {
-  const wrap = document.createElement("div");
-  const label = document.createElement("label");
-  label.htmlFor = id;
-  label.textContent = labelText;
-  wrap.append(label, input);
-  return wrap;
+function renderTabs() {
+  ui.docTabs.innerHTML = "";
+  state.documents.forEach((doc, index) => {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.setAttribute("role", "tab");
+    tab.className = "doc-tab";
+    tab.dataset.index = String(index);
+    tab.setAttribute("aria-selected", String(index === state.activeDoc));
+    tab.setAttribute("aria-label", `Policy ${index + 1}`);
+
+    const dot = document.createElement("span");
+    dot.className = "tab-dot";
+    dot.setAttribute("aria-hidden", "true");
+
+    const label = document.createElement("span");
+    label.className = "tab-label";
+    label.textContent = doc.title || `Policy ${index + 1}`;
+
+    tab.append(dot, label);
+    ui.docTabs.appendChild(tab);
+  });
+}
+
+function renderEditor() {
+  const doc = state.documents[state.activeDoc];
+  if (!doc) return;
+  ui.docEditor.innerHTML = "";
+
+  const row = document.createElement("div");
+  row.className = "editor-row";
+
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "field editor-title";
+  const titleLabel = document.createElement("label");
+  titleLabel.htmlFor = "doc-title";
+  titleLabel.textContent = "Title";
+  const title = document.createElement("input");
+  title.id = "doc-title";
+  title.type = "text";
+  title.maxLength = 120;
+  title.placeholder = "Policy title";
+  title.value = doc.title;
+  title.dataset.field = "title";
+  title.setAttribute("aria-label", "Policy title");
+  titleWrap.append(titleLabel, title);
+  row.appendChild(titleWrap);
+
+  const jurisdictionWrap = document.createElement("div");
+  jurisdictionWrap.className = "field";
+  const jurisdictionLabel = document.createElement("label");
+  jurisdictionLabel.htmlFor = "doc-jurisdiction";
+  jurisdictionLabel.textContent = "Jurisdiction";
+  const jurisdiction = document.createElement("input");
+  jurisdiction.id = "doc-jurisdiction";
+  jurisdiction.type = "text";
+  jurisdiction.maxLength = 20;
+  jurisdiction.placeholder = "Global or FR";
+  jurisdiction.value = doc.jurisdiction;
+  jurisdiction.dataset.field = "jurisdiction";
+  jurisdictionWrap.append(jurisdictionLabel, jurisdiction);
+  row.appendChild(jurisdictionWrap);
+
+  const dateWrap = document.createElement("div");
+  dateWrap.className = "field";
+  const dateLabel = document.createElement("label");
+  dateLabel.htmlFor = "doc-date";
+  dateLabel.textContent = "Effective date";
+  const date = document.createElement("input");
+  date.id = "doc-date";
+  date.type = "date";
+  date.value = doc.effective_date || "";
+  date.dataset.field = "effective_date";
+  dateWrap.append(dateLabel, date);
+  row.appendChild(dateWrap);
+
+  const precedenceWrap = document.createElement("div");
+  precedenceWrap.className = "field";
+  const precedenceLabel = document.createElement("label");
+  precedenceLabel.htmlFor = "doc-precedence";
+  precedenceLabel.textContent = "Precedence";
+  const precedence = document.createElement("select");
+  precedence.id = "doc-precedence";
+  precedence.dataset.field = "precedence";
+  for (const [value, text] of [["0", "Normal"], ["1", "Overrides"]]) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = text;
+    if (String(doc.precedence) === value) option.selected = true;
+    precedence.appendChild(option);
+  }
+  precedenceWrap.append(precedenceLabel, precedence);
+  row.appendChild(precedenceWrap);
+
+  const textWrap = document.createElement("div");
+  textWrap.className = "field";
+  const textLabel = document.createElement("label");
+  textLabel.htmlFor = "doc-text";
+  textLabel.textContent = "Policy text";
+  const text = document.createElement("textarea");
+  text.id = "doc-text";
+  text.rows = 7;
+  text.maxLength = 60000;
+  text.placeholder = "Paste the policy text…";
+  text.value = doc.text;
+  text.dataset.field = "text";
+  const counter = document.createElement("div");
+  counter.className = "counter";
+  counter.id = "doc-counter";
+  counter.textContent = `${doc.text.length.toLocaleString()} / 60,000`;
+  textWrap.append(textLabel, text, counter);
+
+  ui.docEditor.append(row, textWrap);
 }
 
 function renderDocs() {
-  ui.docList.innerHTML = "";
-
-  state.documents.forEach((doc, index) => {
-    const card = document.createElement("div");
-    card.className = "doc";
-
-    const head = document.createElement("div");
-    head.className = "doc-head";
-    const title = document.createElement("input");
-    title.type = "text";
-    title.className = "doc-title";
-    title.maxLength = 120;
-    title.id = `doc-title-${index}`;
-    title.placeholder = "Document title";
-    title.value = doc.title;
-    title.dataset.field = "title";
-    title.dataset.index = String(index);
-    title.setAttribute("aria-label", `Document ${index + 1} title`);
-
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.className = "doc-remove";
-    remove.dataset.index = String(index);
-    remove.setAttribute("aria-label", `Remove document ${index + 1}`);
-    remove.textContent = "Remove";
-
-    head.append(title, remove);
-
-    const meta = document.createElement("div");
-    meta.className = "doc-meta";
-
-    const jurisdiction = document.createElement("input");
-    jurisdiction.type = "text";
-    jurisdiction.id = `doc-jurisdiction-${index}`;
-    jurisdiction.maxLength = 20;
-    jurisdiction.placeholder = "Global or FR";
-    jurisdiction.value = doc.jurisdiction;
-    jurisdiction.dataset.field = "jurisdiction";
-    jurisdiction.dataset.index = String(index);
-
-    const date = document.createElement("input");
-    date.type = "date";
-    date.id = `doc-date-${index}`;
-    date.value = doc.effective_date || "";
-    date.dataset.field = "effective_date";
-    date.dataset.index = String(index);
-
-    const precedence = document.createElement("select");
-    precedence.id = `doc-precedence-${index}`;
-    precedence.dataset.field = "precedence";
-    precedence.dataset.index = String(index);
-    for (const [value, text] of [["0", "Normal"], ["1", "Overrides"]]) {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = text;
-      if (String(doc.precedence) === value) option.selected = true;
-      precedence.appendChild(option);
-    }
-
-    meta.append(
-      field("Jurisdiction", jurisdiction.id, jurisdiction),
-      field("Effective date", date.id, date),
-      field("Precedence", precedence.id, precedence)
-    );
-
-    const body = document.createElement("textarea");
-    body.id = `doc-text-${index}`;
-    body.rows = 4;
-    body.maxLength = 60000;
-    body.placeholder = "Paste the policy text…";
-    body.value = doc.text;
-    body.dataset.field = "text";
-    body.dataset.index = String(index);
-    body.setAttribute("aria-label", `Document ${index + 1} text`);
-
-    const counter = document.createElement("div");
-    counter.className = "counter";
-    counter.textContent = `${doc.text.length.toLocaleString()} / 60,000`;
-
-    card.append(head, meta, body, counter);
-    ui.docList.appendChild(card);
-  });
-
+  renderTabs();
+  renderEditor();
   ui.docCount.textContent = `${state.documents.length} of 6`;
   ui.addDoc.disabled = state.documents.length >= 6;
-  ui.inputStatus.textContent = state.documents.length ? "ready" : "empty";
+  ui.removeDoc.disabled = state.documents.length <= 1;
+  ui.inputStatus.textContent = state.documents.length ? "Ready" : "Empty";
   ui.inputStatus.dataset.state = state.documents.length ? "done" : "";
 }
 
-function onDocEdit(event) {
+function onEditorEdit(event) {
   const target = event.target;
   if (!target.dataset.field) return;
-  const index = Number(target.dataset.index);
-  if (Number.isNaN(index) || !state.documents[index]) return;
+  const doc = state.documents[state.activeDoc];
+  if (!doc) return;
   const fieldName = target.dataset.field;
-  state.documents[index][fieldName] =
-    fieldName === "precedence" ? Number(target.value) : target.value;
+  doc[fieldName] = fieldName === "precedence" ? Number(target.value) : target.value;
 
+  if (fieldName === "title") {
+    const tab = ui.docTabs.querySelector(`.doc-tab[data-index="${state.activeDoc}"] .tab-label`);
+    if (tab) tab.textContent = doc.title || `Policy ${state.activeDoc + 1}`;
+  }
   if (fieldName === "text") {
-    const counter = target.closest(".doc")?.querySelector(".counter");
+    const counter = document.querySelector("#doc-counter");
     if (counter) counter.textContent = `${target.value.length.toLocaleString()} / 60,000`;
   }
   target.classList.remove("is-invalid");
@@ -483,6 +538,7 @@ async function loadSample(id) {
       precedence: doc.precedence || 0,
       text: doc.text,
     }));
+    state.activeDoc = 0;
     renderDocs();
     updateDraftCount();
     document.querySelectorAll(".scenario").forEach((b) => {
@@ -508,6 +564,7 @@ function clearAll() {
   ui.role.value = "";
   ui.plan.value = "";
   ui.draft.value = "";
+  state.activeDoc = 0;
   state.documents = [blankDoc()];
   renderDocs();
   updateDraftCount();
@@ -551,10 +608,10 @@ function validate(payload) {
   }
   for (const [index, doc] of payload.documents.entries()) {
     if (!doc.title) {
-      return { message: `Policy ${index + 1} needs a title.`, focus: document.querySelector(`#doc-title-${index}`) };
+      return { message: `Policy ${index + 1} needs a title.`, docIndex: index, field: "title" };
     }
     if (doc.text.length < 20) {
-      return { message: `Policy ${index + 1} needs at least 20 characters of policy text.`, focus: document.querySelector(`#doc-text-${index}`) };
+      return { message: `Policy ${index + 1} needs at least 20 characters of policy text.`, docIndex: index, field: "text" };
     }
   }
   return null;
@@ -566,7 +623,11 @@ async function run() {
   const problem = validate(payload);
   if (problem) {
     showError(problem.message);
-    markInvalid(problem.focus);
+    if (problem.docIndex != null) {
+      state.activeDoc = problem.docIndex;
+      renderDocs();
+    }
+    markInvalid(problem.docIndex != null ? document.querySelector(`#doc-${problem.field}`) : problem.focus);
     return;
   }
 
@@ -721,10 +782,25 @@ function renderResult(result, elapsed) {
   ui.result.hidden = false;
   ui.verdictCard.dataset.state = result.decision;
   ui.verdictWord.textContent = meta.word;
-  if (ui.stampRef) {
-    const year = new Date().getFullYear();
-    ui.stampRef.textContent = `CC-${year}-${String(result.id || 0).padStart(4, "0")}`;
+  const now = result.checked_at ? new Date(result.checked_at) : new Date();
+  const ymd = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  const ref = `CC-${ymd}-${String(result.id || 0).padStart(4, "0")}`;
+  if (ui.stampRef) ui.stampRef.textContent = ref;
+
+  if (ui.controlRef) {
+    ui.controlRef.textContent = ref;
+    const docs = (result.document_titles || []).length;
+    ui.controlDocs.textContent = `${docs} ${docs === 1 ? "POLICY" : "POLICIES"}`;
+    ui.controlCalls.textContent = `${result.api_calls || 0} CALLS`;
+    ui.controlCredits.textContent = `${formatCredits(result.credits)} CREDITS`;
+    ui.controlTime.textContent = `${((result.latency_ms || 0) / 1000).toFixed(1)}s`;
   }
+  if (ui.decisionStrip) {
+    ui.decisionStrip.querySelectorAll("span").forEach((span) => {
+      span.dataset.active = String(span.dataset.decision === result.decision);
+    });
+  }
+
   if (ui.stamp) {
     ui.stamp.classList.remove("is-stamped");
     void ui.stamp.offsetWidth;
@@ -733,7 +809,7 @@ function renderResult(result, elapsed) {
 
   const grounded =
     result.verify && typeof result.verify.grounded === "number" ? result.verify.grounded : null;
-  ui.verdictMeter.style.transform = `scaleX(${grounded === null ? 0 : grounded})`;
+  ui.verdictMeter.style.left = `${Math.round((grounded === null ? 0 : grounded) * 100)}%`;
 
   const claims = result.verify?.claims || [];
   const counted = claims.filter((c) => c.counted !== false && c.kind !== "not_a_claim");
@@ -760,6 +836,14 @@ function renderResult(result, elapsed) {
 
   renderDeliveryPanel(result);
   renderAuthority(result);
+  if (result.authority && result.authority.trace) {
+    const outcomeById = new Map(result.authority.trace.map((row) => [row.id, row.outcome]));
+    ui.docTabs.querySelectorAll(".doc-tab").forEach((tab, index) => {
+      const outcome = outcomeById.get(`doc${index + 1}`);
+      if (outcome) tab.dataset.outcome = outcome;
+      else delete tab.dataset.outcome;
+    });
+  }
   renderClaims(result);
   renderConflicts(result);
   renderRerank(result);
@@ -771,6 +855,8 @@ function renderResult(result, elapsed) {
 
   ui.result.tabIndex = -1;
   ui.result.focus({ preventScroll: true });
+  loadStats();
+  loadAudit();
 
   if (window.matchMedia("(max-width: 1080px)").matches) {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
