@@ -784,7 +784,7 @@ function renderResult(result, elapsed) {
   ui.verdictWord.textContent = meta.word;
   const now = result.checked_at ? new Date(result.checked_at) : new Date();
   const ymd = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
-  const ref = `CC-${ymd}-${String(result.id || 0).padStart(4, "0")}`;
+  const ref = `DK-${ymd}-${String(result.id || 0).padStart(4, "0")}`;
   if (ui.stampRef) ui.stampRef.textContent = ref;
 
   if (ui.controlRef) {

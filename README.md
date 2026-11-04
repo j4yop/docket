@@ -2,7 +2,7 @@
 
 **The newest policy is often not the governing one.**
 
-**Live:** <https://docket-tau.vercel.app>
+**Live:** <https://docket-clocked.vercel.app>
 
 A publish gate for service-desk knowledge. Give it the policy documents, the employee
 question, and the draft an AI assistant is about to send. It resolves which document
@@ -180,7 +180,7 @@ filesystem the audit log resets on redeploy; that is acceptable for the demo.
 Example:
 
 ```bash
-curl -s https://docket-tau.vercel.app/api/check \
+curl -s https://docket-clocked.vercel.app/api/check \
   -H 'Content-Type: application/json' \
   -d '{
     "question": "Does an employee in France need approval to expense a monitor?",
