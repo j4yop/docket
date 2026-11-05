@@ -223,6 +223,26 @@
       });
   }
 
+  // The header GitHub tab is rendered as a button. Turn it into a real link
+  // so open-in-new-tab, copy-link and keyboard activation all work without JS.
+  function makeGithubLinks() {
+    document.querySelectorAll('button[class*="group/book"]').forEach(function (button) {
+      if (button.dataset.docketGithubLink === "true") return;
+      var link = document.createElement("a");
+      Array.prototype.forEach.call(button.attributes, function (attribute) {
+        if (attribute.name !== "type") link.setAttribute(attribute.name, attribute.value);
+      });
+      link.href = GITHUB;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.dataset.docketGithubLink = "true";
+      link.setAttribute("aria-label", "Docket on GitHub");
+      link.setAttribute("title", "Docket on GitHub");
+      link.innerHTML = button.innerHTML;
+      button.replaceWith(link);
+    });
+  }
+
   // On the previous page this section belongs directly below the hero,
   // before the "Catch the issues..." feature section.
   function applyCompliancePosition() {
@@ -796,6 +816,7 @@
     applyMobileNav();
     applyLogo();
     applyCtas();
+    makeGithubLinks();
     syncHeader();
   }
 
