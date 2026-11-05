@@ -234,4 +234,4 @@ python -m pytest -v
 
 ## License
 
-MIT. See [LICENSE](LICENSE). The console and backend are original; the marketing page is a mirrored static shell. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+MIT. See [LICENSE](LICENSE).

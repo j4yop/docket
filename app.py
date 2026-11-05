@@ -1195,11 +1195,6 @@ async def license_text() -> PlainTextResponse:
     return PlainTextResponse((BASE_DIR / "LICENSE").read_text(encoding="utf-8"))
 
 
-@app.get("/THIRD_PARTY_NOTICES.md")
-async def third_party_notices() -> PlainTextResponse:
-    return PlainTextResponse((BASE_DIR / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8"))
-
-
 @app.get("/sign-up")
 @app.get("/signup")
 @app.get("/get-started")
