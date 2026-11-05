@@ -26,6 +26,7 @@ from fastapi.responses import (
     FileResponse,
     HTMLResponse,
     JSONResponse,
+    PlainTextResponse,
     RedirectResponse,
     Response,
     StreamingResponse,
@@ -1187,6 +1188,16 @@ async def run_check(req: CheckRequest, emit: Emit | None = None) -> dict:
 @app.get("/")
 async def index() -> HTMLResponse:
     return HTMLResponse(website_index_html(), headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/LICENSE")
+async def license_text() -> PlainTextResponse:
+    return PlainTextResponse((BASE_DIR / "LICENSE").read_text(encoding="utf-8"))
+
+
+@app.get("/THIRD_PARTY_NOTICES.md")
+async def third_party_notices() -> PlainTextResponse:
+    return PlainTextResponse((BASE_DIR / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8"))
 
 
 @app.get("/sign-up")
