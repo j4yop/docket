@@ -19,9 +19,9 @@
   </script>
   <link rel="stylesheet" href="/_next/static/chunks/903dbd2dea79002f.css" />
   <link rel="stylesheet" href="/_next/static/chunks/59b07a433639f987.css" />
-  <link rel="stylesheet" href="/integrations/gate.css?v=20261105e" />
+  <link rel="stylesheet" href="/integrations/gate.css?v=20261105f" />
   <link rel="stylesheet" href="/docket-footer.css?v=20261105g" />
-  <link rel="stylesheet" href="/docket-brand.css?v=20261105i" />
+  <link rel="stylesheet" href="/docket-brand.css?v=20261105j" />
   <link rel="icon" href="/docket-icon.svg" type="image/svg+xml" />
 </head>
 <body>
@@ -91,6 +91,22 @@
               <button type="button" class="gate-mini" id="gate-add-doc">Add policy</button>
               <button type="button" class="gate-mini" id="gate-remove-doc">Remove policy</button>
             </div>
+            <details class="gate-admin" id="gate-approval-block">
+              <summary>Policy approval <span>admin only</span></summary>
+              <div class="gate-admin-body">
+                <p class="gate-admin-copy">Approve the active policy and bind it to a signed envelope. The envelope is sent with the next check; seeded, admin-approved and operator-attested policies are labelled separately.</p>
+                <div class="gate-admin-row">
+                  <div class="gate-field">
+                    <label for="gate-admin-token">Admin token</label>
+                    <input id="gate-admin-token" type="password" autocomplete="off" placeholder="DOCKET_ADMIN_TOKEN" />
+                  </div>
+                  <button type="button" class="gate-secondary" id="gate-approve-policy">Approve active policy</button>
+                </div>
+                <p class="gate-admin-status" id="gate-approve-status" aria-live="polite"></p>
+                <div class="gate-approval-envelope" id="gate-approval-envelope" hidden></div>
+                <p class="gate-admin-note">Editing any signed field after approval produces a tamper HOLD. That is the integrity check doing its job, not a cache error.</p>
+              </div>
+            </details>
           </div>
 
           <div class="gate-field">
@@ -340,13 +356,46 @@
     </div>
 
     <!-- ------------------------------------------------------------- AUDIT -->
-    <p class="gate-audit-note" id="gate-audit-note"><strong>Audit:</strong> every determination is written to a tamper-evident ledger. <a href="/ledger">Open the ledger</a>.</p>
+    <p class="gate-audit-note" id="gate-audit-note"><strong>Audit:</strong> every determination is written to a tamper-evident ledger. <a href="/ledger">Open the ledger</a> · <a href="/tour">Take the judge tour</a>.</p>
+
+    <section class="gate-block gate-ops-block" id="gate-health-block" aria-labelledby="gate-health-title">
+      <div class="gate-block-head"><h3 id="gate-health-title">Live verification</h3><span id="gate-health-meta">checking…</span></div>
+      <div class="gate-health" id="gate-health">
+        <div class="gate-health-cell"><b>Ledger</b><span id="gate-health-ledger">—</span></div>
+        <div class="gate-health-cell"><b>Seeded policies</b><span id="gate-health-policy">—</span></div>
+        <div class="gate-health-cell"><b>Audit backend</b><span id="gate-health-storage">—</span></div>
+        <div class="gate-health-cell"><b>Last verified</b><span id="gate-health-time">—</span></div>
+      </div>
+    </section>
+
+    <section class="gate-block gate-ops-block" id="gate-review-block" aria-labelledby="gate-review-title">
+      <div class="gate-block-head"><h3 id="gate-review-title">Review queue</h3><span id="gate-review-meta">admin only</span></div>
+      <p class="gate-admin-copy">Every HOLD or REWRITE opens a durable record. Assign it, then approve or reject it with a note. The resolution is appended to the audit ledger.</p>
+      <div class="gate-review-controls">
+        <div class="gate-field">
+          <label for="gate-queue-token">Admin token</label>
+          <input id="gate-queue-token" type="password" autocomplete="off" placeholder="DOCKET_ADMIN_TOKEN" />
+        </div>
+        <div class="gate-field">
+          <label for="gate-review-filter">Show</label>
+          <select id="gate-review-filter" class="gate-select">
+            <option value="open">Open</option>
+            <option value="assigned">Assigned</option>
+            <option value="resolved">Resolved</option>
+            <option value="">All</option>
+          </select>
+        </div>
+        <button type="button" class="gate-secondary" id="gate-review-load">Load queue</button>
+      </div>
+      <p class="gate-admin-status" id="gate-review-status" aria-live="polite"></p>
+      <div class="gate-review-list" id="gate-review-list"></div>
+    </section>
 </div>
 </section>
 
 <div class="bg-background"><footer class="relative flex w-full flex-col justify-end overflow-hidden pb-4 md:pb-10 bg-linear-to-t from-[#7D000E] to-transparent dk-console-footer" data-page-find-surface="red" style="--scale:calc(100vw / 1840px)"><section class="dk-console-city-band" aria-hidden="true"><div class="pointer-events-none absolute inset-0" style="mask-image: linear-gradient(white 70%, transparent 100%);"><img alt="" class="h-full w-full object-cover object-top opacity-25 select-none" loading="eager" decoding="async" width="4096" height="2160" src="/_next/static/media/city-outline.abe9c9cc.png" style="color:transparent"></div></section><div class="relative"><div class="px-sides absolute bottom-0 left-0 z-10 mt-auto w-full mix-blend-overlay dk-footer-mark md:px-12"><img alt="" class="mx-auto block w-full max-w-lg select-none md:hidden" data-nimg="1" decoding="async" height="600" loading="lazy" src="/images/footer/docket-mark.svg" style="color:transparent" width="682"/><img alt="" class="hidden w-full select-none md:block" data-nimg="1" decoding="async" height="20" loading="lazy" src="/images/footer/docket-wordmark.svg" style="color:transparent" width="119"/></div><div class="px-sides relative z-20 flex flex-col-reverse gap-x-8 gap-y-12 pb-[max(calc(--spacing(320)*var(--scale)),40px)] sm:pb-[40vw] md:flex-col md:px-12 md:py-[calc(--spacing(20)*var(--scale))] lg:pt-0 lg:pb-[calc(--spacing(42)*var(--scale))] xl:flex-row xl:justify-between dk-footer-no-newsletter"><div class="flex flex-col items-start gap-8 xl:items-end"><div class="grid grid-cols-2 gap-6 min-[900px]:flex min-[900px]:flex-row min-[900px]:justify-end md:gap-10 lg:mx-0 lg:grid-cols-3 lg:gap-20 lg:pr-[calc(--spacing(12)*var(--scale))] max-sm:[&amp;&gt;*:nth-child(n+3)]:col-span-2"><div class="relative h-fit w-max max-w-full dk-footer-col" data-dk-col><span class="dk-footer-col-highlight" aria-hidden="true"></span><span class="dk-footer-col-rail" aria-hidden="true"></span><span class="dk-footer-col-label font-misc">Product</span><div class="dk-footer-col-links"><a href="#docket-gate">Live Gate</a><a href="#gate-stages">How it Works</a><a href="#gate-panel-examples">Scenarios</a><a href="https://github.com/j4yop/docket#api" target="_blank" rel="noopener noreferrer">API</a></div></div><div class="relative h-fit w-max max-w-full dk-footer-col" data-dk-col><span class="dk-footer-col-highlight" aria-hidden="true"></span><span class="dk-footer-col-rail" aria-hidden="true"></span><span class="dk-footer-col-label font-misc">Build</span><div class="dk-footer-col-links"><a href="https://github.com/j4yop/docket" target="_blank" rel="noopener noreferrer">GitHub</a><a href="https://github.com/j4yop/docket#readme" target="_blank" rel="noopener noreferrer">README</a><a href="https://github.com/j4yop/docket/blob/main/ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">Architecture</a><a href="https://clocked.rezolve.ai/" target="_blank" rel="noopener noreferrer">Clocked</a></div></div><div class="relative h-fit w-max max-w-full dk-footer-col" data-dk-col><span class="dk-footer-col-highlight" aria-hidden="true"></span><span class="dk-footer-col-rail" aria-hidden="true"></span><span class="dk-footer-col-label font-misc">Social</span><div class="dk-footer-col-links"><a href="https://www.linkedin.com/in/jaygopaltripathy/" target="_blank" rel="noopener noreferrer">LinkedIn</a><a href="https://x.com/j4y_op" target="_blank" rel="noopener noreferrer">X</a><a href="https://github.com/j4yop/docket" target="_blank" rel="noopener noreferrer">GitHub</a></div></div></div></div></div></div><div class="px-sides relative bottom-0 left-0 z-20 flex w-full justify-center gap-4 dk-reveal dk-footer-legal pt-6 pb-2 md:absolute md:justify-between md:px-12 md:pt-10 xl:pb-[max(calc(--spacing(10)*var(--scale)),8px)] 2xl:pb-[calc(--spacing(6)*var(--scale))]"><div class="hidden w-full items-center gap-2 lg:flex xl:ml-[24.12%]"><svg aria-hidden="true" class="text-primary h-4 w-auto" fill="none" focusable="false" viewbox="0 0 484 16" xmlns="http://www.w3.org/2000/svg"><path d="M479.784 0.956299C481.369 0.956299 482.654 2.24149 482.654 3.82642V11.4797C482.654 13.0648 481.369 14.3499 479.784 14.3499H8.29785C7.2771 14.3499 6.33268 13.8077 5.81836 12.926L1.35449 5.27271C0.238432 3.35945 1.61805 0.956349 3.83301 0.956299H479.784Z" stroke="currentColor" stroke-width="1.9133"></path><path d="M7.42773 4.30591H392.25C393.042 4.30591 393.685 4.94806 393.686 5.74048V9.56763C393.685 10.36 393.042 11.0022 392.25 11.0022H9.34766C8.80477 11.0022 8.30784 10.6955 8.06445 10.2102L6.14551 6.38403C5.66699 5.42995 6.36049 4.30624 7.42773 4.30591Z" fill="currentColor" stroke="currentColor" stroke-width="0.956652"></path><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="321.939" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="333.42" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="344.898" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="356.377" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="367.857" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="379.336" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="390.818" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="402.299" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="413.779" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="425.26" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="436.738" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="448.217" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="459.697" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="471.178" y="3.82739"></rect></svg><span class="font-misc text-primary text-sm whitespace-nowrap uppercase">Publish With Proof</span></div></div></footer></div>
-  <script src="/docket-brand.js?v=20261105n" defer></script>
+  <script src="/docket-brand.js?v=20261105o" defer></script>
   <script src="/docket-footer.js?v=20261105i" defer></script>
-  <script src="/integrations/gate.js?v=20261105e" defer></script>
+  <script src="/integrations/gate.js?v=20261105f" defer></script>
 </body>
 </html>
