@@ -36,6 +36,7 @@ def evaluate(
     selected_count: int,
     verify: dict | None,
     internal_conflict: bool = False,
+    coverage: dict | None = None,
     failed_stage: str | None = None,
     failed_message: str | None = None,
 ) -> Verdict:
@@ -63,10 +64,28 @@ def evaluate(
             ["internal_conflict"],
         )
 
-    claims = [c for c in (verify or {}).get("claims", []) if _counted(c)]
+    if verify is None:
+        return Verdict(
+            Decision.HOLD,
+            ["Verify did not return a result. Nothing was published."],
+            ["verification_missing"],
+        )
+
+    claims = [c for c in (verify.get("claims") or []) if _counted(c)]
+    if not claims:
+        return Verdict(
+            Decision.HOLD,
+            ["Verify returned no countable claims. Nothing was published."],
+            ["no_claims"],
+        )
+
     contradicted = [c for c in claims if (c.get("verdict") or "").lower() == "contradicted"]
-    unsupported = [c for c in claims if (c.get("verdict") or "").lower() == "not_stated"]
-    grounded = (verify or {}).get("grounded")
+    unsupported = [
+        c
+        for c in claims
+        if (c.get("verdict") or "").lower() not in {"supported", "contradicted"}
+    ]
+    grounded = verify.get("grounded")
 
     if contradicted:
         return Verdict(
@@ -88,7 +107,40 @@ def evaluate(
             ["unsupported"],
         )
 
-    if isinstance(grounded, (int, float)) and grounded < 0.5:
+    if coverage is not None:
+        coverage_value = coverage.get("value")
+        if coverage_value is True:
+            missing = str(coverage.get("missing_conditions") or "").strip()
+            reason = "The draft omits a material policy condition."
+            if missing and missing.lower() not in {"none", "no material conditions omitted"}:
+                reason = f"The draft omits a material policy condition: {missing[:300]}"
+            return Verdict(
+                Decision.REWRITE,
+                [reason, "Add the missing condition or exception before publishing."],
+                ["coverage_gap"],
+            )
+        if not isinstance(coverage_value, bool):
+            return Verdict(
+                Decision.HOLD,
+                ["The coverage check returned no usable judgment. Nothing was published."],
+                ["coverage_missing"],
+            )
+
+    if isinstance(grounded, bool) or not isinstance(grounded, (int, float)):
+        return Verdict(
+            Decision.HOLD,
+            ["Verify did not return a usable support score. Nothing was published."],
+            ["verification_missing"],
+        )
+
+    if not 0 <= grounded <= 1:
+        return Verdict(
+            Decision.HOLD,
+            ["Verify returned a support score outside the valid range. Nothing was published."],
+            ["verification_missing"],
+        )
+
+    if grounded < 0.5:
         return Verdict(
             Decision.REWRITE,
             [f"Overall support is {grounded:.0%}, below the 50% publish threshold."],

@@ -38,3 +38,40 @@ def test_public_feature_flags_are_available() -> None:
     response = client.get("/v1/feature-flags/public")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("application/json")
+
+
+def _check_payload() -> dict:
+    return {
+        "question": "Can I expense a monitor?",
+        "draft": "Yes, with manager approval.",
+        "country": "FR",
+        "documents": [
+            {
+                "title": "Policy",
+                "jurisdiction": "Global",
+                "text": "A monitor can be expensed with manager approval.",
+            }
+        ],
+    }
+
+
+def test_session_endpoint_issues_a_token() -> None:
+    response = client.get("/api/session")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["token"]
+    assert body["expires_at"] > 0
+
+
+def test_check_requires_a_session_or_api_token() -> None:
+    response = client.post("/api/check", json=_check_payload())
+    assert response.status_code == 401
+
+
+def test_check_rejects_an_invalid_session() -> None:
+    response = client.post(
+        "/api/check",
+        json=_check_payload(),
+        headers={"X-Docket-Session": "not-a-valid-token"},
+    )
+    assert response.status_code == 401

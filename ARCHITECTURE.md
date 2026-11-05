@@ -20,12 +20,15 @@ The failure is not hallucination. It is **grounded in the wrong source**. Retrie
 
 | # | Question | Who answers it | How |
 |---|---|---|---|
-| 1 | Which document governs this employee? | **App** (deterministic) | Jurisdiction, precedence and effective date resolve authority. No model call. |
-| 2 | Do the sources disagree? | **Compare** | Clause-level comparison of the governing and superseded text, with both passages quoted. |
-| 3 | Does the draft claim only what the governing source supports? | **Verify** | Claim-by-claim supported / contradicted / not stated, with source evidence. |
-| 4 | Which passage applies to this employee? | **Rerank** | `use` / `expand` / `skip` per clause, conditioned on country, role, plan, and the authority rule. |
-| 5 | What should happen now? | **App policy** (deterministic) | Publish, Rewrite or Hold, with reason codes. |
-| 6 | Can we prove it? | **App** | Offsets, quotes, per-claim evidence, credits, latency, and the raw API responses. |
+| 1 | Does the audit preview contain personal data? | **Protect** | Clocked `/pii` replaces personal data before the admin-only preview is stored. |
+| 2 | Is the source trying to take control? | **Guard** | Clocked `/injection` screens the policies and draft for instruction overrides, fabricated approvals and secret extraction. A positive signal holds before Rerank. |
+| 3 | Which document governs this employee? | **App** (deterministic) | Jurisdiction, precedence, effective date and expiry resolve authority. Future-dated and expired documents cannot govern. No model call. |
+| 4 | Do the sources disagree? | **Compare** | Clause-level comparison of the governing and superseded text, with both passages quoted. |
+| 5 | Does the draft omit a material condition? | **Fill** | Clocked `/fill` extracts material obligations and returns an omission judgment plus the missing condition. |
+| 6 | Does the draft claim only what the governing source supports? | **Verify** | Claim-by-claim supported / contradicted / not stated, with source evidence. |
+| 7 | Which passage applies to this employee? | **Rerank** | `use` / `expand` / `skip` per clause, conditioned on country, role, plan, and the authority rule. |
+| 8 | What should happen now? | **App policy** (deterministic) | Publish, Rewrite or Hold, with reason codes. |
+| 9 | Can we prove it? | **App** | Offsets, quotes, per-claim evidence, credits, latency, and the raw API responses. |
 
 **The core insight:** authority is a business rule; relevance is a model judgment. The app must never delegate "which policy wins" to a model, and must never let a model's relevance score override a stated precedence rule.
 
@@ -34,7 +37,7 @@ The failure is not hallucination. It is **grounded in the wrong source**. Retrie
 ### User flow
 
 1. Paste a question and the employee context (country, role, plan).
-2. Add one or more policy documents. Each carries optional authority metadata: jurisdiction, effective date, and an "overrides" flag.
+2. Add one or more policy documents. Each carries optional authority metadata: jurisdiction, effective date, expiry date, and an "overrides" flag.
 3. Paste the draft answer the assistant is about to send.
 4. Run the check.
 5. Read the verdict, the claim table, the conflict evidence and the authority trace.
@@ -48,8 +51,15 @@ input
   ├─ segment into clauses (deterministic)
   │
   ├─ resolve authority (deterministic)
-  │     jurisdiction → precedence → effective date
+  │     jurisdiction → precedence → effective date → expiry
+  │     future-dated or expired document = not in force
   │     tie = HOLD (ambiguous authority)
+  │
+  ├─ Protect (question + draft, audit copy)
+  │     → personal data replaced before the preview is stored
+  │
+  ├─ Guard   (policies + draft, untrusted source)
+  │     → injection / prompt takeover = HOLD, before any retrieval
   │
   ├─ Rerank  (all candidate clauses, with the authority rule in instructions)
   │     → governing clauses marked use / expand
@@ -59,15 +69,23 @@ input
   │     → conflicts, duplicates, both passages
   │     → skipped when there is only one source
   │
+  ├─ Fill    (governing policy + question + draft)
+  │     → material obligations, omission judgment, missing condition
+  │
   ├─ Verify  (draft vs governing clauses)
   │     → claim verdicts, grounded score, weakest claim
   │
   └─ policy  → PUBLISH / REWRITE / HOLD
+        ├─ prompt injection           → HOLD
         ├─ authority error            → HOLD
         ├─ no governing clause        → HOLD
         ├─ any check failed           → HOLD
+        ├─ no countable claims        → HOLD
+        ├─ missing support score      → HOLD
+        ├─ missing coverage judgment  → HOLD
         ├─ counted claim contradicted → REWRITE
         ├─ counted claim not stated   → REWRITE
+        ├─ material omission          → REWRITE
         ├─ grounded < 0.50            → REWRITE
         └─ otherwise                  → PUBLISH
 ```
@@ -90,11 +108,11 @@ FastAPI
    ├─ authority.py    clause segmentation + authority resolver (pure, tested)
    ├─ policy.py       verdict logic (pure, tested)
    ├─ clocked_client.py  auth, idempotency, bounded retries, error classes
-   ├─ db.py           SQLite audit log (results + previews, not full documents)
+   ├─ db.py           admin-only SQLite preview log (redacted, per-instance)
    └─ app.py          routes, orchestration, SSE
          │
          ▼
-   Clocked API  (Rerank, Compare, Verify)
+   Clocked API  (Protect, Guard, Rerank, Compare, Fill, Verify)
 ```
 
 **No hardcoded results.** The verdict is a pure function of the API responses and the user's authority metadata. The sample corpus is editable input, not a fixture the app depends on. Running the same check twice produces the same decision because the inputs are the same, not because the answer is stored.
@@ -105,21 +123,21 @@ FastAPI
 |---|---|---|
 | Backend | Python 3.11+, FastAPI, Uvicorn | Already installed; async, SSE, typed requests |
 | HTTP | httpx | Timeouts, retries, one client per request |
-| Storage | SQLite (stdlib) | Zero setup, portable, enough for an audit log |
+| Storage | SQLite (stdlib) | Zero setup, portable, enough for an admin-only preview log. On Vercel it is per-instance and ephemeral. |
 | Frontend | Semantic HTML, CSS, vanilla JS | No build step, no framework risk, full accessibility control |
 | Streaming | Server-Sent Events | Real stage progress, not a fake animation |
-| Tests | pytest | Authority resolver and verdict policy are pure functions |
-| Deploy | Docker / Render / Railway (Procfile included) | One container, one process, no database server |
+| Tests | pytest | Authority resolver, coverage, and verdict policy are pure functions |
+| Deploy | Vercel FastAPI service; Docker / Render / Railway also supported (Procfile included) | Live demo, one process, no database server |
 
 **Rejected:** Next.js (build step and hydration risk for a six-day scope), a vector database (not needed; clauses are small), an LLM-generated rewrite (adds a fourth endpoint and a new failure mode).
 
 ## 6. Accessibility
 
-- Semantic landmarks, one `h1`, labelled fieldsets, visible labels (no placeholder-only inputs).
-- Full keyboard operation; `Ctrl/Cmd+Enter` runs the check; focus-visible rings on every control.
+- Semantic landmarks and exactly one `h1` on the shipped home and console.
+- Full keyboard operation; `Ctrl/Cmd+Enter` runs the check; focus-visible rings on every control; tab arrow keys move focus between tabs.
 - `aria-live="polite"` on the verdict and stage status.
 - Verdict is conveyed by text and icon, never color alone.
-- Contrast targets WCAG AA on all text; body text at 16px minimum.
+- Axe WCAG A/AA checks pass on the shipped home and console; the primary CTAs were darkened to clear contrast.
 - `prefers-reduced-motion` disables transitions and the stage pulse.
 - Responsive down to 360px; the three-column desk stacks into one column.
 - Error messages are specific and tied to the field that caused them.
@@ -142,9 +160,9 @@ FastAPI
 |---|---|
 | Practical usefulness (25) | A named buyer, a documented failure mode, a blocked publish, and a measurable outcome |
 | Core Clocked integration (30) | All three group endpoints are load-bearing: Rerank selects, Compare evidences, Verify decides |
-| Additional endpoints (15) | 3/3 in the group; no decorative calls; Compare is skipped when there is only one source |
-| Implementation / UX (20) | A clear desk, real stage progress, citations, keyboard and mobile support |
-| Explanation / reproducibility (10) | README, architecture, pure-function tests, failure table, raw JSON |
+| Additional endpoints (15) | Six meaningful endpoints across all three groups: Protect, Guard, Fill, Rerank, Compare, Verify. Each changes what the app stores, decides, or shows. Full group breadth and strong Best Overall breadth. |
+| Implementation / UX (20) | A clear desk, real SSE stage progress, citations, keyboard and mobile support, axe-checked WCAG A/AA |
+| Explanation / reproducibility (10) | README, architecture, 39 pure-function tests, failure table, raw JSON |
 
 ## 9. Failure behaviour
 
@@ -155,8 +173,15 @@ FastAPI
 | 429 rate limit | Bounded retry with backoff and jitter, then HOLD |
 | 5xx / timeout | Bounded retry, then HOLD |
 | 400 / 422 | HOLD with the endpoint's detail |
+| Prompt injection | HOLD before Rerank, with the risky passage |
+| Material omission | REWRITE with the missing condition quoted |
+| Missing coverage judgment | HOLD |
+| Protect failure | Raw preview is suppressed; the check continues with redaction unavailable |
 | Authority tie | HOLD before any API call |
+| Future-dated or expired document | Excluded from authority; not in force |
 | No governing clause | HOLD |
+| No countable Verify claims | HOLD |
+| Missing or non-numeric support score | HOLD |
 | No superseded document | Compare skipped, decision still valid |
 | Draft missing | Validation error, no API call |
 
@@ -164,7 +189,7 @@ Every retry reuses the same `Idempotency-Key` and payload. Each endpoint gets it
 
 ## 10. Privacy
 
-The audit log stores the decision, credits, latency, document titles and a short redacted preview — not the full documents. The raw API responses shown in the UI are kept in memory for the session only. The API key lives in the server environment and never reaches the browser.
+The admin-only preview log stores the decision, credits, latency, document titles and a short redacted preview — not the full documents. On Vercel it is per-instance and ephemeral. The raw API responses shown in the UI are kept in memory for the session only. The API key lives in the server environment and never reaches the browser. `/api/check` and `/api/check/stream` require a signed short-lived session or a bearer API token, and are rate-limited per IP and by a daily demo budget.
 
 ## 11. What is deliberately out of scope
 

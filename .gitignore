@@ -23,3 +23,9 @@ venv/
 
 # keep the template
 !.env.example
+
+# legacy runtime databases
+docket.db
+docket.db-*
+docket.db
+docket.db-*

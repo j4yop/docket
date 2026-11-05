@@ -7,13 +7,14 @@ from authority import (
 )
 
 
-def doc(id, title, text, jurisdiction="Global", date=None, precedence=0):
+def doc(id, title, text, jurisdiction="Global", date=None, precedence=0, expires_date=None):
     return Document(
         id=id,
         title=title,
         text=text,
         jurisdiction=jurisdiction,
         effective_date=date,
+        expires_date=expires_date,
         precedence=precedence,
     )
 
@@ -108,3 +109,26 @@ def test_parse_date_is_strict_enough():
         pass
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_future_dated_policy_does_not_govern():
+    documents = [
+        doc("now", "Current policy", "Rule.", "Global", "2026-01-01"),
+        doc("later", "Future policy", "Rule.", "Global", "2027-01-01"),
+    ]
+    result = resolve(documents, "FR")
+    assert result.error is None
+    assert result.governing.id == "now"
+    outcomes = {row["id"]: row["outcome"] for row in result.trace}
+    assert outcomes["later"] == "not in force"
+
+
+def test_expired_policy_does_not_govern():
+    documents = [
+        doc("old", "Old policy", "Rule.", "Global", "2024-01-01", expires_date="2026-01-01"),
+        doc("new", "New policy", "Rule.", "Global", "2026-02-01"),
+    ]
+    result = resolve(documents, "FR")
+    assert result.governing.id == "new"
+    outcomes = {row["id"]: row["outcome"] for row in result.trace}
+    assert outcomes["old"] == "not in force"

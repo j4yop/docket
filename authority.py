@@ -31,6 +31,7 @@ class Document:
     text: str
     jurisdiction: str = "Global"
     effective_date: str | None = None
+    expires_date: str | None = None
     precedence: int = 0
 
 
@@ -71,14 +72,18 @@ def _is_global(jurisdiction: str) -> bool:
     return (jurisdiction or "").strip().lower() in {"", "global", "*", "all", "any"}
 
 
-def resolve(documents: list[Document], country: str) -> Authority:
+def resolve(
+    documents: list[Document], country: str, *, today: date | None = None
+) -> Authority:
     """Pick the governing document from jurisdiction, precedence and date.
 
     Order: explicit precedence, then jurisdiction specificity, then latest
-    effective date. A tie on all three is ambiguous and returns an error:
-    the app holds rather than guessing which policy wins.
+    effective date. A document that is not yet effective or has expired cannot
+    govern. A tie on all three is ambiguous and returns an error: the app
+    holds rather than guessing which policy wins.
     """
     country_norm = (country or "").strip().upper()
+    current_day = today or date.today()
     rows: list[dict] = []
     eligible: list[tuple[tuple, Document]] = []
 
@@ -97,6 +102,17 @@ def resolve(documents: list[Document], country: str) -> Authority:
             why = f"Out of scope for {country_norm or 'this employee'}"
 
         parsed = parse_date(doc.effective_date)
+        expires = parse_date(doc.expires_date)
+        time_status = "current"
+        if applies and parsed and parsed > current_day:
+            applies = False
+            time_status = "future"
+            why = f"Not yet effective until {parsed.isoformat()}."
+        elif applies and expires and expires < current_day:
+            applies = False
+            time_status = "expired"
+            why = f"Expired on {expires.isoformat()}."
+
         key = (doc.precedence, specificity, parsed or date.min)
         rows.append(
             {
@@ -104,9 +120,11 @@ def resolve(documents: list[Document], country: str) -> Authority:
                 "title": doc.title,
                 "jurisdiction": doc.jurisdiction or "Global",
                 "effective_date": doc.effective_date,
+                "expires_date": doc.expires_date,
                 "precedence": doc.precedence,
                 "applies": applies,
                 "specificity": specificity,
+                "time_status": time_status,
                 "why": why,
             }
         )
@@ -117,7 +135,7 @@ def resolve(documents: list[Document], country: str) -> Authority:
         return Authority(
             governing=None,
             trace=rows,
-            error="No document applies to this employee's jurisdiction. Add a matching or global document.",
+            error="No document applies to this employee's jurisdiction and date. Add a matching, currently effective document.",
         )
 
     eligible.sort(key=lambda item: item[0], reverse=True)
@@ -137,8 +155,12 @@ def resolve(documents: list[Document], country: str) -> Authority:
 
     for row in rows:
         if not row["applies"]:
-            row["outcome"] = "out of scope"
-            row["rule_reason"] = f"Jurisdiction {row['jurisdiction']} does not match {country_norm or 'the employee'}."
+            if row.get("time_status") in {"future", "expired"}:
+                row["outcome"] = "not in force"
+                row["rule_reason"] = row["why"]
+            else:
+                row["outcome"] = "out of scope"
+                row["rule_reason"] = f"Jurisdiction {row['jurisdiction']} does not match {country_norm or 'the employee'}."
         elif row["id"] == top_doc.id:
             row["outcome"] = "governing"
             scope = "country match" if top_specificity == 2 else "global scope"

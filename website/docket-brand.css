@@ -34,3 +34,13 @@ a[href="/"]:has(> svg[viewBox="0 0 132 54"])::after {
   pointer-events: none;
   z-index: 2;
 }
+
+/* Keep the transparent header from covering scrolled content. */
+header {
+  transition: transform 220ms ease, opacity 180ms ease;
+}
+header.dk-header-hidden {
+  transform: translateY(-110%);
+  opacity: 0;
+  pointer-events: none;
+}

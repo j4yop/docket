@@ -34,32 +34,16 @@
     title: "",
     jurisdiction: "Global",
     effective_date: "",
+    expires_date: "",
     precedence: 0,
     text: "",
   });
 
   /* --------------------------------------------------------------- boot */
-  async function boot() {
-    const footer = document.querySelector("footer");
-    if (!footer) return;
-
-    const anchor =
-      footer.parentElement && footer.parentElement.matches("div.bg-background")
-        ? footer.parentElement
-        : footer;
-
-    const response = await fetch("/integrations/gate.html", { cache: "no-store" });
-    if (!response.ok) return;
-    const html = await response.text();
-
-    const holder = document.createElement("div");
-    holder.innerHTML = html;
-    const gate = holder.firstElementChild;
-    anchor.parentNode.insertBefore(gate, anchor);
-
+  function boot() {
+    if (!document.getElementById("docket-gate")) return;
     document.body.classList.add("gate-mode");
     document.title = "Docket Console";
-
     init();
   }
 
@@ -113,6 +97,9 @@
       authority: $("gate-authority"),
       claims: $("gate-claims"),
       claimsMeta: $("gate-claims-meta"),
+      coverageBlock: $("gate-coverage-block"),
+      coverageMeta: $("gate-coverage-meta"),
+      coverage: $("gate-coverage"),
       conflictsBlock: $("gate-conflicts-block"),
       conflicts: $("gate-conflicts"),
       rerank: $("gate-rerank"),
@@ -152,7 +139,6 @@
       overlay.hidden = false;
       document.body.classList.add("docket-menu-open");
       menuButton.textContent = "Close";
-      menuButton.style.color = "#000";
       menuButton.setAttribute("aria-expanded", "true");
       requestAnimationFrame(() => {
         overlay.querySelector("a[href]")?.focus({ preventScroll: true });
@@ -165,7 +151,6 @@
       overlay.hidden = true;
       document.body.classList.remove("docket-menu-open");
       menuButton.textContent = "Menu";
-      menuButton.style.removeProperty("color");
       menuButton.setAttribute("aria-expanded", "false");
       if (restoreFocus) menuButton.focus({ preventScroll: true });
     };
@@ -348,12 +333,19 @@
     refs.tabCase.addEventListener("click", () => setMode("case"));
     refs.tabExamples.addEventListener("click", () => setMode("examples"));
     refs.openExamples.addEventListener("click", () => setMode("examples"));
-    for (const tab of [refs.tabCase, refs.tabExamples]) {
+    const modeTabs = [refs.tabCase, refs.tabExamples];
+    for (const tab of modeTabs) {
       tab.addEventListener("keydown", (event) => {
         if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
         event.preventDefault();
-        setMode(state.mode === "case" ? "examples" : "case");
-        (state.mode === "case" ? refs.tabCase : refs.tabExamples).focus();
+        let index = modeTabs.indexOf(tab);
+        if (event.key === "ArrowRight") index = (index + 1) % modeTabs.length;
+        if (event.key === "ArrowLeft") index = (index - 1 + modeTabs.length) % modeTabs.length;
+        if (event.key === "Home") index = 0;
+        if (event.key === "End") index = modeTabs.length - 1;
+        const next = modeTabs[index];
+        setMode(next === refs.tabCase ? "case" : "examples");
+        next.focus();
       });
     }
 
@@ -477,8 +469,12 @@
           <input id="gate-doc-jurisdiction" type="text" maxlength="20" placeholder="Global" data-field="jurisdiction" />
         </div>
         <div class="gate-field">
-          <label for="gate-doc-date">Effective date</label>
+          <label for="gate-doc-date">Effective</label>
           <input id="gate-doc-date" type="date" data-field="effective_date" />
+        </div>
+        <div class="gate-field">
+          <label for="gate-doc-expires">Expires</label>
+          <input id="gate-doc-expires" type="date" data-field="expires_date" />
         </div>
         <div class="gate-field">
           <label for="gate-doc-precedence">Precedence</label>
@@ -498,6 +494,7 @@
     $("gate-doc-title").value = doc.title;
     $("gate-doc-jurisdiction").value = doc.jurisdiction;
     $("gate-doc-date").value = doc.effective_date || "";
+    $("gate-doc-expires").value = doc.expires_date || "";
     $("gate-doc-precedence").value = String(doc.precedence);
     $("gate-doc-text").value = doc.text;
 
@@ -557,6 +554,7 @@
         title: doc.title.trim(),
         jurisdiction: doc.jurisdiction.trim() || "Global",
         effective_date: doc.effective_date || "",
+        expires_date: doc.expires_date || "",
         precedence: Number(doc.precedence) || 0,
         text: doc.text.trim(),
       })),
@@ -580,6 +578,115 @@
       }
     }
     return null;
+  }
+
+  /* ------------------------------------------------------------------ stream */
+  function updateStageEvent(entry) {
+    if (!entry || !entry.stage) return;
+    const element = refs.stages.querySelector(
+      '.gate-stage[data-stage="' + String(entry.stage).replace(/"/g, "") + '"]'
+    );
+    if (!element) return;
+    element.dataset.state = entry.status === "done" ? "done" : entry.status;
+    const meta = element.querySelector(".gate-stage-meta");
+    if (!meta) return;
+    if (entry.status === "skipped") meta.textContent = "skipped";
+    else if (entry.status === "done") {
+      meta.textContent = `${entry.ms || 0} ms · ${formatCredits(entry.credits)} cr`;
+    } else if (entry.status === "error") {
+      meta.textContent = entry.reason || "error";
+    } else {
+      meta.textContent = "";
+    }
+  }
+
+  let sessionToken = null;
+  let sessionExpires = 0;
+
+  async function getSession() {
+    if (sessionToken && Date.now() / 1000 < sessionExpires - 30) return sessionToken;
+    const response = await fetch("/api/session", { cache: "no-store" });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data || !data.token) {
+      throw new Error((data && data.detail) || "Could not start a Docket session.");
+    }
+    sessionToken = data.token;
+    sessionExpires = Number(data.expires_at) || 0;
+    return sessionToken;
+  }
+
+  async function authFetch(url, options) {
+    let token = await getSession();
+    const headers = Object.assign({}, options.headers || {}, { "X-Docket-Session": token });
+    let response = await fetch(url, Object.assign({}, options, { headers }));
+    if (response.status !== 401) return response;
+    sessionToken = null;
+    sessionExpires = 0;
+    token = await getSession();
+    headers["X-Docket-Session"] = token;
+    return fetch(url, Object.assign({}, options, { headers }));
+  }
+
+  async function readJsonCheck(payload) {
+    const response = await authFetch("/api/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      const detail = (body && (body.detail || body.error)) || `HTTP ${response.status}`;
+      throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    }
+    if (!body || body.error) throw new Error((body && body.error) || "No result returned.");
+    return body;
+  }
+
+  async function readCheckStream(payload) {
+    const response = await authFetch("/api/check/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      if ([404, 405, 501].includes(response.status)) return readJsonCheck(payload);
+      const body = await response.json().catch(() => null);
+      const detail = (body && (body.detail || body.error)) || `HTTP ${response.status}`;
+      throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    }
+    if (!response.body) return readJsonCheck(payload);
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let result = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary !== -1) {
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        let event = "message";
+        let data = "";
+        for (const line of block.split("\n")) {
+          if (line.indexOf("event:") === 0) event = line.slice(6).trim();
+          else if (line.indexOf("data:") === 0) data += line.slice(5).trim();
+        }
+        if (data) {
+          const parsed = JSON.parse(data);
+          if (event === "stage") updateStageEvent(parsed);
+          else if (event === "result") result = parsed;
+          else if (event === "error") throw new Error(parsed.message || "The check stream failed.");
+        }
+        boundary = buffer.indexOf("\n\n");
+      }
+    }
+
+    if (!result) throw new Error("No result returned.");
+    return result;
   }
 
   /* ------------------------------------------------------------------ run */
@@ -610,21 +717,10 @@
     refs.checking.hidden = false;
     setStatus("input", "Checking", "busy");
     setStatus("verdict", "Checking", "busy");
-    setStageState("running");
+    setStageState("");
 
     try {
-      const response = await fetch("/api/check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json().catch(() => null);
-      if (!response.ok) {
-        const detail = (data && (data.detail || data.error)) || `HTTP ${response.status}`;
-        throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
-      }
-      if (!data || data.error) throw new Error((data && data.error) || "No result returned.");
-
+      const data = await readCheckStream(payload);
       state.last = data;
       renderResult(data, payload);
       addRecent(data, payload);
@@ -699,7 +795,10 @@
     refs.headline.innerHTML = headline || "No headline returned.";
 
     const time = formatTime(result.checked_at);
-    refs.meta.innerHTML = `${time ? `Checked ${esc(time)} · ` : ""}${esc(formatCredits(result.credits))} credits<br>${esc(formatSeconds(result.latency_ms))} · ${result.api_calls || 0} calls · ${esc(supportText(result))}`;
+    const privacy = result.protect && result.protect.entity_count
+      ? ` · ${result.protect.entity_count} PII redacted`
+      : "";
+    refs.meta.innerHTML = `${time ? `Checked ${esc(time)} · ` : ""}${esc(formatCredits(result.credits))} credits<br>${esc(formatSeconds(result.latency_ms))} · ${result.api_calls || 0} calls · ${esc(supportText(result))}${privacy}`;
 
     const grounded = Number((result.verify && result.verify.grounded) || 0);
     refs.rulerMarker.style.left = `${Math.max(0, Math.min(100, grounded * 100))}%`;
@@ -712,6 +811,7 @@
     renderDelivery(result, payload);
     renderAuthority(result);
     renderClaims(result);
+    renderCoverage(result);
     renderConflicts(result);
     renderRerank(result);
     renderDrawers(result, payload);
@@ -797,11 +897,19 @@
       </div>`;
 
     if (!contradicted.length) {
+      const correction =
+        result.decision === "publish"
+          ? "Cleared to publish."
+          : result.decision === "hold"
+            ? "Nothing was published. A reviewer must resolve this hold."
+            : result.coverage && result.coverage.value === true
+              ? "Add the omitted condition before publishing."
+              : "No contradicted claim found.";
       refs.delivery.innerHTML =
         draftPane(esc(draft)) +
         `<div class="gate-delivery-pane">
           <span class="gate-delivery-label">Required corrections</span>
-          <p class="gate-draft-text">${result.decision === "publish" ? "Cleared to publish." : "No contradicted claim found."}</p>
+          <p class="gate-draft-text">${correction}</p>
         </div>`;
       return;
     }
@@ -889,6 +997,30 @@
         </div>`;
       })
       .join("");
+  }
+
+  function renderCoverage(result) {
+    const coverage = result && result.coverage;
+    if (!coverage) {
+      refs.coverageBlock.hidden = true;
+      return;
+    }
+    refs.coverageBlock.hidden = false;
+    const obligations = coverage.obligations || [];
+    const gap = coverage.value === true;
+    refs.coverageMeta.textContent = gap
+      ? "omission found"
+      : coverage.value === false
+        ? "no omission"
+        : "unavailable";
+    const chips = obligations
+      .map((item) => `<span class="gate-coverage-chip">${esc(String(item))}</span>`)
+      .join("");
+    const missing = String(coverage.missing_conditions || "").trim();
+    refs.coverage.innerHTML = `
+      ${chips ? `<div class="gate-coverage-chips">${chips}</div>` : `<p class="gate-coverage-empty">No material obligations were extracted.</p>`}
+      ${gap ? `<div class="gate-coverage-gap"><strong>Missing condition</strong><span>${esc(missing || "The draft does not address a material policy condition.")}</span></div>` : ""}
+    `;
   }
 
   function renderConflicts(result) {
@@ -1090,6 +1222,7 @@
         title: String(doc.title || ""),
         jurisdiction: String(doc.jurisdiction || "Global"),
         effective_date: String(doc.effective_date || ""),
+        expires_date: String(doc.expires_date || ""),
         precedence: Number(doc.precedence) || 0,
         text: String(doc.text || ""),
       }));
@@ -1135,6 +1268,7 @@
       title: String(doc.title || "").slice(0, 120),
       jurisdiction: String(doc.jurisdiction || "Global").slice(0, 20),
       effective_date: String(doc.effective_date || "").slice(0, 10),
+      expires_date: String(doc.expires_date || "").slice(0, 10),
       precedence: Number(doc.precedence) || 0,
       text: String(doc.text || "").slice(0, 60000),
     }));
@@ -1234,9 +1368,5 @@
     }
   }
 
-  if (document.getElementById("docket-gate")) {
-    init();
-  } else {
-    boot();
-  }
+  boot();
 })();

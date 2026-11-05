@@ -815,6 +815,31 @@
     true
   );
 
+  // Hide the transparent header on scroll-down and reveal it on scroll-up.
+  (function () {
+    var siteHeader = document.querySelector("header");
+    if (!siteHeader) return;
+    var lastY = window.scrollY;
+    var ticking = false;
+    var sync = function () {
+      ticking = false;
+      var y = window.scrollY;
+      if (y < 80) siteHeader.classList.remove("dk-header-hidden");
+      else if (y > lastY + 8) siteHeader.classList.add("dk-header-hidden");
+      else if (y < lastY - 8) siteHeader.classList.remove("dk-header-hidden");
+      lastY = y;
+    };
+    window.addEventListener(
+      "scroll",
+      function () {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(sync);
+      },
+      { passive: true }
+    );
+  })();
+
   apply();
   window.addEventListener("load", function () {
     setTimeout(apply, 250);

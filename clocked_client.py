@@ -118,6 +118,43 @@ class ClockedClient:
             return str(body.get("detail") or body.get("error") or body)[:300]
         return str(body)[:300]
 
+    async def guard(self, *, text: str, instructions: str, idem_key: str) -> CallResult:
+        return await self._post(
+            "injection",
+            {
+                "text": text[:60_000],
+                "source": "content",
+                "instructions": instructions,
+                "evidence": True,
+                "threshold": 0.5,
+            },
+            idem_key,
+        )
+
+    async def protect(self, *, text: str, idem_key: str) -> CallResult:
+        return await self._post(
+            "pii",
+            {
+                "text": text[:60_000],
+                "anonymize": "replace",
+                "threshold": 0.5,
+            },
+            idem_key,
+        )
+
+    async def fill(
+        self, *, text: str, fields: dict, instructions: str, idem_key: str
+    ) -> CallResult:
+        return await self._post(
+            "fill",
+            {
+                "text": text[:200_000],
+                "fields": fields,
+                "instructions": instructions,
+            },
+            idem_key,
+        )
+
     async def rerank(
         self, *, query: str, documents: list[dict], context: dict, instructions: str, idem_key: str
     ) -> CallResult:

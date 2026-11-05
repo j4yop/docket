@@ -1,295 +1,245 @@
-# Docket
+# docket ⚡
 
-**The newest policy is often not the governing one.**
+**A publish gate for service-desk knowledge and AI assistants.**
 
-**Live:** <https://docket-clocked.vercel.app>
+[![Hackathon](https://img.shields.io/badge/HACKATHON-CLOCKED_BUILD_CHALLENGE-FEEA3B?style=for-the-badge&logoColor=black&labelColor=1e293b&color=FEEA3B)](https://clocked.rezolve.ai/challenge)
+[![Category](https://img.shields.io/badge/CATEGORY-VERIFY_%7C_COMPARE_%7C_RERANK-38BDF8?style=for-the-badge&labelColor=1e293b&color=38BDF8)](https://clocked.rezolve.ai)
+[![Python](https://img.shields.io/badge/python-3.11_%7C_3.12_%7C_3.13-3775A9?style=for-the-badge&logo=python&logoColor=white&labelColor=1e293b)](https://www.python.org/)
+[![Dependencies](https://img.shields.io/badge/dependencies-3-10B981?style=for-the-badge&labelColor=1e293b&color=10B981)](#tech-stack)
+[![Tests](https://img.shields.io/badge/tests-39_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
+[![License](https://img.shields.io/badge/license-MIT-FEEA3B?style=for-the-badge&labelColor=1e293b&color=FEEA3B)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-docket--clocked.vercel.app-6366F1?style=for-the-badge&logo=vercel&logoColor=white&labelColor=1e293b)](https://docket-clocked.vercel.app)
+[![Console](https://img.shields.io/badge/Gate_Console-%2Fconsole-059669?style=for-the-badge&labelColor=1e293b)](https://docket-clocked.vercel.app/console)
 
-A publish gate for service-desk knowledge. Give it the policy documents, the employee
-question, and the draft an AI assistant is about to send. It resolves which document
-governs, shows where the sources disagree, checks every claim, and returns **Publish**,
-**Rewrite**, or **Hold** — with citations.
-
-![Docket blocking a draft that uses the superseded global policy](docs/result.png)
-
-Built for the [Clocked Build Challenge](https://clocked.rezolve.ai/challenge), November 2026.
-
----
-
-## Marketing site
-
-The FastAPI app now serves the Docket marketing page at `/` from `website/`, and the
-interactive gate at `/console`. The API routes under `/api/*` are unchanged, and the
-gate continues to call them from the same origin.
-
-The site's static assets are served by the app, including the captured Next image
-variants used by the mirrored landing page. `/integrations` redirects to `/console`.
+<p align="center">
+  <img src="docs/pipeline.svg" alt="Docket Automated Publish Gate Pipeline" width="100%" />
+</p>
 
 ---
 
-## The problem
+## Overview
 
-An AI assistant answers an employee from the knowledge base. The answer is fluent, cited,
-and sometimes wrong — because the source it used is stale, superseded, or written for a
-different country or plan. Nothing in the answer signals which.
+When an AI service-desk assistant drafts an answer from internal company documentation, how do you verify that it cited the active, legally governing policy rather than an outdated or regional document?
 
-The failure is not hallucination. It is **grounded in the wrong source**. Retrieval and
-groundedness checks cannot catch it: a perfectly grounded answer can still cite a policy
-that no longer governs.
+**Docket** is an automated publish gate that sits between your assistant and the employee. Given the candidate policy documents, the employee's context, the question, and the draft answer:
 
-- 76%+ of 143 founders, operators and engineers say they have watched an AI tool surface an
-  outdated document and confidently produce a wrong answer (Slite, 2026 — vendor survey).
-- Industry guides report 15–30% of knowledge articles conflict with another document.
-- r/sre, May 2026: "every single runbook is either 2 years out of date or just doesn't exist."
+1. **Protects the Record:** Clocked Protect finds and replaces personal data before the audit preview is written.
+2. **Resolves Document Authority:** Deterministically identifies which currently effective policy governs (jurisdiction, precedence, effective date, expiry).
+3. **Screens the Sources:** Clocked Guard checks the policies and draft for prompt injection before any downstream model reads them.
+4. **Selects the Governing Text:** Clocked Rerank picks the clauses that answer the question and skips superseded text.
+5. **Surfaces Clause-Level Conflicts:** Clocked Compare pinpoints exact discrepancies between governing and superseded documents.
+6. **Checks Completeness:** Clocked Fill extracts material obligations and judges whether the draft omits a condition or exception.
+7. **Verifies Every Assertion:** Clocked Verify checks every claim in the draft against the governing document.
+8. **Gates the Response:** Returns an actionable verdict — **Publish**, **Rewrite**, or **Hold** — with citations, a case record, credits and latency.
 
-## What the user does
+---
 
-1. Ask the employee question and set the context: country, role, plan.
-2. Add up to six policy documents. Each has a jurisdiction, effective date, and an
-   "overrides" flag. The workspace opens blank; the worked examples are a separate tab.
-3. Paste the draft the assistant wants to send.
-4. Run the check.
+## The Problem: Grounded in the Wrong Source
 
-### The three scenarios
+Most critical AI service-desk failures are not pure hallucinations. The answer is **fluent, cited, and grounded in the wrong source**:
 
-| Scenario | What it tests | Expected result |
-|---|---|---|
-| **Precedence over recency** | An older country annex overrides a newer global policy. "Latest wins" publishes the wrong answer. | REWRITE |
-| **Version supersession** | A new policy changes two numbers; the draft still uses the old ones. | REWRITE |
-| **Clean access request** | One governing source, a draft that matches it. | PUBLISH |
+- **Precedence over Recency:** Traditional search algorithms assume the newest document wins. But in legal and enterprise governance, an older regional addendum frequently overrides a newer blanket corporate policy.
+- **Silent Supersession:** When Policy v5 updates receipt limits, an assistant can still retrieve Policy v4 and produce an answer that passes basic grounding checks, despite stating invalid figures.
+- **Jurisdiction Mismatch:** A policy written for US contractors is surfaced to a French full-time employee.
 
-The first scenario is the point of the product. Every freshness or time-decay tool would pick the
-newer global policy; only precedence resolution holds the draft.
+Standard RAG evaluators cannot catch this because the answer is 100% faithful to the retrieved passage.
 
-## What Docket does
+### The 8 Questions Docket Asks
 
-| Step | Owner | Question | Output |
+Before any answer is published to an employee, Docket resolves eight questions:
+
+| # | Question | Answered By | How |
 |---|---|---|---|
-| 1 | **App** (deterministic) | Which document governs this employee? | Authority trace, or **Hold** on a tie |
-| 2 | **Rerank** | Which clause answers the question? | `use` / `expand` / `skip` per clause, with reason |
-| 3 | **Compare** | Where do the governing and superseded text disagree? | Conflicts with both passages |
-| 4 | **Verify** | Does the draft claim only what the governing document supports? | Claim-level verdicts and a support score |
-| 5 | **App** (deterministic) | What happens now? | **Publish**, **Rewrite**, or **Hold** |
+| **1** | Does the audit preview contain personal data? | **Clocked Protect** (`/clocked/pii`) | Finds and replaces personal data before the admin-only preview is stored. The check runs on the original input; the record keeps only the redacted copy. |
+| **2** | Is the source trying to take control? | **Clocked Guard** (`/clocked/injection`) | Screens policy text and the draft for instruction overrides, fabricated approvals, secret extraction, and tool misuse. A positive signal holds the answer before Rerank. |
+| **3** | Which policy governs this employee? | **App Engine** (Deterministic) | Ranks documents by precedence, country specificity, effective date and expiry. Future-dated and expired documents cannot govern. Resolves ties into a **Hold**. No LLM call. |
+| **4** | Which clause answers the question? | **Clocked Rerank** (`/clocked/rerank`) | Scans candidate clauses with authority constraints injected into instructions. Selects governing clauses (`use`/`expand`) and skips superseded ones. |
+| **5** | Where do the policies disagree? | **Clocked Compare** (`/clocked/compare`) | Aligns governing clauses with superseded clauses to quote exact text discrepancies. |
+| **6** | Does the draft omit a material condition? | **Clocked Fill** (`/clocked/fill`) | Extracts material obligations and returns a yes/no omission judgment plus the missing condition. A material omission forces **Rewrite**. |
+| **7** | Does the draft claim only what the governing text supports? | **Clocked Verify** (`/clocked/grounding`) | Checks discrete sentence claims against the complete governing document for `supported`, `contradicted`, or `not_stated`. |
+| **8** | What action must be taken now? | **App Policy** (Deterministic) | Enforces strict publication thresholds. Contradicted, unsupported, missing, or unverifiable claims and material omissions block release. |
 
-### The verdict rule
+> **Core Thesis:** Authority is a business rule; relevance is a model judgment.  
+> Never delegate "which policy wins" to an LLM, and never let a model's relevance score bypass an explicit precedence rule.
 
-| Condition | Verdict |
-|---|---|
-| Authority is ambiguous, no governing clause, or a check failed | **Hold** |
-| Any counted claim is contradicted | **Rewrite** |
-| Any counted claim is not stated in the governing document | **Rewrite** |
-| Overall support below 50% | **Rewrite** |
-| Every counted claim supported, no internal conflict | **Publish** |
+---
 
-## How Clocked is used
+## How Clocked is Used
 
-| Endpoint | When it runs | What its output changes |
-|---|---|---|
-| **Rerank** `/clocked/rerank` | Every check, after authority is resolved | Selects the governing clause. The authority rule is passed in `instructions`; a superseded clause is marked `different_case` and skipped. |
-| **Compare** `/clocked/compare` | Only when a superseded document exists, and only on short aligned clauses | Produces the conflict evidence. A conflict is shown, not auto-blocked; the conflict does not override a clear authority rule. |
-| **Verify** `/clocked/grounding` | Every check, against the whole governing document | Decides Publish vs Rewrite. Each counted claim is supported, contradicted, or not stated. |
+Six Clocked endpoints across all three groups are load-bearing to Docket's
+decision engine: Protect and Guard (safety), Fill (decisions), and
+Rerank, Compare, and Verify (knowledge).
 
-All three endpoints are load-bearing. Remove Rerank and the app checks the draft against
-the wrong policy. Remove Compare and the reviewer cannot see what changed. Remove Verify
-and there is no decision.
-
-## Design decisions that came from live testing
-
-The app was pressure-tested on real documents before it was built. Three findings shaped it:
-
-1. **Authority is a rule, not a model judgment.** Rerank does not infer that a regional
-   annex overrides a global policy, even when the document says so. The app resolves
-   authority from jurisdiction, precedence and effective date, then passes the rule to
-   Rerank in `instructions`.
-2. **Compare is only reliable at clause level.** On two short aligned clauses it is exact
-   and cheap (5 credits, under a second). On full documents it produced false conflicts and
-   cost 584 credits for one call. The app segments first and never sends a whole document.
-3. **Verify needs the whole governing document.** Rerank selects the clause that answers
-   the question; the draft may make claims about something else. Verify reads the full
-   governing document (up to 50k characters) so every claim is checked.
-
-## What is live, and what is not hardcoded
-
-- Every verdict is computed from live Clocked responses. There are no stored decisions and
-  no fixture the app depends on.
-- The example corpus is input, not logic. Edit any field, delete a document, or paste your
-  own text; the same pipeline runs.
-- **Import / Export** a case as JSON. A judge can bring a case from their own machine.
-- **Request sent** shows the exact JSON posted to `/api/check`, with **Copy as cURL**.
-- **Live** in the header reports the server's Clocked configuration; every verdict carries a
-  timestamp, credit count, latency and number of Clocked calls.
-- **Six policies** per case, per-field counters, and inline validation with focus.
-- **Light and dark themes**, keyboard-operable tabs, visible focus, 12px minimum functional
-  text, and `prefers-reduced-motion` support.
-- The claim table, conflict list, authority trace, credit count and latency all come from
-  the current request.
-- "Raw Clocked responses" shows exactly what the API returned for this run.
-- Re-running the same input produces the same decision because the inputs are the same,
-  not because the answer is cached.
-
-![A return-policy case typed into the blank form, not loaded from the examples](docs/custom-case.png)
-
-## Run locally
-
-```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-
-cp .env.example .env
-# set CLOCKED_API_KEY=... in .env
-
-uvicorn app:app --reload --port 8000
-# open http://127.0.0.1:8000
+```
+[ Policies + Context + Question + Draft ]
+                    │
+                    ▼
+   Deterministic Authority Resolver (valid time)
+                    │
+                    ▼
+     Clocked Protect (/clocked/pii)          → Redacts audit previews
+                    │
+                    ▼
+     Clocked Guard (/clocked/injection)      → HOLD on injection / prompt takeover
+                    │
+                    ▼
+     Clocked Rerank (/clocked/rerank)        → Selects governing clause; skips old text
+                    │
+                    ▼
+     Clocked Compare (/clocked/compare)      → Aligned clause comparison for conflicts
+                    │
+                    ▼
+     Clocked Fill (/clocked/fill)            → Extracts obligations; finds omissions
+                    │
+                    ▼
+     Clocked Verify (/clocked/grounding)     → Claim-by-claim grounding against truth
+                    │
+                    ▼
+        Deterministic Verdict Policy         → PUBLISH / REWRITE / HOLD
 ```
 
-Python 3.11+. No frontend build step, no database server, no JS dependencies.
+### Empirical Design Discoveries
 
-### Tests
+1. **Compare is strictly clause-level:** Passing whole multi-page documents to Compare caused false conflicts and cost 584 credits per call. Docket segments documents first and aligns clauses based on token overlap and structural position, reducing cost to ~5 credits per check with exact quotes.
+2. **Rerank needs authority rules in instructions:** Rerank excels at semantic relevance but cannot guess organizational hierarchy. Docket resolves authority first, then passes the governing rule directly in the `instructions` payload so superseded clauses are explicitly skipped.
+3. **Verify checks the full governing document:** While Rerank isolates the primary clause answering the question, drafts often mention secondary requirements (e.g., receipt thresholds or delivery dates). Verify inspects the full governing text to ensure every claim is grounded.
+4. **Guard belongs before Rerank:** Policy documents and the draft are untrusted input. Guard catches an instruction override before it can influence retrieval or verification; the check returns **HOLD** and cites the risky passage.
+5. **Protect belongs before the record:** The audit preview is useless if it leaks the employee's email or bank account. Protect redacts the preview while the check still runs on the original text.
+6. **Completeness is a separate check:** Verify catches wrong claims, not missing ones. Fill extracts the material obligations and returns an omission judgment, so a draft cannot pass by saying less.
+7. **Zero claims are not a pass:** If Verify returns no countable claims, a missing support score, or an unknown claim verdict, Docket holds or rewrites rather than publishing on an empty result.
 
-```bash
-pip install -r requirements-dev.txt
-python -m pytest -q
-```
+---
 
-19 tests cover the authority resolver, clause segmentation and the verdict policy. They run
-without an API key.
+## Verdict Decision Rules
 
-## Deploy
+| Verdict | Trigger Condition | Outcome |
+|:---:|---|---|
+| **`HOLD`** | Prompt injection in the source or draft, ambiguous authority tie, no currently effective governing document, no governing clause found, no countable Verify claims, a missing support score, a missing coverage judgment, an internal contradiction, or an upstream/channel failure. | Publish blocked. Escalated to a human reviewer. |
+| **`REWRITE`** | Any counted claim is contradicted, any counted claim is not supported (`not_stated`, `partial`, unknown), a material policy condition is omitted, or overall groundedness $< 50\%$. | Publish blocked. Contradicted claims struck through with governing quotes; omitted conditions listed. |
+| **`PUBLISH`** | 100% of counted claims are verified and supported, the coverage check finds no material omission, the support score is numeric and in range, and there is no internal conflict. | Cleared for automated delivery. |
 
-The live demo runs on Vercel's native FastAPI support:
+---
 
-```bash
-vercel link
-vercel deploy --prod \
-  --env CLOCKED_API_KEY=... \
-  --env DOCKET_DB=/tmp/docket.db \
-  --env DOCKET_STREAMING=0
-```
+## Live Scenarios
 
-`DOCKET_STREAMING=0` switches the UI to the JSON endpoint because serverless functions
-do not stream reliably. Locally, the UI uses SSE for real stage progress. The Docker path
-is also included:
+Docket includes five built-in reference cases tested live against Clocked:
 
-```bash
-docker build -t docket .
-docker run --rm -p 8000:8000 -e CLOCKED_API_KEY=... docket
-```
+* **Precedence over Recency (Flagship Case):** An employee in France asks if monitor reimbursement requires manager approval. Global Policy v4 (June 2026, precedence 0) requires approval; France Annex (March 2026, precedence 1) waives approval. Docket identifies France Annex as governing despite being older, rejects the draft, and returns **`REWRITE`**.
+* **Version Supersession:** Expense Policy v5 updates receipt limits to \$50 and deadlines to 60 days. The assistant draft cites v4 limits (\$75 / 30 days). Docket catches the discrepancies and returns **`REWRITE`**.
+* **Clean Access Request (Control Case):** An access request policy requires manager approval and security training. The draft accurately states both conditions. Docket returns **`PUBLISH`**.
+* **Omitted Condition (Completeness Case):** A remote-work policy allows remote work but requires customer-facing employees on-site. The draft states the general rule and omits the exception. Clocked Fill finds the omission and returns **`REWRITE`**.
+* **Injected Policy Note (Safety Case):** A policy document contains an instruction aimed at the assistant. Clocked Guard detects it before Rerank and returns **`HOLD`**.
 
-A `Procfile` is included for Render, Railway and Heroku-style platforms. On an ephemeral
-filesystem the audit log resets on redeploy; that is acceptable for the demo.
+---
 
-## API
+## API Reference
 
-| Route | Purpose |
-|---|---|
-| `POST /api/check` | JSON check. Returns the full result. |
-| `POST /api/check/stream` | Same check over SSE, with a `stage` event per step. |
-| `GET /api/samples` · `/api/samples/{id}` | The three example inputs. |
-| `GET /api/checks` | Recent audit rows (decisions and previews, not documents). |
-| `GET /api/stats` | Totals: checks, credits, verdict counts. |
-| `GET /api/health` | Key configured, streaming enabled. |
-
-Example:
+### `POST /api/check`
+Synchronous endpoint returning full JSON evaluation, authority traces, claim statuses, and Clocked metrics.
 
 ```bash
+TOKEN=$(curl -s https://docket-clocked.vercel.app/api/session \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+
 curl -s https://docket-clocked.vercel.app/api/check \
+  -H "X-Docket-Session: $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{
     "question": "Does an employee in France need approval to expense a monitor?",
     "draft": "Monitor reimbursement requires prior manager approval.",
     "country": "FR",
     "documents": [
-      {"title":"Global policy","jurisdiction":"Global","effective_date":"2026-01-01","precedence":0,"text":"..."},
-      {"title":"France annex","jurisdiction":"FR","effective_date":"2026-03-01","precedence":1,"text":"..."}
+      {
+        "title": "Global policy",
+        "jurisdiction": "Global",
+        "effective_date": "2026-06-01",
+        "precedence": 0,
+        "text": "Monitor reimbursement requires prior manager approval."
+      },
+      {
+        "title": "France annex",
+        "jurisdiction": "FR",
+        "effective_date": "2026-03-01",
+        "precedence": 1,
+        "text": "For employees in France, monitor reimbursement does not require prior manager approval."
+      }
     ]
   }'
 ```
 
-## What the result shows
+### Additional Endpoints
+* `GET /api/session`: Issues a signed, short-lived browser session token. The console calls this automatically.
+* `POST /api/check/stream`: Real-time Server-Sent Events (SSE) stage progress and final determination. The console uses this route.
+* `GET /api/samples` · `GET /api/samples/{id}`: Reference test cases.
+* `GET /api/checks`: Admin-only preview log. Requires `X-Docket-Admin` matching `DOCKET_ADMIN_TOKEN`; returns 404 otherwise.
+* `GET /api/stats`: Aggregate credit usage, latency, and verdict counts.
+* `GET /api/health`: Health status and Clocked API configuration check.
 
-- **A custom-first workspace**: the form opens blank. Worked examples are one tab away, and loading one switches back to the editable form with every field filled.
-- **A one-sentence verdict**: "2 of 2 claims contradict France annex. Rewrite before this reaches an employee."
-- **A cost line**: "One check: 9 credits · 2.2s · 3 Clocked calls · 0 of 2 claims supported."
-- **A before/after panel**: the draft with contradicted claims struck through, beside the governing clauses that must replace them.
-- **An authority trace** with provenance labels: `IN FORCE`, `SUPERSEDED`, `OUT OF SCOPE`, each with the rule that decided it.
-- **A claim table** with the governing passage for every claim, including combined claims that need two clauses.
-- **Raw Clocked responses** for a technical judge.
+`POST /api/check` and `/api/check/stream` require either the signed session token
+(`X-Docket-Session`) or a bearer `DOCKET_API_TOKEN`. Set a stable
+`DOCKET_SESSION_SECRET` in production so sessions survive across instances.
 
-## Failure behaviour
+---
 
-| Failure | Behaviour |
-|---|---|
-| 402 credits / spend limit | **Hold**, with the stage and message |
-| 409 idempotency conflict | **Hold**, no blind retry |
-| 429 rate limit | Bounded retry with backoff and jitter, then **Hold** |
-| 5xx / timeout | Bounded retry, then **Hold** |
-| 400 / 422 | **Hold** with the endpoint's detail |
-| Authority tie | **Hold** before any API call |
-| No governing clause | **Hold** |
-| No superseded document | Compare skipped; the decision still stands |
-| Missing draft | Validation error; no API call |
-| Check takes longer than 35 s | The browser stops waiting and says "Taking longer than expected"; the Run button is available for a retry |
+## Tech Stack
 
-Every retry reuses the same `Idempotency-Key` and payload. Each endpoint gets its own key.
+* **Backend:** Python 3.11+, [FastAPI](https://fastapi.tiangolo.com/), [Uvicorn](https://www.uvicorn.org/), [HTTPX](https://www.python-httpx.org/) (async client).
+* **Web Surfaces:** Dual-route setup:
+  - Landing & marketing overview served at `/` from `website/`.
+  - Interactive case desk served at `/console` (built with semantic HTML5, modern CSS, and Vanilla JS with **zero build step and zero npm dependencies**).
+* **Database:** SQLite with Write-Ahead Logging (`WAL`), running locally in development and `/tmp/docket.db` on serverless runtimes. On Vercel the preview log is per-instance and ephemeral; it is not an auditor-grade record.
+* **Resilience:** Bounded retries with exponential backoff and jitter for 429/5xx, unique UUID `Idempotency-Key` headers on all Clocked requests, and strict fail-safe `HOLD` defaults.
+* **Access control:** `/api/check` and `/api/check/stream` require a signed short-lived session from `GET /api/session` or a bearer `DOCKET_API_TOKEN`. `/api/checks` is admin-only.
+* **Abuse controls:** Check routes are rate-limited per IP and by a daily demo budget; session issuance has its own per-IP limit.
+* **Privacy:** Full policy texts exist only in memory during the check. The admin-only preview log stores truncated question previews ($\le 240$ chars) and draft previews ($\le 180$ chars).
 
-## Privacy
+---
 
-The audit log stores the decision, credits, latency, document titles and a short draft
-preview — not the full documents. Raw API responses are shown in the browser for the current
-session. The API key lives in the server environment and never reaches the browser.
+## Quickstart
 
-## Costs
+### Local Setup
+```bash
+# 1. Clone repository
+git clone https://github.com/j4yop/docket.git
+cd docket
 
-Measured on the three examples, live:
+# 2. Virtual environment & dependencies
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 
-| Case | Calls | Credits | Time |
-|---|---|---|---|
-| Clean access request | Rerank + Verify | 4 | ~0.6 s |
-| Precedence over recency | Rerank + Compare + Verify | 9 | ~2 s |
-| Expense policy update | Rerank + Compare + Verify | 9 | ~1.8 s |
+# 3. Environment configuration
+cp .env.example .env
+# Set CLOCKED_API_KEY=... in .env
 
-## Limitations
-
-- **Text only in the UI.** The API supports PDFs; the demo keeps the input text-first for reliability.
-- **Authority is explicit.** Jurisdiction, date and precedence are user-supplied. The app does not infer them from document content, because that is a business rule.
-- **Compare is not an entailment engine.** It finds differences between aligned clauses; Verify checks whether a claim is supported.
-- **A clean draft can still omit something.** Verify checks claims, not completeness.
-- **Single-tenant demo.** No auth; do not put real employee data on the public instance.
-
-## Rubric mapping
-
-| Criterion | How the app earns it |
-|---|---|
-| Practical usefulness (25) | A named buyer, a documented failure, a blocked publish, and a measurable outcome |
-| Core Clocked integration (30) | Rerank selects, Compare evidences, Verify decides; each is load-bearing |
-| Additional endpoints (15) | 3/3 in Verify, Compare, Rerank; Compare is skipped when there is only one source |
-| Implementation / UX (20) | A clear desk, real stage progress, citations, keyboard and mobile support |
-| Explanation / reproducibility (10) | README, architecture, 19 tests, failure table, raw JSON |
-
-## Layout
-
-```
-app.py             FastAPI routes, SSE, scan orchestration
-clocked_client.py  auth, idempotency, bounded retries, error classes
-authority.py       clause segmentation, authority resolver, clause alignment (pure)
-policy.py          verdict logic and claim splitting (pure)
-db.py              SQLite audit log, previews only
-samples.py         three editable example inputs
-static/            index.html, app.css, app.js (no build step)
-tests/             authority and policy tests
+# 4. Start the server
+uvicorn app:app --reload --port 8000
+# Marketing: http://127.0.0.1:8000
+# Gate Console: http://127.0.0.1:8000/console
 ```
 
-## Third-party code
+### Run Tests
+```bash
+pip install -r requirements-dev.txt
+python -m pytest -v
+```
+*39 unit tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, database path selection, coverage/omission policy, and verdict policies offline without requiring an API key.*
 
-No framework beyond FastAPI, Uvicorn and HTTPX. The frontend is hand-written HTML, CSS and
-JavaScript with no dependencies. All example content is synthetic.
+---
 
-Typefaces: **IBM Plex Sans** and **IBM Plex Mono**, self-hosted from Google Fonts under the
-SIL Open Font License. No images or stock assets are used; the stamp, reticle and pipeline
-diagram are CSS and inline geometry.
+## Rubric Mapping
 
-## What I would do with another week
+| Criterion | How Docket Delivers |
+|---|---|
+| **Practical Usefulness (25 pts)** | Directly solves the "grounded in the wrong source" failure mode for enterprise AI assistants. Provides automated gating with clear before/after replacement quotes. |
+| **Core Clocked Integration (30 pts)** | All three Clocked endpoints (**Rerank**, **Compare**, **Verify**) are load-bearing to the business logic. |
+| **Additional Endpoints (15 pts)** | Six meaningful endpoints across all three groups: Protect, Guard, Fill, Rerank, Compare, Verify. Each changes what the app stores, decides, or shows. Full group breadth and strong Best Overall breadth. |
+| **Implementation & UX (20 pts)** | Responsive red/black console, real SSE stage progress, Protect/Guard/Coverage stages, interactive diffs, import/export. Axe checks pass on the shipped home and console. |
+| **Explanation & Reproducibility (10 pts)** | Clean architecture, 39 offline unit tests, live Vercel deployment, transparent raw Clocked JSON inspect tabs. |
 
-- PDF input through Clocked's PDF mode, with the same gate.
-- A conflict register that persists across checks and shows age and owner.
-- A rewrite assistant that proposes the corrected sentence from the governing clause.
-- Auth and per-tenant keys for a real deployment.
+---
+
+## Attribution and license
+
+Docket's marketing page and console shell are original. Spline Sans and JetBrains Mono are self-hosted under the SIL Open Font License; the license texts are in `website/fonts/`. No third-party brand metadata, testimonials, blog posts, or social links remain in the served pages.
+
+MIT License. See [LICENSE](LICENSE) for details.
