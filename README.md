@@ -5,7 +5,7 @@
 [![Hackathon](https://img.shields.io/badge/HACKATHON-CLOCKED_BUILD_CHALLENGE-FEEA3B?style=for-the-badge&logoColor=black&labelColor=1e293b&color=FEEA3B)](https://clocked.rezolve.ai/challenge)
 [![Endpoints](https://img.shields.io/badge/CLOCKED_ENDPOINTS-9%2F9-38BDF8?style=for-the-badge&labelColor=1e293b&color=38BDF8)](https://clocked.rezolve.ai/docs)
 [![Benchmark](https://img.shields.io/badge/BENCHMARK-37%2F37-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#measured-accuracy)
-[![Tests](https://img.shields.io/badge/tests-71_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
+[![Tests](https://img.shields.io/badge/tests-72_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
 [![Python](https://img.shields.io/badge/python-3.11_%7C_3.12_%7C_3.13-3775A9?style=for-the-badge&logo=python&logoColor=white&labelColor=1e293b)](https://www.python.org/)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-docket--clocked.vercel.app-6366F1?style=for-the-badge&logo=vercel&logoColor=white&labelColor=1e293b)](https://docket-clocked.vercel.app)
 [![Console](https://img.shields.io/badge/Gate_Console-%2Fconsole-059669?style=for-the-badge&labelColor=1e293b)](https://docket-clocked.vercel.app/console)
@@ -310,7 +310,7 @@ pip install -r requirements-dev.txt
 python -m pytest -v
 ```
 
-71 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, the hash-chained ledger, coverage/omission policy, Compare verdict rules, Decide triage, and route authentication. The deterministic layers run without a Clocked key.
+72 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, the hash-chained ledger, coverage/omission policy, Compare verdict rules, Decide triage, and route authentication. The deterministic layers run without a Clocked key.
 
 ---
 

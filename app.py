@@ -887,7 +887,18 @@ async def run_check(
     ]
 
     # ---- policy integrity (deterministic, before authority) -------------
-    policy_envelopes, integrity_failures = await policy_registry.resolve(req.documents, documents)
+    try:
+        policy_envelopes, integrity_failures = await policy_registry.resolve(req.documents, documents)
+    except Exception as exc:
+        traceback.print_exc()
+        await begin("authority")
+        await finish("authority", 0, 0, {"integrity": "error", "reason": type(exc).__name__})
+        return await complete(
+            Decision.HOLD,
+            ["The policy registry could not be read. Nothing was published."],
+            ["check_failed"],
+            authority=None,
+        )
     policy_integrity = {
         "ok": not integrity_failures,
         "approved": len(policy_envelopes),

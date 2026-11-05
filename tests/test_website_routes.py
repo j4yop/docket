@@ -129,3 +129,32 @@ def test_ablate_skips_the_endpoint_without_recording(monkeypatch) -> None:
     assert body["simulation"] is True
     assert body["ablation"]["endpoint"] == "guard"
     assert "not written to the audit ledger" in body["ablation"]["note"]
+
+
+def test_check_holds_when_the_policy_registry_fails(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+
+    async def boom(*args, **kwargs):
+        raise RuntimeError("blob unavailable")
+
+    async def fake_append(payload, *, question, draft):
+        return {
+            "seq": 1,
+            "record_hash": "a" * 64,
+            "prev_hash": "0" * 64,
+        }
+
+    monkeypatch.setattr(module.policy_registry, "resolve", boom)
+    monkeypatch.setattr(module.ledger, "append", fake_append)
+    response = client.post(
+        "/api/check",
+        json=_check_payload(),
+        headers=_session_headers(),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["decision"] == "hold"
+    assert body["codes"] == ["check_failed"]
+    assert "policy registry could not be read" in body["reasons"][0]
