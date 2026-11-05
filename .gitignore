@@ -4,6 +4,7 @@
 
 # runtime state
 docket.db
+docket.db-*
 docket.db-wal
 docket.db-shm
 
@@ -23,9 +24,3 @@ venv/
 
 # keep the template
 !.env.example
-
-# legacy runtime databases
-docket.db
-docket.db-*
-docket.db
-docket.db-*

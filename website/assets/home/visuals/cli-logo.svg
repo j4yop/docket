@@ -1,3 +1,5 @@
-<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="16.0004" height="14" viewBox="0 0 16.0004 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path id="Union" d="M0 0" fill="#4C5754"/>
+<svg width="16" height="14" viewBox="0 0 16 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="0.75" y="0.75" width="14.5" height="12.5" stroke="#4C5754" stroke-width="1.5"/>
+<path d="M5 3.5H3.5V5M12.5 3.5V5M5 10.5H3.5V9M12.5 10.5V9" stroke="#4C5754" stroke-width="1.5"/>
+<circle cx="8" cy="7" r="1.8" fill="#4C5754"/>
 </svg>
