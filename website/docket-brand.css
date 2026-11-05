@@ -42,30 +42,17 @@ header {
   visibility: visible;
 }
 
-/* The header is transparent by design. When it stays visible over scrolled
-   content, give it a solid backdrop. The logo frame and GitHub tab are fixed
-   layers behind the header, so raise them above it instead of letting the
-   backdrop hide them. */
-body > header {
-  background: #020503 !important;
-}
-body > header > div:first-child {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-/* The logo tab and GitHub tab are fixed layers behind the header. Raise them
-   above the backdrop so they stay visible, and move GitHub left so it does
-   not cover the Open Console label. */
-div.pointer-events-none.fixed.inset-0[class*="z-(--z-frame)"] {
-  z-index: 130 !important;
-}
-a[class*="group/book"] {
-  z-index: 130 !important;
-  right: 184px !important;
-}
 header.dk-header-hidden {
   transform: none;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
+}
+
+/* The console's gate styles tighten the header nav gap to 1.25rem. The
+   reference nav uses 1.5rem, so keep both pages on the same 12px item padding. */
+@media (min-width: 1024px) {
+  header nav[data-header-nav] {
+    --nav-gap: 1.5rem !important;
+  }
 }
