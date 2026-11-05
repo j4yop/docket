@@ -829,7 +829,6 @@
     applyLogo();
     applyCtas();
     makeGithubLinks();
-    syncHeader();
   }
 
   // The header demo button carries a React click handler. Capture the click
