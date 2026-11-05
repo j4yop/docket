@@ -1,0 +1,133 @@
+{
+  "suite": "heldout",
+  "algorithm": "sha256",
+  "locked_at": "2026-11-05T18:16:42+00:00",
+  "case_count": 31,
+  "cases": [
+    {
+      "id": "holdout-auth-procurement",
+      "sha256": "5a1ddf0ea282bae48a430cecc16ae1d99b9b73a1eec73ef1cbd8c35d0e61b38c"
+    },
+    {
+      "id": "holdout-auth-records",
+      "sha256": "080343451c25a0db21a99951850d04958821d3a05afcdf209a419cf4e0c297eb"
+    },
+    {
+      "id": "holdout-auth-contractor",
+      "sha256": "df6a3af5c514ddbc3589f1b3e003fe436aef6fe295e5de15d3f13b5a16776072"
+    },
+    {
+      "id": "holdout-auth-future",
+      "sha256": "0847db7cb84e8edb212a4afa48148c9567c0a29907f8ad0846a61608969ae404"
+    },
+    {
+      "id": "holdout-auth-expired",
+      "sha256": "611efde0ef4ce148b151f3f4c25c6e9ba9f19aaa07812d1224a4854ed38e3a01"
+    },
+    {
+      "id": "holdout-auth-scope",
+      "sha256": "9edfae421d08483dbfd9cf2038364ca431df3166035c7672bfa3cad7cada166f"
+    },
+    {
+      "id": "holdout-auth-tie",
+      "sha256": "b7b48e0bcea8c6c3dbdab068b4e63e2e37123aeb08ccc88780172edad7457973"
+    },
+    {
+      "id": "holdout-version-hotel",
+      "sha256": "46ab928068fcd2bd4dccdd3b9eea3caaa41034e6316ac55c93a0cc66703944f1"
+    },
+    {
+      "id": "holdout-version-leave",
+      "sha256": "21e4ab4d6cb0ac09acea3ff8422b7c7f815ac1bdb161e36fc8621fbf7f17a808"
+    },
+    {
+      "id": "holdout-version-gifts",
+      "sha256": "a2feb8efe5084a7a3bf0fec4d27509574f60094ccfb266fc8399a3f7716e6bdc"
+    },
+    {
+      "id": "holdout-version-current",
+      "sha256": "82943fa9b84f44ec7f6b5d39a7f999b90b8abfa346f88bdde4bc32be585c141a"
+    },
+    {
+      "id": "holdout-omission-incident",
+      "sha256": "4273aa44360b27bfbae7e5f4df90ab9e82af656b73b1c9c08c7861e1334d3898"
+    },
+    {
+      "id": "holdout-omission-vendor",
+      "sha256": "ab77e5fc4fbc892654359a74806b7a0bf1ec22cb8dd5ee9611a0edb6795687b2"
+    },
+    {
+      "id": "holdout-omission-remote",
+      "sha256": "e1c7a93f829f47aa7f9eaa4dd360fa688b14a67e55ef11633357f032c5c74bc9"
+    },
+    {
+      "id": "holdout-omission-complete",
+      "sha256": "aa10dabb7cdfdc2b7c59a81308e08ec87763b1553bab8c37982ef33f86ec19a3"
+    },
+    {
+      "id": "holdout-clean-security",
+      "sha256": "7cbbae571748f9077571989ee4bff6cd71d00f1a3330021141d6d912884332e0"
+    },
+    {
+      "id": "holdout-clean-data",
+      "sha256": "2dbffb098c6b19b0fe4cd6df873af2997b5d7e93dbc0e45391624e08eef3761d"
+    },
+    {
+      "id": "holdout-clean-code",
+      "sha256": "718fd50630fdaf3994f9387f4e9729f264e30340bdea6b6d60328ed018aef3b9"
+    },
+    {
+      "id": "holdout-clean-probation",
+      "sha256": "01c315e2d7ee55d64bdf48f6e4dc6fa7807234bccfc623ba7b5ab81ae8cc20d7"
+    },
+    {
+      "id": "holdout-clean-benign-imperative",
+      "sha256": "0be6797cdf919f8ecda4c6d91574c55c2b2ed03e6125df1419977d66409e0fea"
+    },
+    {
+      "id": "holdout-injection-mild",
+      "sha256": "bc86761870c8493acaab4935eb2dfdde3b79d425c0be403aeae73bd9838e2b4d"
+    },
+    {
+      "id": "holdout-injection-draft",
+      "sha256": "b8dc9e4f9642856479e6ca0467aa0f2493eab4b6828f53fb6bcca8413b6dab8b"
+    },
+    {
+      "id": "holdout-injection-question",
+      "sha256": "3bee27d5c97d397ddc1b25bd932c9a1d4727c9c426c29d8fd98c29e3961b0953"
+    },
+    {
+      "id": "holdout-injection-obfuscated",
+      "sha256": "e3e29085a3f94ba8260e5d5edae6027723aa39b36730134ce064a4e1ec10b98a"
+    },
+    {
+      "id": "holdout-script-malicious",
+      "sha256": "1854e15439f2da4609fbd0044cece8190e34eb7061552f501316e4606f727432"
+    },
+    {
+      "id": "holdout-script-safe",
+      "sha256": "8e616134c025688995357f93abb6250dcd7afec8748090e3107b03be6280c59a"
+    },
+    {
+      "id": "holdout-script-destructive",
+      "sha256": "c7cdca5aed35f3b37c82f2e77d833a8dc64dde2fec8913e9a266b35e5167a99a"
+    },
+    {
+      "id": "holdout-malformed-expiry",
+      "sha256": "23ebecd0fb7709ab4bb92f01de7a8bbe43c2fbc96963504084c41f4d5fbb8222"
+    },
+    {
+      "id": "holdout-malformed-metadata",
+      "sha256": "40f9d3f0e9a56ececc37674491bd045b1ca53b42e290b79d0aa7f3a69c6b04e0"
+    },
+    {
+      "id": "holdout-integrity-unapproved",
+      "sha256": "05a1611e3b52c78406f0910d3d24def3a59f38712779787ebcbe326c88dcbd21"
+    },
+    {
+      "id": "holdout-integrity-tampered",
+      "sha256": "0b11f263622eb319f8fbf887e54d858da60a9257a13e6a68c000dfd7b946043f"
+    }
+  ],
+  "sha256": "e8de3c5766edfa31c56c50a8fdd5f66e832a264f57f6cfa97ccfa6afd657b903"
+}
