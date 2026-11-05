@@ -41,6 +41,21 @@ header {
   opacity: 1;
   visibility: visible;
 }
+
+/* The header is transparent by design. When it stays visible over scrolled
+   content, give the area from the nav to the CTA a dark backdrop. The logo
+   tab lives behind the header at the far left, so leave that area transparent. */
+body > header > div:first-child {
+  background: linear-gradient(
+    to right,
+    transparent 0,
+    transparent 203px,
+    rgba(2, 5, 3, 0.94) 204px,
+    rgba(2, 5, 3, 0.94) calc(100% - 347px),
+    transparent calc(100% - 347px)
+  );
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
+}
 header.dk-header-hidden {
   transform: none;
   opacity: 1;
