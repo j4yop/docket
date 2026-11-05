@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1760" height="430" viewBox="0 0 1760 430" role="img" aria-labelledby="title desc">
-  <title id="title">Docket Automated Publish Gate Pipeline</title>
+  <title id="title">Docket - Automated Publish Gate</title>
   <desc id="desc">Policy inputs pass through deterministic authority resolution, then Clocked Protect, Guard, Inspect, Rerank, Compare, Fill and Verify before a Publish, Rewrite or Hold verdict.</desc>
   <rect width="1760" height="430" rx="18" fill="#08090A"/>
   <rect x="1" y="1" width="1758" height="428" rx="17" fill="none" stroke="#2A302D"/>
 
-  <text x="64" y="62" fill="#F5F7F5" font-family="ui-sans-serif, -apple-system, Segoe UI, sans-serif" font-size="30" font-weight="700" letter-spacing="-0.6">Docket — automated publish gate</text>
+  <text x="64" y="62" fill="#F5F7F5" font-family="ui-sans-serif, -apple-system, Segoe UI, sans-serif" font-size="30" font-weight="700" letter-spacing="-0.6">Docket - Automated Publish Gate</text>
   <text x="64" y="92" fill="#9AA5A1" font-family="ui-sans-serif, -apple-system, Segoe UI, sans-serif" font-size="15">Authority is resolved before any model judgment. Every Clocked output changes what the gate does.</text>
 
   <!-- input chips -->
