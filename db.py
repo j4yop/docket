@@ -8,7 +8,22 @@ import sqlite3
 import threading
 from datetime import datetime, timezone
 
-DB_PATH = os.environ.get("DOCKET_DB", "./docket.db")
+def _default_db_path() -> str:
+    """Pick a writable database path.
+
+    Vercel serves the app from a read-only directory, so the local default
+    cannot be created there. `/tmp` is the writable scratch space available
+    inside the function sandbox.
+    """
+    explicit = os.environ.get("DOCKET_DB", "").strip()
+    if explicit:
+        return explicit
+    if os.environ.get("VERCEL"):
+        return "/tmp/docket.db"
+    return "./docket.db"
+
+
+DB_PATH = _default_db_path()
 _lock = threading.Lock()
 
 
