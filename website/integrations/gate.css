@@ -407,7 +407,7 @@ body.gate-mode::before { display: none !important; }
   text-transform: uppercase;
   color: var(--gate-muted);
 }
-.gate-policies-head span:last-child { color: var(--gate-dim); }
+.gate-policies-head span:last-child { color: var(--gate-muted); }
 .gate-doc-tabs {
   display: flex;
   gap: 3px;
@@ -944,7 +944,7 @@ body.gate-mode::before { display: none !important; }
 .gate-policy-failed { border-left: 2px solid var(--gate-red); }
 .gate-policy-failed .gate-policy-main b { color: var(--gate-red); }
 .gate-doc-approval { grid-template-columns: 1fr 1fr; margin-top: 9px; }
-.gate-doc-hint { margin-top: 6px; font-size: 12px; line-height: 1.4; color: var(--gate-faint); }
+.gate-doc-hint { margin-top: 6px; font-size: 12px; line-height: 1.4; color: var(--gate-muted); }
 
 /* ---------------------------------------------------------- counterfactual */
 .gate-ablation-controls { display: flex; align-items: center; gap: 8px; padding-top: 10px; flex-wrap: wrap; }

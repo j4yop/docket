@@ -1961,7 +1961,10 @@ async def signup_redirect() -> RedirectResponse:
 @app.get("/console")
 @app.get("/console/")
 async def console() -> FileResponse:
-    return FileResponse(WEBSITE_DIR / "integrations" / "index.html")
+    return FileResponse(
+        WEBSITE_DIR / "integrations" / "index.html",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @app.get("/integrations")
@@ -2184,7 +2187,10 @@ async def stats() -> dict:
 
 @app.get("/ledger")
 async def ledger_page() -> FileResponse:
-    return FileResponse(WEBSITE_DIR / "ledger.html")
+    return FileResponse(
+        WEBSITE_DIR / "ledger.html",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @app.get("/api/health")
