@@ -849,26 +849,8 @@
     true
   );
 
-  // The transparent header fades out once the page moves past the hero. It
-  // only returns near the top, so it can never sit over scrolled content.
-  var headerTicking = false;
-  function syncHeader() {
-    headerTicking = false;
-    var siteHeader = document.querySelector("header");
-    if (!siteHeader) return;
-    siteHeader.classList.toggle("dk-header-hidden", window.scrollY >= 80);
-  }
-  window.addEventListener(
-    "scroll",
-    function () {
-      if (headerTicking) return;
-      headerTicking = true;
-      requestAnimationFrame(syncHeader);
-    },
-    { passive: true }
-  );
-  window.addEventListener("resize", syncHeader, { passive: true });
-  window.addEventListener("load", syncHeader);
+  // The header stays visible while the page scrolls. Hiding it made the
+  // navigation and console link disappear as soon as a visitor scrolled.
 
   apply();
   window.addEventListener("load", function () {

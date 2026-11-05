@@ -25,6 +25,7 @@ import storage
 GENESIS = "0" * 64
 AUDIT_PREFIX = "audit/"
 CHECKPOINT_PREFIX = "ledger/checkpoints/"
+CLAIM_PREFIX = "ledger/claims/"
 _LOCKS: dict[int, asyncio.Lock] = {}
 
 
@@ -82,6 +83,7 @@ def _record(payload: dict, *, seq: int, prev_hash: str, checked_at: str, questio
     authority = payload.get("authority") or {}
     governing = authority.get("governing") or {}
     record = {
+        "kind": "check",
         "seq": seq,
         "checked_at": checked_at,
         "decision": payload.get("decision"),
@@ -115,33 +117,115 @@ def _record(payload: dict, *, seq: int, prev_hash: str, checked_at: str, questio
     return record
 
 
-async def append(payload: dict, *, question: str, draft: str) -> dict:
+async def _claim(seq: int) -> bool:
+    return await storage.claim(
+        f"{CLAIM_PREFIX}{seq:08d}.json",
+        {
+            "seq": seq,
+            "claimed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        },
+    )
+
+
+async def _append(build) -> dict:
+    """Allocate a sequence, wait for the predecessor, then write one record.
+
+    The claim object is an atomic create. Two app instances that read the same
+    head cannot both own the same sequence: the loser retries after the winner
+    advances the head. This is the cross-instance lock that a per-process
+    asyncio lock cannot provide.
+    """
     async with _lock():
-        current = await head()
-        seq = int(current.get("seq") or 0) + 1
-        checked_at = payload.get("checked_at") or datetime.now(timezone.utc).isoformat(timespec="seconds")
-        record = _record(
+        for _ in range(80):
+            current = await head()
+            seq = int(current.get("seq") or 0) + 1
+            if not await _claim(seq):
+                await asyncio.sleep(0.02 + secrets.randbelow(20) / 1000)
+                continue
+
+            previous = current
+            for _ in range(500):
+                previous = await head()
+                if int(previous.get("seq") or 0) == seq - 1:
+                    break
+                if int(previous.get("seq") or 0) >= seq:
+                    raise RuntimeError("The ledger sequence was written by another instance.")
+                await asyncio.sleep(0.01)
+            else:
+                raise RuntimeError("The ledger head did not advance to the claimed sequence.")
+
+            checked_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            record = build(seq, previous.get("hash") or GENESIS, checked_at)
+            day = checked_at[:10]
+            path = f"{AUDIT_PREFIX}{day}/{seq:08d}-{secrets.token_hex(4)}.json"
+            await storage.put_json(path, record, allow_overwrite=False)
+            checkpoint = f"{CHECKPOINT_PREFIX}{seq:08d}-{record['record_hash'][:12]}.json"
+            await storage.put_json(
+                checkpoint,
+                {
+                    "seq": seq,
+                    "record_hash": record["record_hash"],
+                    "checked_at": checked_at,
+                },
+                allow_overwrite=False,
+            )
+            return record
+    raise RuntimeError("The ledger could not allocate a sequence.")
+
+
+async def append(payload: dict, *, question: str, draft: str) -> dict:
+    checked_at = payload.get("checked_at") or datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    def build(seq: int, prev_hash: str, written_at: str) -> dict:
+        return _record(
             payload,
             seq=seq,
-            prev_hash=current.get("hash") or GENESIS,
-            checked_at=checked_at,
+            prev_hash=prev_hash,
+            checked_at=checked_at or written_at,
             question=question,
             draft=draft,
         )
-        day = checked_at[:10]
-        path = f"{AUDIT_PREFIX}{day}/{seq:08d}-{secrets.token_hex(4)}.json"
-        await storage.put_json(path, record, allow_overwrite=False)
-        checkpoint = f"{CHECKPOINT_PREFIX}{seq:08d}-{record['record_hash'][:12]}.json"
-        await storage.put_json(
-            checkpoint,
-            {
-                "seq": seq,
-                "record_hash": record["record_hash"],
-                "checked_at": checked_at,
-            },
-            allow_overwrite=False,
+
+    return await _append(build)
+
+
+def _event_record(event: dict, *, seq: int, prev_hash: str, checked_at: str) -> dict:
+    resolution = event.get("resolution") or {}
+    record = {
+        "kind": "review_event",
+        "seq": seq,
+        "checked_at": checked_at,
+        "event": event.get("event") or "review_event",
+        "review_id": event.get("review_id"),
+        "review_status": event.get("review_status"),
+        "action": event.get("action") or resolution.get("action"),
+        "actor": event.get("actor") or resolution.get("resolved_by"),
+        "note": str(event.get("note") or resolution.get("note") or "")[:500],
+        "check_seq": event.get("check_seq"),
+        "check_hash": event.get("check_hash"),
+        "decision": None,
+        "codes": [],
+        "governing": {},
+        "credits": 0,
+        "api_calls": 0,
+        "latency_ms": 0,
+        "question_preview": str(event.get("question") or "")[:240],
+        "draft_preview": str(event.get("draft") or "")[:180].replace("\n", " "),
+        "reasons": [str(event.get("summary") or "Review queue event")[:300]],
+        "prev_hash": prev_hash,
+    }
+    record["record_hash"] = _digest(record)
+    return record
+
+
+async def append_event(event: dict) -> dict:
+    """Anchor a review-queue decision in the same hash chain as checks."""
+    checked_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return await _append(
+        lambda seq, prev_hash, written_at: _event_record(
+            event, seq=seq, prev_hash=prev_hash, checked_at=checked_at or written_at
         )
-        return record
+    )
 
 
 async def verify() -> dict:
@@ -220,9 +304,13 @@ async def verify() -> dict:
         }
 
     current = await head()
+    checks = sum(1 for record in records if record.get("kind") != "review_event")
+    events = sum(1 for record in records if record.get("kind") == "review_event")
     return {
         "ok": True,
         "records": len(records),
+        "checks": checks,
+        "events": events,
         "broken_at": None,
         "detail": "The chain is intact.",
         "head": current,

@@ -38,6 +38,7 @@
     precedence: 0,
     approved_by: "",
     approval_reference: "",
+    policy_envelope: null,
     text: "",
   });
 
@@ -133,6 +134,21 @@
       copyRaw: $("gate-copy-raw"),
       recentBody: $("gate-recent-body"),
       recentEmpty: $("gate-recent-empty"),
+      adminToken: $("gate-admin-token"),
+      approvePolicy: $("gate-approve-policy"),
+      approveStatus: $("gate-approve-status"),
+      approvalEnvelope: $("gate-approval-envelope"),
+      queueToken: $("gate-queue-token"),
+      reviewFilter: $("gate-review-filter"),
+      reviewLoad: $("gate-review-load"),
+      reviewStatus: $("gate-review-status"),
+      reviewMeta: $("gate-review-meta"),
+      reviewList: $("gate-review-list"),
+      healthMeta: $("gate-health-meta"),
+      healthLedger: $("gate-health-ledger"),
+      healthPolicy: $("gate-health-policy"),
+      healthStorage: $("gate-health-storage"),
+      healthTime: $("gate-health-time"),
     };
 
     state.documents = [blankDoc()];
@@ -388,6 +404,9 @@
     refs.exportButton.addEventListener("click", exportCase);
     refs.clearButton.addEventListener("click", clearAll);
     refs.ablateRun.addEventListener("click", runAblation);
+    refs.approvePolicy.addEventListener("click", approveActivePolicy);
+    refs.reviewLoad.addEventListener("click", loadReviews);
+    refs.reviewList.addEventListener("click", onReviewAction);
 
     refs.examples.addEventListener("click", (event) => {
       const card = event.target.closest(".gate-example");
@@ -482,6 +501,11 @@
     });
 
     const doc = state.documents[state.activeDoc] || blankDoc();
+    const trust = doc.policy_envelope
+      ? String(doc.policy_envelope.approval_type || "approved")
+      : doc.approved_by
+        ? "operator"
+        : "unapproved";
     refs.docEditor.innerHTML = `
       <div class="gate-doc-grid">
         <div class="gate-field">
@@ -518,7 +542,7 @@
           <input id="gate-doc-reference" type="text" maxlength="200" placeholder="Ticket, email or date" data-field="approval_reference" />
         </div>
       </div>
-      <p class="gate-doc-hint">Built-in examples are pre-approved. A custom policy needs an approval reference, or an admin approval, before the gate can publish.</p>
+      <p class="gate-doc-hint"><span class="gate-trust" data-trust="${esc(trust)}">${esc(trust)}</span>Built-in examples are pre-approved. A custom policy needs an approval reference, or an admin approval, before the gate can publish.</p>
       <div class="gate-field">
         <label for="gate-doc-text">Policy text</label>
         <textarea id="gate-doc-text" rows="7" maxlength="60000" placeholder="Paste the policy text…" data-field="text"></textarea>
@@ -595,6 +619,7 @@
         precedence: Number(doc.precedence) || 0,
         approved_by: (doc.approved_by || "").trim(),
         approval_reference: (doc.approval_reference || "").trim(),
+        policy_envelope: doc.policy_envelope || null,
         text: doc.text.trim(),
       })),
     };
@@ -1150,16 +1175,27 @@
       return;
     }
     refs.policies.innerHTML = envelopes
-      .map((envelope) => `<div class="gate-policy">
+      .map((envelope) => {
+        const trust = String(envelope.approval_type || "approved");
+        const trustLabel =
+          trust === "seeded"
+            ? "Seeded · signed at startup"
+            : trust === "admin"
+              ? "Admin-approved"
+              : trust === "operator"
+                ? "Operator-attested · one check"
+                : trust;
+        return `<div class="gate-policy">
         <div class="gate-policy-main">
           <b>${esc(envelope.title || "Policy")}</b>
-          <span>${esc(envelope.approval_type || "approved")} · ${esc(envelope.approved_by || "")}</span>
+          <span><span class="gate-trust" data-trust="${esc(trust)}">${esc(trustLabel)}</span> · ${esc(envelope.approved_by || "")}</span>
         </div>
         <div class="gate-policy-meta">
           <span>${esc(envelope.policy_id || "")}</span>
           <span title="${esc(envelope.content_hash || "")}">${esc(String(envelope.content_hash || "").slice(0, 12))}</span>
         </div>
-      </div>`)
+      </div>`;
+      })
       .join("");
   }
 
@@ -1525,13 +1561,247 @@
   }
 
   /* -------------------------------------------------------------- samples */
+  function adminTokenValue(primary) {
+    const first = primary && primary.value ? primary.value.trim() : "";
+    if (first) return first;
+    const other = primary === refs.adminToken ? refs.queueToken : refs.adminToken;
+    return other && other.value ? other.value.trim() : "";
+  }
+
+  function showAdminError(target, message) {
+    if (!target) return;
+    target.dataset.state = "error";
+    target.textContent = message;
+  }
+
+  function showAdminOk(target, message) {
+    if (!target) return;
+    target.dataset.state = "ok";
+    target.textContent = message;
+  }
+
+  async function approveActivePolicy() {
+    const doc = state.documents[state.activeDoc];
+    const token = adminTokenValue(refs.adminToken);
+    if (!token) {
+      showAdminError(refs.approveStatus, "Enter the admin token. The approval endpoint returns 404 without it.");
+      return;
+    }
+    if (!doc || !doc.title.trim() || doc.text.trim().length < 20) {
+      showAdminError(refs.approveStatus, "The active policy needs a title and at least 20 characters of text.");
+      return;
+    }
+    refs.approvePolicy.disabled = true;
+    refs.approveStatus.dataset.state = "";
+    refs.approveStatus.textContent = "Signing the active policy…";
+    try {
+      const response = await fetch("/api/policies/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Docket-Admin": token },
+        body: JSON.stringify({
+          title: doc.title.trim(),
+          text: doc.text.trim(),
+          policy_id: null,
+          version: null,
+          jurisdiction: doc.jurisdiction.trim() || "Global",
+          effective_date: doc.effective_date || null,
+          expiry_date: doc.expires_date || null,
+          precedence: Number(doc.precedence) || 0,
+          approved_by: (doc.approved_by || "").trim() || "Docket console admin",
+        }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || !body || !body.policy) {
+        const detail = (body && (body.detail || body.error)) || `HTTP ${response.status}`;
+        throw new Error(
+          response.status === 404
+            ? "Admin token not accepted. The approval endpoint returns 404 by design."
+            : typeof detail === "string"
+              ? detail
+              : JSON.stringify(detail)
+        );
+      }
+      const envelope = body.policy;
+      doc.policy_envelope = envelope;
+      renderDocs();
+      refs.approvalEnvelope.hidden = false;
+      refs.approvalEnvelope.innerHTML = `
+        <div><b>Approval</b> ${esc(envelope.approval_type || "admin")} · ${esc(envelope.approved_by || "")}</div>
+        <div><b>Policy id</b> ${esc(envelope.policy_id || "—")}</div>
+        <div><b>Content hash</b> <code>${esc(envelope.content_hash || "")}</code></div>
+        <div><b>Signed at</b> ${esc(envelope.approved_at || "—")}</div>
+        <div><b>Signature</b> <code>${esc(String(envelope.signature || "").slice(0, 24))}…</code></div>`;
+      showAdminOk(
+        refs.approveStatus,
+        "The active policy is signed and will be sent with the next check. Editing a signed field now produces a tamper HOLD."
+      );
+    } catch (error) {
+      showAdminError(refs.approveStatus, `Approval failed. ${error.message}`);
+    } finally {
+      refs.approvePolicy.disabled = false;
+    }
+  }
+
+  async function loadReviews() {
+    const token = adminTokenValue(refs.queueToken);
+    if (!token) {
+      showAdminError(refs.reviewStatus, "Enter the admin token to read the queue. The endpoint returns 404 without it.");
+      return;
+    }
+    refs.reviewLoad.disabled = true;
+    refs.reviewStatus.dataset.state = "";
+    refs.reviewStatus.textContent = "Reading the durable queue…";
+    try {
+      const status = refs.reviewFilter.value;
+      const query = status ? `?status=${encodeURIComponent(status)}&limit=50` : "?limit=50";
+      const response = await fetch(`/api/reviews${query}`, {
+        cache: "no-store",
+        headers: { "X-Docket-Admin": token },
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || !body) {
+        throw new Error(
+          response.status === 404
+            ? "Admin token not accepted. The review endpoint returns 404 by design."
+            : (body && (body.detail || body.error)) || `HTTP ${response.status}`
+        );
+      }
+      renderReviews(body.reviews || [], body.counts || {});
+      showAdminOk(refs.reviewStatus, "Queue loaded from durable storage.");
+    } catch (error) {
+      showAdminError(refs.reviewStatus, `Queue unavailable. ${error.message}`);
+    } finally {
+      refs.reviewLoad.disabled = false;
+    }
+  }
+
+  function renderReviews(records, counts) {
+    const open = Number(counts.open || 0);
+    const assigned = Number(counts.assigned || 0);
+    const resolved = Number(counts.resolved || 0);
+    refs.reviewMeta.textContent = `${open} open · ${assigned} assigned · ${resolved} resolved`;
+    if (!records.length) {
+      refs.reviewList.innerHTML = '<p class="gate-review-empty">No review records match this filter.</p>';
+      return;
+    }
+    refs.reviewList.innerHTML = records
+      .map((review) => {
+        const id = String(review.id || "");
+        const status = String(review.status || "open");
+        const check = review.check || {};
+        const resolution = review.resolution || null;
+        const codes = (review.codes || []).join(", ") || "no codes";
+        const resolvedCopy = resolution
+          ? `<p class="gate-review-meta">Resolved: ${esc(resolution.action)} by ${esc(resolution.resolved_by || "")} — ${esc(resolution.note || "")}${resolution.ledger ? ` · ledger #${esc(resolution.ledger.seq)}` : ""}</p>`
+          : "";
+        const actions =
+          status === "resolved"
+            ? ""
+            : `<div class="gate-review-actions">
+                <input data-assignee placeholder="Assignee" value="${esc(review.assigned_to || "")}" aria-label="Assignee for ${esc(id)}" />
+                <button type="button" data-review-action="assign">Assign</button>
+                <input data-note placeholder="Resolution note" aria-label="Resolution note for ${esc(id)}" />
+                <button type="button" data-review-action="approve">Approve</button>
+                <button type="button" data-review-action="reject">Reject</button>
+              </div>`;
+        return `<article class="gate-review-card" data-review-id="${esc(id)}">
+          <div class="gate-review-head"><b>${esc(id)}</b><span>${esc(status)}</span></div>
+          <p class="gate-review-question">${esc(review.question || "—")}</p>
+          <p class="gate-review-meta">${esc(review.decision || "hold")} · ${esc(codes)} · audit #${esc(check.seq == null ? "—" : check.seq)}${review.assigned_to ? ` · assigned to ${esc(review.assigned_to)}` : ""}</p>
+          ${resolvedCopy}
+          ${actions}
+        </article>`;
+      })
+      .join("");
+  }
+
+  async function onReviewAction(event) {
+    const button = event.target.closest("button[data-review-action]");
+    if (!button) return;
+    const card = button.closest("[data-review-id]");
+    const id = card && card.dataset.reviewId;
+    if (!id) return;
+    const action = button.dataset.reviewAction;
+    const token = adminTokenValue(refs.queueToken);
+    if (!token) {
+      showAdminError(refs.reviewStatus, "Enter the admin token first.");
+      return;
+    }
+    button.disabled = true;
+    try {
+      let url;
+      let payload;
+      if (action === "assign") {
+        const assignee = card.querySelector("[data-assignee]").value.trim();
+        if (!assignee) throw new Error("Enter an assignee.");
+        url = `/api/reviews/${encodeURIComponent(id)}/assign`;
+        payload = { assignee };
+      } else {
+        const note = card.querySelector("[data-note]").value.trim();
+        if (note.length < 3) throw new Error("Enter a resolution note.");
+        url = `/api/reviews/${encodeURIComponent(id)}/resolve`;
+        payload = {
+          action,
+          note,
+          resolved_by: (card.querySelector("[data-assignee]").value.trim() || "console-admin"),
+        };
+      }
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Docket-Admin": token },
+        body: JSON.stringify(payload),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || !body) {
+        throw new Error((body && (body.detail || body.error)) || `HTTP ${response.status}`);
+      }
+      const audit = body.audit ? ` Ledger event #${body.audit.seq}.` : "";
+      await loadReviews();
+      showAdminOk(refs.reviewStatus, `Review ${id} ${action === "assign" ? "assigned" : action + "d"}.${audit}`);
+    } catch (error) {
+      showAdminError(refs.reviewStatus, `Action failed. ${error.message}`);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   async function checkHealth() {
     try {
       const response = await fetch("/api/health", { cache: "no-store" });
       const data = await response.json();
+      renderHealth(data || {});
       setLive(Boolean(data && data.ok));
     } catch {
+      renderHealth({ ok: false });
       setLive(false);
+    }
+  }
+
+  function renderHealth(data) {
+    const ledger = data.ledger || {};
+    const policy = data.policy_registry || {};
+    const ok = Boolean(data.ok);
+    if (refs.healthMeta) {
+      refs.healthMeta.dataset.state = ok ? "ok" : "error";
+      refs.healthMeta.textContent = ok ? "Verified" : "Attention";
+    }
+    if (refs.healthLedger) {
+      refs.healthLedger.dataset.state = ledger.ok ? "ok" : "error";
+      refs.healthLedger.textContent = ledger.ok
+        ? `Verified · ${ledger.records || 0} records (${ledger.checks || 0} checks, ${ledger.events || 0} events)`
+        : `Broken${ledger.broken_at != null ? ` at #${ledger.broken_at}` : ""} · ${ledger.detail || "not verified"}`;
+    }
+    if (refs.healthPolicy) {
+      refs.healthPolicy.dataset.state = policy.ok ? "ok" : "error";
+      refs.healthPolicy.textContent = policy.ok
+        ? `${policy.registered || 0} / ${policy.count || 0} signed`
+        : `${policy.registered || 0} / ${policy.count || 0} signed · ${(policy.missing || []).length} missing, ${(policy.invalid || []).length} invalid`;
+    }
+    if (refs.healthStorage) {
+      refs.healthStorage.textContent = `${data.audit_backend || "unknown"}${data.durable_audit ? " · durable" : " · per-instance fallback"}`;
+    }
+    if (refs.healthTime) {
+      refs.healthTime.textContent = data.last_verified_at ? new Date(data.last_verified_at).toLocaleString() : "—";
     }
   }
 
@@ -1590,6 +1860,7 @@
         effective_date: String(doc.effective_date || ""),
         expires_date: String(doc.expires_date || ""),
         precedence: Number(doc.precedence) || 0,
+        policy_envelope: doc.policy_envelope || null,
         text: String(doc.text || ""),
       }));
       if (!state.documents.length) state.documents = [blankDoc()];
@@ -1636,6 +1907,7 @@
       effective_date: String(doc.effective_date || "").slice(0, 10),
       expires_date: String(doc.expires_date || "").slice(0, 10),
       precedence: Number(doc.precedence) || 0,
+      policy_envelope: doc.policy_envelope || null,
       text: String(doc.text || "").slice(0, 60000),
     }));
     if (!state.documents.length) state.documents = [blankDoc()];

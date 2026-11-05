@@ -1,7 +1,7 @@
 # Docket benchmark results
 
-**Run:** 2026-11-05T12:21:44+00:00  
-**Mode:** live  
+**Run:** 2026-11-05T12:21:44+00:00
+**Mode:** live
 **Cases:** 37
 
 ## Summary

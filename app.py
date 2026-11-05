@@ -37,6 +37,7 @@ from pydantic import BaseModel, Field
 import db
 import ledger
 import policy_registry
+import reviews
 import storage
 from authority import (
     Clause,
@@ -79,6 +80,8 @@ _CHECK_RATE: dict[str, list[float]] = {}
 _CHECK_DAILY: dict[str, int] = {}
 _SESSION_RATE: dict[str, list[float]] = {}
 _SESSION_FALLBACK_SECRET = secrets.token_hex(32)
+_HEALTH_CACHE: dict = {"at": 0.0, "payload": None}
+_HEALTH_TTL_SECONDS = 20
 
 
 def _session_secret() -> str:
@@ -247,6 +250,16 @@ class ApproveRequest(BaseModel):
     expiry_date: str | None = Field(default=None, max_length=10)
     precedence: int = Field(default=0, ge=0, le=2)
     approved_by: str = Field(min_length=1, max_length=120)
+
+
+class AssignReviewRequest(BaseModel):
+    assignee: str = Field(min_length=1, max_length=120)
+
+
+class ResolveReviewRequest(BaseModel):
+    action: str = Field(min_length=6, max_length=10)
+    note: str = Field(min_length=3, max_length=1000)
+    resolved_by: str = Field(min_length=1, max_length=120)
 
 
 Emit = Callable[[str, dict], Awaitable[None]]
@@ -535,7 +548,15 @@ def _metadata_conflicts(doc, extracted: dict | None) -> list[str]:
     conflicts: list[str] = []
     extracted_effective = _extract_date(extracted, "effective_date")
     extracted_expiry = _extract_date(extracted, "expiry_date")
+    # Extract sometimes copies the effective date into the expiry field. An
+    # expiry equal to the effective date is not a real policy term.
+    if extracted_expiry and extracted_effective and extracted_expiry == extracted_effective:
+        extracted_expiry = None
     extracted_jurisdiction = _jurisdiction(_field_value(extracted, "jurisdiction"))
+    if extracted_jurisdiction and doc.title:
+        normalized_title = re.sub(r"[^A-Z0-9]+", " ", doc.title.upper()).strip()
+        if extracted_jurisdiction == normalized_title:
+            extracted_jurisdiction = None
     form_effective = parse_date(doc.effective_date) if doc.effective_date else None
     form_expiry = parse_date(doc.expires_date) if doc.expires_date else None
     if form_effective and extracted_effective and form_effective != extracted_effective:
@@ -797,6 +818,7 @@ async def run_check(
             "extract": None,
             "decide": None,
             "audit": None,
+            "review": None,
             "policy_envelopes": policy_envelopes,
             "policy_integrity": policy_integrity,
             "compare_unacknowledged": [],
@@ -842,6 +864,21 @@ async def run_check(
                     *payload["reasons"][:3],
                 ]
                 payload["headline"] = "The audit ledger is unavailable. Nothing was published."
+            if payload["decision"] in {"hold", "rewrite"}:
+                try:
+                    review = await reviews.create(payload)
+                    payload["review"] = {
+                        "id": review["id"],
+                        "status": review["status"],
+                        "created_at": review["created_at"],
+                    }
+                except Exception as exc:  # noqa: BLE001
+                    traceback.print_exc()
+                    payload["review"] = {"error": type(exc).__name__}
+                    payload["reasons"].append(
+                        "The review queue could not open a record for this determination. "
+                        "The verdict is unchanged; retry the check before relying on the queue."
+                    )
             payload["id"] = db.record(
                 question=audit_question,
                 decision=payload["decision"],
@@ -1123,8 +1160,9 @@ async def run_check(
                 "severity": guard_data.get("severity"),
                 "evidence": guard_data.get("evidence") or [],
             }
+            guard_threshold = _threshold("DOCKET_GUARD_THRESHOLD")
             risky = guard_verdict == "injection" or (
-                isinstance(injection, (int, float)) and injection >= 0.5
+                isinstance(injection, (int, float)) and injection >= guard_threshold
             )
             if risky:
                 await finish(
@@ -1231,8 +1269,9 @@ async def run_check(
                     "severity": inspect_data.get("severity"),
                     "evidence": inspect_data.get("evidence") or [],
                 }
+                inspect_threshold = _threshold("DOCKET_INSPECT_THRESHOLD", 0.1)
                 risky_script = malicious is True or inspect_verdict in {"malicious", "suspicious", "unsafe"} or (
-                    isinstance(probability, (int, float)) and probability >= 0.5
+                    isinstance(probability, (int, float)) and probability >= inspect_threshold
                 )
                 if risky_script:
                     await finish(
@@ -1320,6 +1359,9 @@ async def run_check(
                         metadata_conflicts.append(f"{doc.title}: {conflict}")
                     extracted_effective = _extract_date(edata, "effective_date")
                     extracted_expiry = _extract_date(edata, "expiry_date")
+                    if extracted_expiry and extracted_effective and extracted_expiry == extracted_effective:
+                        extracted_expiry = None
+                        facts["expiry_date"] = None
                     if extracted_effective and not doc.effective_date:
                         adopted.append(
                             f"{doc.title}: effective date {extracted_effective.isoformat()} adopted from the policy text"
@@ -1978,6 +2020,15 @@ async def console() -> FileResponse:
     )
 
 
+@app.get("/tour")
+async def tour() -> FileResponse:
+    """Additive judge tour. The marketing front door at / is unchanged."""
+    return FileResponse(
+        WEBSITE_DIR / "tour.html",
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
 @app.get("/integrations")
 @app.get("/integrations/")
 async def integrations_redirect() -> RedirectResponse:
@@ -2166,6 +2217,84 @@ async def approve_policy(req: ApproveRequest, request: Request) -> dict:
     return {"policy": envelope}
 
 
+@app.get("/api/reviews")
+async def review_list(request: Request, status: str = "", limit: int = 50) -> dict:
+    _require_admin(request)
+    try:
+        records = await reviews.list_records(status=status.strip() or None, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "reviews": records,
+        "counts": await reviews.counts(),
+        "filter": status.strip() or "all",
+    }
+
+
+@app.post("/api/reviews/{review_id}/assign")
+async def review_assign(review_id: str, req: AssignReviewRequest, request: Request) -> dict:
+    _require_admin(request)
+    try:
+        record = await reviews.assign(review_id, req.assignee)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"review": record}
+
+
+@app.post("/api/reviews/{review_id}/resolve")
+async def review_resolve(review_id: str, req: ResolveReviewRequest, request: Request) -> dict:
+    _require_admin(request)
+    existing = await reviews.get(review_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Review not found.")
+    if existing.get("status") == "resolved":
+        raise HTTPException(status_code=400, detail="This review is already resolved.")
+    action = req.action.strip().lower()
+    if action not in reviews.ACTIONS:
+        raise HTTPException(status_code=400, detail="Action must be approve or reject.")
+    if len(req.note.strip()) < 3:
+        raise HTTPException(status_code=400, detail="A resolution note is required.")
+    checked = existing.get("check") or {}
+    event = await ledger.append_event(
+        {
+            "event": "review_resolved",
+            "review_id": review_id,
+            "review_status": "resolved",
+            "action": action,
+            "actor": req.resolved_by,
+            "note": req.note.strip(),
+            "check_seq": checked.get("seq"),
+            "check_hash": checked.get("hash"),
+            "question": existing.get("question"),
+            "draft": existing.get("draft_preview"),
+            "summary": f"Review {review_id} {action}d by {req.resolved_by}: {req.note.strip()[:160]}",
+        }
+    )
+    try:
+        record = await reviews.resolve(
+            review_id,
+            action=action,
+            note=req.note,
+            resolved_by=req.resolved_by,
+            audit_event={"seq": event["seq"], "hash": event["record_hash"]},
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "review": record,
+        "audit": {
+            "seq": event["seq"],
+            "hash": event["record_hash"],
+            "prev_hash": event["prev_hash"],
+            "storage": storage.backend(),
+        },
+    }
+
+
 @app.get("/api/ledger")
 async def ledger_state(limit: int = 12) -> dict:
     state = await ledger.verify()
@@ -2183,6 +2312,12 @@ async def ledger_state(limit: int = 12) -> dict:
                 "api_calls": record.get("api_calls"),
                 "record_hash": record.get("record_hash"),
                 "prev_hash": record.get("prev_hash"),
+                "kind": record.get("kind") or "check",
+                "event": record.get("event"),
+                "review_id": record.get("review_id"),
+                "action": record.get("action"),
+                "actor": record.get("actor"),
+                "note": record.get("note"),
             }
             for record in records
         ],
@@ -2204,16 +2339,46 @@ async def ledger_page() -> FileResponse:
     )
 
 
-@app.get("/api/health")
-async def health() -> dict:
-    return {
-        "ok": bool(os.environ.get("CLOCKED_API_KEY")),
-        "clocked_configured": bool(os.environ.get("CLOCKED_API_KEY")),
+async def _health_snapshot(force: bool = False) -> dict:
+    now = time.time()
+    cached = _HEALTH_CACHE.get("payload")
+    if not force and cached and now - float(_HEALTH_CACHE.get("at") or 0) < _HEALTH_TTL_SECONDS:
+        return cached
+    ledger_state = await ledger.verify()
+    policy_state = await policy_registry.seed_status(SAMPLES)
+    verified_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    clocked = bool(os.environ.get("CLOCKED_API_KEY", "").strip())
+    ok = bool(clocked and ledger_state.get("ok") and policy_state.get("ok"))
+    payload = {
+        "ok": ok,
+        "clocked_configured": clocked,
         "streaming": os.environ.get("DOCKET_STREAMING", "1") != "0",
         "audit_backend": storage.backend(),
         "durable_audit": storage.backend() == "vercel-blob",
-        "policy_integrity": True,
+        "policy_integrity": bool(policy_state.get("ok")),
+        "last_verified_at": verified_at,
+        "ledger": {
+            "ok": ledger_state.get("ok"),
+            "records": ledger_state.get("records"),
+            "checks": ledger_state.get("checks"),
+            "events": ledger_state.get("events"),
+            "broken_at": ledger_state.get("broken_at"),
+            "detail": ledger_state.get("detail"),
+            "head": ledger_state.get("head"),
+            "storage": ledger_state.get("storage"),
+        },
+        "policy_registry": policy_state,
     }
+    _HEALTH_CACHE["at"] = now
+    _HEALTH_CACHE["payload"] = payload
+    return payload
+
+
+@app.get("/api/health")
+async def health(request: Request, force: bool = False) -> dict:
+    if force:
+        _require_admin(request)
+    return await _health_snapshot(force=force)
 
 
 # Keep the API routes above this mount. Static files from the marketing site

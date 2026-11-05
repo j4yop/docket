@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import sys
@@ -25,9 +26,89 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from authority import Document, resolve  # noqa: E402
+from benchmarks.calibration_cases import CALIBRATION_CASES  # noqa: E402
 from benchmarks.cases import CASES  # noqa: E402
+from benchmarks.heldout_cases import HELDOUT_CASES  # noqa: E402
 import policy_registry  # noqa: E402
 from app import CheckRequest, run_check  # noqa: E402
+
+
+SUITES = {
+    "tuned": CASES,
+    "calibration": CALIBRATION_CASES,
+    "heldout": HELDOUT_CASES,
+}
+HELDOUT_LOCK = ROOT / "benchmarks" / "heldout.lock"
+LOCKED_FIELDS = (
+    "id",
+    "category",
+    "request",
+    "expected",
+    "envelope_text",
+    "sign_documents",
+)
+
+
+def case_material(case: dict) -> dict:
+    return {key: case.get(key) for key in LOCKED_FIELDS}
+
+
+def case_fingerprint(case: dict) -> str:
+    body = json.dumps(case_material(case), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def build_lock(cases: list[dict]) -> dict:
+    entries = [{"id": case["id"], "sha256": case_fingerprint(case)} for case in cases]
+    overall = hashlib.sha256(
+        json.dumps(entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return {
+        "suite": "heldout",
+        "algorithm": "sha256",
+        "locked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "case_count": len(entries),
+        "cases": entries,
+        "sha256": overall,
+    }
+
+
+def write_lock(cases: list[dict], path: Path = HELDOUT_LOCK) -> dict:
+    payload = build_lock(cases)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return payload
+
+
+def verify_lock(cases: list[dict], path: Path = HELDOUT_LOCK) -> tuple[bool, str, dict | None]:
+    if not path.exists():
+        return False, f"The held-out lock file is missing ({path}).", None
+    try:
+        locked = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return False, f"The held-out lock file could not be read: {exc}", None
+    entries = [{"id": case["id"], "sha256": case_fingerprint(case)} for case in cases]
+    overall = hashlib.sha256(
+        json.dumps(entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    if locked.get("case_count") != len(cases):
+        return False, (
+            f"The held-out suite has {len(cases)} cases but the lock has "
+            f"{locked.get('case_count')}."
+        ), None
+    if locked.get("cases") != entries:
+        changed = sorted(
+            {entry["id"] for entry in entries}
+            ^ {entry.get("id") for entry in (locked.get("cases") or [])}
+        )
+        detail = f" Changed cases: {', '.join(changed[:6])}." if changed else ""
+        return False, (
+            "The held-out cases do not match the locked suite. A locked case was edited "
+            "after the lock was written." + detail
+        ), None
+    if locked.get("sha256") != overall:
+        return False, "The held-out lock digest does not match its case fingerprints.", None
+    return True, "The locked held-out suite matches case-for-case.", locked
 
 
 def prepare_documents(case: dict) -> list[dict]:
@@ -85,9 +166,9 @@ def documents_from(case: dict) -> list[Document]:
     ]
 
 
-def offline() -> list[dict]:
+def offline(cases: list[dict]) -> list[dict]:
     results = []
-    for case in CASES:
+    for case in cases:
         docs = documents_from(case)
         expected_governing = case["expected"].get("governing")
         try:
@@ -284,8 +365,8 @@ def threshold_table(rows: list[dict], *, score_key: str, positives: list[dict], 
     positives = [row for row in positives if isinstance(row.get(score_key), (int, float))]
     negatives = [row for row in negatives if isinstance(row.get(score_key), (int, float))]
     table = []
-    for step in range(6):
-        threshold = round(0.3 + step * 0.1, 2)
+    thresholds = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    for threshold in thresholds:
         tp = sum(1 for row in positives if row[score_key] >= threshold)
         fp = sum(1 for row in negatives if row[score_key] >= threshold)
         precision = tp / (tp + fp) if tp + fp else 0.0
@@ -305,24 +386,29 @@ def threshold_table(rows: list[dict], *, score_key: str, positives: list[dict], 
 
 
 def threshold_sweep(rows: list[dict]) -> dict:
+    positives_guard = [row for row in rows if row["category"] == "injection"]
+    negatives_guard = [row for row in rows if row["category"] == "clean"]
+    positives_inspect = [
+        row for row in rows
+        if row["category"] == "script" and row.get("expected_decision") == "hold"
+    ]
+    negatives_inspect = [
+        row
+        for row in rows
+        if row["category"] == "clean"
+        or (row["category"] == "script" and row.get("expected_decision") == "publish")
+    ]
     guard = threshold_table(
         rows,
         score_key="guard_score",
-        positives=[row for row in rows if row["category"] == "injection"],
-        negatives=[row for row in rows if row["category"] == "clean"],
+        positives=positives_guard,
+        negatives=negatives_guard,
     )
     inspect = threshold_table(
         rows,
         score_key="inspect_score",
-        positives=[
-            row for row in rows
-            if row["category"] == "script" and row.get("expected_decision") == "hold"
-        ],
-        negatives=[
-            row for row in rows
-            if row["category"] == "clean"
-            or (row["category"] == "script" and row.get("expected_decision") == "publish")
-        ],
+        positives=positives_inspect,
+        negatives=negatives_inspect,
     )
 
     def flat(table: list[dict]) -> bool:
@@ -336,22 +422,26 @@ def threshold_sweep(rows: list[dict]) -> dict:
     guard_flat = flat(guard)
     inspect_flat = flat(inspect)
 
-    def choose(table: list[dict], is_flat: bool, operating: float) -> dict:
+    def choose(table: list[dict], is_flat: bool, operating: float, positives: list[dict], negatives: list[dict], score_key: str) -> dict:
         if is_flat:
             return operating_row(table, operating)
         bounded = [row for row in table if row["false_positives"] == 0]
         pool = bounded or table
         best = max(row["f1"] for row in pool)
-        return min(
-            [row for row in pool if row["f1"] == best],
-            key=lambda row: row["threshold"],
-        )
+        candidates = [row for row in pool if row["f1"] == best]
+        negative_scores = [float(row[score_key]) for row in negatives if isinstance(row.get(score_key), (int, float))]
+        positive_scores = [float(row[score_key]) for row in positives if isinstance(row.get(score_key), (int, float))]
+        if negative_scores and positive_scores and max(negative_scores) < min(positive_scores):
+            # Put the boundary in the measured gap, then take the nearest row.
+            target = (max(negative_scores) + min(positive_scores)) / 2
+            return min(candidates, key=lambda row: abs(row["threshold"] - target))
+        return min(candidates, key=lambda row: row["threshold"])
 
     return {
         "guard": guard,
         "inspect": inspect,
-        "guard_chosen": choose(guard, guard_flat, guard_operating),
-        "inspect_chosen": choose(inspect, inspect_flat, inspect_operating),
+        "guard_chosen": choose(guard, guard_flat, guard_operating, positives_guard, negatives_guard, "guard_score"),
+        "inspect_chosen": choose(inspect, inspect_flat, inspect_operating, positives_inspect, negatives_inspect, "inspect_score"),
         "guard_flat": guard_flat,
         "inspect_flat": inspect_flat,
         "guard_operating": os.environ.get("DOCKET_GUARD_THRESHOLD", "0.5"),
@@ -360,15 +450,26 @@ def threshold_sweep(rows: list[dict]) -> dict:
             "The sweep applies measured Guard/Inspect scores from this run. A clean false positive "
             "is a clean case that the endpoint would hold at that threshold. A flat sweep means the "
             "corpus does not distinguish the thresholds; Docket keeps its operating point and reports "
-            "the limitation instead of claiming a calibration win."
+            "the limitation. A non-flat sweep places the boundary in the measured gap between the "
+            "highest negative and the lowest positive score."
         ),
     }
 
 
-def write_results(rows: list[dict], summary: dict, sweep: dict | None, out_base: Path, mode: str) -> None:
+def write_results(
+    rows: list[dict],
+    summary: dict,
+    sweep: dict | None,
+    out_base: Path,
+    mode: str,
+    suite: str = "tuned",
+    lock: dict | None = None,
+) -> None:
     payload = {
         "run_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "mode": mode,
+        "suite": suite,
+        "lock": lock,
         "summary": summary,
         "sweep": sweep,
         "cases": rows,
@@ -377,12 +478,26 @@ def write_results(rows: list[dict], summary: dict, sweep: dict | None, out_base:
     out_base.with_suffix(".json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
     lines = [
-        "# Docket benchmark results",
+        f"# Docket benchmark results — {suite}",
         "",
-        f"**Run:** {payload['run_at']}  ",
-        f"**Mode:** {mode}  ",
+        f"**Run:** {payload['run_at']}",
+        f"**Mode:** {mode}",
+        f"**Suite:** `{suite}`  ",
         f"**Cases:** {summary['cases']}",
         "",
+    ]
+    if lock:
+        lines += [
+            "## Suite lock",
+            "",
+            f"- Lock file: `benchmarks/heldout.lock`",
+            f"- Locked before the run: **{lock.get('locked_at')}**",
+            f"- Locked cases: **{lock.get('case_count')}**",
+            f"- Lock digest: `{lock.get('sha256')}`",
+            "- Verification: the case fingerprints matched the lock before this run.",
+            "",
+        ]
+    lines += [
         "## Summary",
         "",
     ]
@@ -413,6 +528,20 @@ def write_results(rows: list[dict], summary: dict, sweep: dict | None, out_base:
         lines.append(f"| {category} | {bucket['passed']} | {bucket['n']} |")
 
     if mode == "live":
+        lines += [
+            "",
+            "## All cases",
+            "",
+            "| Case | Category | Expected | Actual | Governing | Codes | Result |",
+            "|---|---|---|---|---|---|---|",
+        ]
+        for row in rows:
+            lines.append(
+                f"| {row['id']} | {row.get('category')} | {row.get('expected_decision')} | "
+                f"{row.get('decision')} | {row.get('governing') or '—'} | "
+                f"{', '.join(row.get('codes') or []) or '—'} | "
+                f"{'PASS' if row.get('passed') else 'FAIL'} |"
+            )
         failures = [row for row in rows if not row.get("passed")]
         lines += ["", "## Failures", ""]
         if failures:
@@ -471,17 +600,28 @@ def write_results(rows: list[dict], summary: dict, sweep: dict | None, out_base:
             sweep["note"],
         ]
 
-    lines += [
-        "",
-        "## Limitations",
-        "",
-        "- The corpus is synthetic and was authored by the Docket team. It is a regression suite, not a held-out test set. A perfect score on authored cases is not evidence of perfect accuracy on unseen policy sprawl.",
-        "- The corpus covers policy governance, not every domain. A live run measures one model at one point in time; model behavior can drift.",
-        "- Omission recall is measured strictly as `coverage_gap`. One omission case is caught by a contradiction instead, so the decision is still correct while strict omission recall is 75%.",
-        "- Clean false-HOLD and unsafe false-PUBLISH rates are reported from this corpus only.",
-        "- The threshold sweep reuses measured scores. It is flat across 0.3–0.8 because the measured cases are easy to separate; that is a limitation, not a calibration win.",
-        "",
-    ]
+    if suite == "heldout":
+        limitations = [
+            "The held-out corpus was authored by the Docket team after the tuning suite was frozen. It is a second authored corpus, not a third-party benchmark. The lock proves it was not edited after the labels were fixed; it does not remove authorship bias.",
+            "A live run measures one model at one point in time; model behavior can drift.",
+            "Every failure in this document is reported in the Failures table. A post-run fix belongs to a new iteration and must be reported as post-held-out tuning, not folded into this result.",
+            "Clean false-HOLD and unsafe false-PUBLISH rates are reported from this corpus only.",
+        ]
+    elif suite == "calibration":
+        limitations = [
+            "Calibration cases are deliberately borderline and selected to probe Guard and Inspect boundaries. They are not accuracy evidence and must not be quoted as a benchmark score.",
+            "The sweep reuses measured scores from this run. If it is flat, the corpus still cannot distinguish the thresholds and Docket keeps its operating point.",
+            "A live run measures one model at one point in time; model behavior can drift.",
+        ]
+    else:
+        limitations = [
+            "The corpus is synthetic and was authored by the Docket team. It is a regression suite, not a held-out test set. A perfect score on authored cases is not evidence of perfect accuracy on unseen policy sprawl.",
+            "The corpus covers policy governance, not every domain. A live run measures one model at one point in time; model behavior can drift.",
+            "Omission recall is measured strictly as `coverage_gap`. One omission case is caught by a contradiction instead, so the decision is still correct while strict omission recall is 75%.",
+            "Clean false-HOLD and unsafe false-PUBLISH rates are reported from this corpus only.",
+            "The threshold sweep reuses measured scores. It is flat across 0.3–0.8 because the measured cases are easy to separate; that is a limitation, not a calibration win.",
+        ]
+    lines += ["", "## Limitations", ""] + [f"- {item}" for item in limitations] + [""]
     out_base.with_suffix(".md").write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -499,13 +639,42 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--live", action="store_true", help="Call Clocked for every case")
     parser.add_argument("--offline", action="store_true", help="Run deterministic checks only")
+    parser.add_argument(
+        "--suite",
+        choices=sorted(SUITES),
+        default="tuned",
+        help="Corpus: tuned regression suite, borderline calibration, or locked held-out",
+    )
     parser.add_argument("--limit", type=int, default=0, help="Run the first N cases")
     parser.add_argument("--category", default="", help="Only run one category")
     parser.add_argument("--sweep", action="store_true", help="Include threshold calibration in live mode")
     parser.add_argument("--out", default="benchmarks/results", help="Output basename")
+    parser.add_argument("--write-lock", action="store_true", help="Write the held-out lock before running")
+    parser.add_argument("--relock", action="store_true", help="Replace an existing held-out lock explicitly")
     args = parser.parse_args()
 
-    cases = list(CASES)
+    suite_cases = list(SUITES[args.suite])
+    lock_meta = None
+    if args.suite == "heldout":
+        if args.write_lock:
+            if HELDOUT_LOCK.exists() and not args.relock:
+                print(f"Held-out lock already exists at {HELDOUT_LOCK}; refusing to overwrite it.")
+            else:
+                lock_meta = write_lock(suite_cases)
+                print(f"Wrote held-out lock at {HELDOUT_LOCK}.")
+        ok, message, lock_meta = verify_lock(suite_cases)
+        if not ok:
+            print("Held-out suite is not locked for this run.")
+            print(message)
+            print("Fix the lock before running. Do not edit locked cases after a held-out result.")
+            return 2
+        print(f"Lock verified: {message}")
+        print(
+            f"Locked at {lock_meta.get('locked_at')} · {lock_meta.get('case_count')} cases · "
+            f"{lock_meta.get('sha256')}"
+        )
+
+    cases = list(suite_cases)
     if args.category:
         cases = [case for case in cases if case["category"] == args.category]
     if args.limit:
@@ -515,14 +684,14 @@ def main() -> int:
         return 2
 
     mode = "live" if args.live else "offline"
-    print(f"Running {len(cases)} cases in {mode} mode.")
+    print(f"Running {len(cases)} cases from the {args.suite} suite in {mode} mode.")
     if mode == "offline":
-        rows = offline()
+        rows = offline(cases)
         for row in rows:
             ok = row.get("governing_ok") and row.get("integrity_ok")
             print(f"[{'PASS' if ok else 'FAIL'}] {row['id']:<28} governing={row.get('actual_governing')}")
         summary = summarise(rows, "offline")
-        write_results(rows, summary, None, Path(args.out), "offline")
+        write_results(rows, summary, None, Path(args.out), "offline", args.suite, lock_meta)
         print(json.dumps(summary, indent=2))
         return 0 if all(row.get("governing_ok") and row.get("integrity_ok") for row in rows) else 1
 
@@ -541,7 +710,7 @@ def main() -> int:
         row["passed"] = score_live(row)
     summary = summarise(rows, "live")
     sweep = threshold_sweep(rows) if args.sweep else None
-    write_results(rows, summary, sweep, Path(args.out), "live")
+    write_results(rows, summary, sweep, Path(args.out), "live", args.suite, lock_meta)
     print(json.dumps(summary, indent=2))
     if sweep:
         print(json.dumps({"guard": sweep["guard_chosen"], "inspect": sweep["inspect_chosen"]}, indent=2))

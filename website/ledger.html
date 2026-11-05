@@ -103,6 +103,7 @@
     .pill.publish { color: var(--green); }
     .pill.rewrite { color: var(--amber); }
     .pill.hold { color: var(--red); }
+    .pill.review { color: #9ecbff; }
     .empty { padding: 36px 0; color: var(--faint); font-family: var(--mono); font-size: 13px; }
     .note { margin-top: 18px; color: var(--muted); font-size: 12px; line-height: 1.55; }
     @media (max-width: 820px) {
@@ -125,7 +126,7 @@
   <main>
     <h1>The audit ledger.</h1>
     <p class="lede">
-      Every determination Docket makes is appended to a hash chain. Each record covers the hash of the record
+      Every determination and review decision Docket makes is appended to a hash chain. Each record covers the hash of the record
       before it, so editing or deleting one breaks verification. The ledger stores redacted previews and policy
       hashes, never full policy documents.
     </p>
@@ -135,6 +136,12 @@
       <div class="cell"><b>Records</b><span id="record-count">—</span></div>
       <div class="cell"><b>Storage</b><span id="storage-backend">—</span></div>
       <div class="cell"><b>Head hash</b><span id="head-hash">—</span></div>
+    </section>
+    <section class="status" aria-label="Verification status" style="margin-top:1px">
+      <div class="cell"><b>Seeded policies</b><span id="policy-state">—</span></div>
+      <div class="cell"><b>Last verified</b><span id="last-verified">—</span></div>
+      <div class="cell"><b>Checks</b><span id="check-count">—</span></div>
+      <div class="cell"><b>Review events</b><span id="event-count">—</span></div>
     </section>
 
     <div class="toolbar">
@@ -157,7 +164,7 @@
       </tbody>
     </table>
     <p class="note" id="note">
-      The ledger is public and contains no personal data. Policy approval details are bound into each policy envelope.
+      The ledger is public and contains no personal data. Policy approval details are bound into each policy envelope, and review resolutions are linked to the check that opened them.
     </p>
   </main>
 
@@ -179,11 +186,28 @@
       return date.toLocaleString();
     }
 
+    async function loadHealth() {
+      try {
+        const response = await fetch("/api/health", { cache: "no-store" });
+        const health = await response.json();
+        const policy = health.policy_registry || {};
+        $("policy-state").textContent = policy.ok
+          ? `${policy.registered || 0} / ${policy.count || 0} signed`
+          : `${policy.registered || 0} / ${policy.count || 0} · attention`;
+        $("policy-state").className = policy.ok ? "ok" : "bad";
+        $("last-verified").textContent = health.last_verified_at ? when(health.last_verified_at) : "—";
+      } catch {
+        $("policy-state").textContent = "Unavailable";
+        $("policy-state").className = "bad";
+      }
+    }
+
     async function load() {
       const button = $("refresh");
       button.disabled = true;
       button.textContent = "Verifying…";
       try {
+        await loadHealth();
         const response = await fetch("/api/ledger?limit=25", { cache: "no-store" });
         const body = await response.json();
         if (!response.ok) throw new Error(body.detail || "Ledger unavailable");
@@ -195,17 +219,28 @@
         $("storage-backend").textContent = state.storage || "unknown";
         $("head-hash").textContent = shortHash((state.head || {}).hash);
         $("head-hash").title = (state.head || {}).hash || "";
+        $("check-count").textContent = String(state.checks == null ? "—" : state.checks);
+        $("event-count").textContent = String(state.events == null ? "—" : state.events);
         const records = body.records || [];
         $("records").innerHTML = records.length
           ? records.map((record) => {
+              const kind = record.kind || "check";
               const decision = String(record.decision || "hold").toLowerCase();
               const governing = record.governing || {};
+              const isEvent = kind === "review_event";
+              const label = isEvent ? "review" : decision;
+              const subject = isEvent
+                ? `${record.event || "review event"} · ${record.review_id || ""}${record.action ? ` · ${record.action}` : ""}`
+                : governing.title || "—";
+              const detail = isEvent
+                ? `${record.actor || "operator"}${record.note ? ` — ${record.note}` : ""}`
+                : governing.jurisdiction || "";
               return `<tr>
                 <td class="mono">${esc(record.seq)}</td>
                 <td class="mono">${esc(when(record.checked_at))}</td>
-                <td><span class="pill ${esc(decision)}">${esc(decision)}</span></td>
-                <td>${esc(governing.title || "—")}<br><span class="mono" style="color:var(--muted)">${esc(governing.jurisdiction || "")}</span></td>
-                <td class="mono">${esc(record.credits)}</td>
+                <td><span class="pill ${esc(label)}">${esc(label)}</span></td>
+                <td>${esc(subject)}<br><span class="mono" style="color:var(--muted)">${esc(detail)}</span></td>
+                <td class="mono">${isEvent ? "—" : esc(record.credits)}</td>
                 <td class="mono" title="${esc(record.record_hash)}">${esc(shortHash(record.record_hash))}</td>
               </tr>`;
             }).join("")

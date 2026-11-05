@@ -1,0 +1,173 @@
+{
+  "run_at": "2026-11-05T18:31:11+00:00",
+  "count": 10,
+  "sample": "expense-update",
+  "storage": "local",
+  "records_before": 0,
+  "records_after": 10,
+  "ledger": {
+    "ok": true,
+    "records": 10,
+    "checks": 10,
+    "events": 0,
+    "broken_at": null,
+    "detail": "The chain is intact.",
+    "head": {
+      "seq": 10,
+      "hash": "2a74b1d5cf21d4b7ae59d8706c6c5cdd63472feb0b959aa58b793e7bdb0c2ff9",
+      "updated_at": "2026-11-05T18:31:25+00:00"
+    },
+    "storage": "local"
+  },
+  "decisions": [
+    "rewrite"
+  ],
+  "audit_sequences": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "unique_sequences": 10,
+  "review_records": 10,
+  "credits": 271.0,
+  "elapsed_seconds": 13.33,
+  "rows": [
+    {
+      "index": 0,
+      "decision": "rewrite",
+      "codes": [
+        "contradicted"
+      ],
+      "audit_seq": 6,
+      "audit_hash": "917ff91130a2a6325ec9f5e27e0c5305d9cc2288005ebd10b1c386d2a4c33e1e",
+      "review": "RV-20261105T183124-b22a2341",
+      "credits": 27.0,
+      "latency_ms": 12182,
+      "error": null
+    },
+    {
+      "index": 1,
+      "decision": "rewrite",
+      "codes": [
+        "contradicted"
+      ],
+      "audit_seq": 8,
+      "audit_hash": "635504b911c931e785d6332e16c79871b06cb1160edf1546b473bdf548225b93",
+      "review": "RV-20261105T183124-bf5eef95",
+      "credits": 27.0,
+      "latency_ms": 12684,
+      "error": null
+    },
+    {
+      "index": 2,
+      "decision": "rewrite",
+      "codes": [
+        "contradicted"
+      ],
+      "audit_seq": 7,
+      "audit_hash": "1bbe3fbb964aee2d7451459c62c1723bcb71f9c6b4c62ae3b80216404092e98c",
+      "review": "RV-20261105T183124-236f99bf",
+      "credits": 27.0,
+      "latency_ms": 12392,
+      "error": null
+    },
+    {
+      "index": 3,
+      "decision": "rewrite",
+      "codes": [
+        "contradicted"
+      ],
+      "audit_seq": 9,
+      "audit_hash": "c26dedc574aa2381d2079ab25f7c6c74884dbf2d85031096b162d1cfaaed0fd5",
+      "review": "RV-20261105T183124-9292f5c5",
+      "credits": 27.0,
+      "latency_ms": 13026,
+      "error": null
+    },
+    {
+      "index": 4,
+      "decision": "rewrite",
+      "codes": [
+        "contradicted"
+      ],
+      "audit_seq": 4,
+      "audit_hash": "2ab2a29d6bae69d930d000092a35d3a66b1a4e7aef33b442c7e19f9e3ad65081",
+      "review": "RV-20261105T183122-ba7df776",
+      "credits": 27.0,
+      "latency_ms": 10728,
+      "error": null
+    },
+    {
+      "index": 5,
+      "decision": "rewrite",
+      "codes": [
+        "contradicted"
+      ],
+      "audit_seq": 1,
+      "audit_hash": "51af15f93992d0f059d47006f6fcadad562f4985a6c3748d4c3e322263931a3a",
+      "review": "RV-20261105T183117-99e56d3b",
+      "credits": 27.0,
+      "latency_ms": 5085,
+      "error": null
+    },
+    {
+      "index": 6,
+      "decision": "rewrite",
+      "codes": [
+        "contradicted"
+      ],
+      "audit_seq": 10,
+      "audit_hash": "2a74b1d5cf21d4b7ae59d8706c6c5cdd63472feb0b959aa58b793e7bdb0c2ff9",
+      "review": "RV-20261105T183125-ac38e06e",
+      "credits": 28.0,
+      "latency_ms": 13205,
+      "error": null
+    },
+    {
+      "index": 7,
+      "decision": "rewrite",
+      "codes": [
+        "contradicted"
+      ],
+      "audit_seq": 3,
+      "audit_hash": "e01ae7819d04d73d3635ecfb6ec4f8d9595d9a821080ded8a77566f4b7e280e1",
+      "review": "RV-20261105T183117-1a69af7a",
+      "credits": 27.0,
+      "latency_ms": 5732,
+      "error": null
+    },
+    {
+      "index": 8,
+      "decision": "rewrite",
+      "codes": [
+        "contradicted"
+      ],
+      "audit_seq": 5,
+      "audit_hash": "ed679413d6b395c5806d5f86fd141c87030dfbb1d44b0485ea78b44ad5c09541",
+      "review": "RV-20261105T183123-1f645121",
+      "credits": 27.0,
+      "latency_ms": 11328,
+      "error": null
+    },
+    {
+      "index": 9,
+      "decision": "rewrite",
+      "codes": [
+        "contradicted"
+      ],
+      "audit_seq": 2,
+      "audit_hash": "ffc656d830eb32cf45b9914ff6eff5552d13ba0ae2f65b41e7f3b89f44c1b3a3",
+      "review": "RV-20261105T183117-d424c0e3",
+      "credits": 27.0,
+      "latency_ms": 5101,
+      "error": null
+    }
+  ]
+}

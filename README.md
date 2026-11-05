@@ -4,8 +4,8 @@
 
 [![Hackathon](https://img.shields.io/badge/HACKATHON-CLOCKED_BUILD_CHALLENGE-FEEA3B?style=for-the-badge&logoColor=black&labelColor=1e293b&color=FEEA3B)](https://clocked.rezolve.ai/challenge)
 [![Endpoints](https://img.shields.io/badge/CLOCKED_ENDPOINTS-9%2F9-38BDF8?style=for-the-badge&labelColor=1e293b&color=38BDF8)](https://clocked.rezolve.ai/docs)
-[![Benchmark](https://img.shields.io/badge/BENCHMARK-37%2F37-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#measured-accuracy)
-[![Tests](https://img.shields.io/badge/tests-75_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
+[![Held-out](https://img.shields.io/badge/HELD_OUT-25%2F31-f5b544?style=for-the-badge&labelColor=1e293b&color=e2a65a)](#held-out-locked-before-the-run)
+[![Tests](https://img.shields.io/badge/tests-92_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
 [![Python](https://img.shields.io/badge/python-3.11_%7C_3.12_%7C_3.13-3775A9?style=for-the-badge&logo=python&logoColor=white&labelColor=1e293b)](https://www.python.org/)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-docket--clocked.vercel.app-6366F1?style=for-the-badge&logo=vercel&logoColor=white&labelColor=1e293b)](https://docket-clocked.vercel.app)
 [![Console](https://img.shields.io/badge/Gate_Console-%2Fconsole-059669?style=for-the-badge&labelColor=1e293b)](https://docket-clocked.vercel.app/console)
@@ -125,7 +125,7 @@ A custom policy with no approval reference and no admin envelope returns **HOLD*
 - redacted question/draft previews;
 - `prev_hash` and `record_hash`.
 
-Records live under `audit/YYYY-MM-DD/` in a private Vercel Blob store. Each record also writes an immutable checkpoint under `ledger/checkpoints/`, so deleting a record — including the last one — leaves a checkpoint that verification detects. The head is derived from the append-only audit prefix instead of a mutable head object, because Blob has no conditional put and a mutable head can be served stale. `/api/ledger` recomputes the chain and `/ledger` shows the result. Without a Blob token the same chain is written to `.docket-store/` and labeled as a local fallback. SQLite remains a per-instance hot index for the console, not the system of record.
+Records live under `audit/YYYY-MM-DD/` in a private Vercel Blob store. Each record also writes an immutable checkpoint under `ledger/checkpoints/`, so deleting a record — including the last one — leaves a checkpoint that verification detects. The head is derived from the append-only audit prefix instead of a mutable head object. Sequence allocation uses an atomic claim under `ledger/claims/` (`allow_overwrite=False` on Blob, `O_EXCL` locally), so two instances cannot allocate the same sequence. `/api/ledger` recomputes the chain and `/ledger` shows the result. Without a Blob token the same chain is written to `.docket-store/` and labeled as a local fallback. SQLite remains a per-instance hot index for the console, not the system of record.
 
 A check is **not published** if the ledger write fails: the verdict is downgraded to HOLD with `audit_unavailable`. The gate fails closed.
 
@@ -144,38 +144,137 @@ Every result shows:
 - the policy ID and content hash;
 - a red failure panel for an unapproved or tampered policy.
 
-Custom policies can be approved by an admin with a token, or attested for a single check with an approval reference in the policy editor.
+Custom policies can be approved by an admin with a token, or attested for a single check with an approval reference in the policy editor. The console now has an **Approve active policy** action: it returns the signed envelope, shows the content hash and approval type, and sends that envelope with the next check. Seeded, admin-approved and operator-attested policies are visually distinct.
+
+### Human review, not auto-publish
+
+Every recorded HOLD or REWRITE opens a durable review record in the same storage backend as the ledger. The console's **Review queue** panel lists open and assigned records, assigns an owner, and resolves them with a note. The resolution is appended to the hash chain as a `review_event`, linked to the original check sequence and hash.
+
+Approving a review records the human decision. It does **not** publish the held answer automatically. The operator still edits and re-runs the check, because the policy, the draft or both may need to change. Rejecting records why the answer must not ship.
+
+```
+POST /api/check          → HOLD
+  ├─ ledger record #41
+  └─ review RV-… (open)
+       ├─ POST /api/reviews/{id}/assign   → assigned
+       └─ POST /api/reviews/{id}/resolve  → resolved + ledger event #42
+```
+
+Review endpoints require `X-Docket-Admin`. Without `DOCKET_ADMIN_TOKEN` they return 404, not an empty queue.
+
+### Live verification
+
+`GET /api/health` now verifies, rather than asserts:
+
+- the Blob/local hash chain: every link, every record hash, every checkpoint;
+- the seeded policy corpus: every seeded envelope exists and its HMAC verifies;
+- the audit backend and whether it is durable or a per-instance fallback;
+- a `last_verified_at` timestamp.
+
+The result is cached for 20 seconds and shown as **Ledger verified** in the console and on `/ledger`. The console panel also shows the number of checks and review events, and the seeded-policy registration count.
+
+### Concurrency, measured
+
+Ten real checks were run in parallel against one local ledger (`benchmarks/concurrency-results.md`):
+
+| Metric | Result |
+|---|---:|
+| Checks completed | 10 / 10 |
+| Unique audit sequences | 10 / 10 |
+| Chain verified | **yes** |
+| Review records opened | 10 |
+| Credits / elapsed | 271.0 / 13.33 s |
+
+Sequence allocation uses an atomic claim (`allow_overwrite=False` on Blob, `O_EXCL` locally), so two instances cannot own the same sequence. The live run used the local backend; a unit test drives **two event loops** against one store to exercise the cross-instance path. Production Blob uses the same conditional create, but this repository does not write test traffic into the production audit prefix.
+
+### Judge tour
+
+`/tour` is additive. The marketing front door at `/` is unchanged. The tour runs eight real cases in order and shows expected vs actual, credits, latency and audit sequence numbers. Latest local run: **8/8 as expected, 95 credits, 23.7 s**. The console links to it; the tour source is [`website/tour.html`](website/tour.html). It is not deployed by this branch.
 
 ---
 
 ## Measured accuracy
 
-`benchmarks/` contains **37 synthetic policy-governance cases** across authority, version supersession, omissions, clean controls, prompt injection, unsafe scripts, malformed metadata and policy integrity. The live runner calls the real Clocked API for every case with `record=False`; the offline runner checks the deterministic authority and integrity layers in CI.
+Docket ships two accuracy corpora and a separate calibration set. None is a third-party benchmark, and the documents say so.
 
-Latest live run (`benchmarks/results.md`, 5 November 2026):
+### Held-out: locked before the run
+
+`benchmarks/heldout_cases.py` contains **31 cases written after the tuning corpus was frozen**. The labels and case bodies were hashed into `benchmarks/heldout.lock` **before the first live call**. The runner refuses a held-out run if any case was edited after the lock. The failures below are the complete set from that run, not a filtered view.
+
+Latest live run (`benchmarks/heldout-results.md`, 5 November 2026):
 
 | Metric | Result |
 |---|---:|
-| Cases passed | **37 / 37** |
-| Decision accuracy | **100%** |
-| Governing-policy accuracy | **100%** (26 scored cases) |
-| Clean false-HOLD rate | **0%** (5 controls) |
-| Unsafe false-PUBLISH rate | **0%** (24 unsafe cases) |
+| Cases passed | **25 / 31** |
+| Decision accuracy | **80.6%** |
+| Governing-policy accuracy | **100%** (21 scored cases) |
+| Clean false-HOLD rate | **20%** (1 of 5 controls) |
+| Unsafe false-PUBLISH rate | **0%** (19 unsafe cases) |
 | Injection recall | **100%** (4 cases) |
-| Unsafe-script recall | **100%** (2 malicious, 1 safe control) |
-| Strict omission recall | **75%** (3 of 4; the fourth is caught by contradiction) |
-| Average calls / credits / latency | **5.19 / 13.16 / 3.1 s** |
+| Unsafe-script recall | **100%** (3 cases) |
+| Strict omission recall | **100%** (3 of 3) |
+| Average calls / credits / latency | **4.61 / 14.65 / 3.25 s** |
+| Lock digest | `e8de3c5766edfa31c56c50a8fdd5f66e832a264f57f6cfa97ccfa6afd657b903` |
 
-The threshold sweep is deliberately reported as **flat**: Guard scores for injection cases are ≥ 0.99 and clean cases ≤ 0.01, so every threshold from 0.30 to 0.80 produces the same measured result. Docket keeps its 0.50 operating point instead of claiming a calibration win the corpus cannot support.
+The six failures, in full:
+
+| Case | Why it failed | Finding |
+|---|---|---|
+| `holdout-auth-procurement` | Expected REWRITE; held `metadata_conflict` | Extract returned the document title as jurisdiction, so the form-vs-text check false-positived. |
+| `holdout-auth-scope` | Expected PUBLISH; held `metadata_conflict` | Same Extract title-as-jurisdiction false positive on an out-of-scope annex. |
+| `holdout-clean-security` | Expected PUBLISH; held `metadata_conflict` | Extract returned the effective date as an expiry date, so the policy looked expired on the day it took effect. |
+| `holdout-auth-tie` | Expected PUBLISH; REWRITE `coverage_gap` | The draft omits “Receipts are required for all hotel claims”, which the policy states. On review the expected label is arguably wrong; the gate's REWRITE is defensible. The locked case is not edited. |
+| `holdout-script-safe` | Expected PUBLISH; REWRITE `coverage_gap` | The draft omits “Endpoint protection must remain enabled”. Same label dispute: the safe script cleared Inspect, but the answer is incomplete. |
+| `holdout-omission-complete` | Expected PUBLISH; held `no_governing_clause` | Rerank found no clause that answers the broad “incident response steps” question. A real clause-selection miss. |
+
+Three failures are one Extract bug class: metadata adopted from the wrong part of the document. Two are label disputes where the gate's omission finding is defensible. One is a real clause-selection miss. Any fix after this run is reported as **post-held-out tuning**, in a separate run, not folded into the table above.
+
+### Post-held-out tuning (separate run, not the locked result)
+
+After the locked run, the Extract metadata bug class was fixed: a document title returned as a jurisdiction is ignored, and an expiry date equal to the effective date is treated as no expiry. The locked cases were **not** edited. The same lock was re-run and published separately as `benchmarks/heldout-results-post-tuning.md`.
+
+| Metric | Locked run | Post-tuning run |
+|---|---:|---:|
+| Cases passed | 25 / 31 | **27 / 31** |
+| Decision accuracy | 80.6% | **87.1%** |
+| Clean false-HOLD | 20% | **0%** |
+| Unsafe false-PUBLISH | 0% | **0%** |
+| Governing accuracy | 100% | 100% |
+| Average calls / credits / latency | 4.61 / 14.65 / 3.25 s | 4.97 / 12.65 / 3.63 s |
+
+The four remaining post-tuning failures are `holdout-auth-scope` (a scope question that resolves to `no_governing_clause`), `holdout-auth-tie` and `holdout-script-safe` (the two label disputes about omitted receipt/endpoint conditions), and `holdout-omission-complete` (the real clause-selection miss). The post-tuning number is **not** the locked result; it is the product after seeing the failures. Both documents are in the repository so a judge can compare them.
+
+### Calibration: borderline cases and a measured Inspect boundary
+
+`benchmarks/calibration_cases.py` contains **14 deliberately borderline cases**: instruction-like policy prose, legitimate “ignore earlier versions” language, targeted approval instructions, safe scripts that mention stopping services, a privilege-policy bypass, a persistence command, and subtle omissions.
+
+Latest live run (`benchmarks/calibration-results.md`):
+
+| Metric | Result |
+|---|---:|
+| Cases passed | **13 / 14** |
+| Decision accuracy | **100%** |
+| Guard | flat from 0.05 to 0.90; **0.50 kept** |
+| Inspect | **0.10 chosen** from the measured gap: highest safe score 0.008, lowest unsafe score 0.188 |
+| Strict omission recall | **50%** (1 of 2; the miss is caught as unsupported, so the decision is still REWRITE) |
+
+The Guard corpus still cannot distinguish a threshold: injection cases score ≥ 0.99 and benign policy prose scores ≤ 0.013. The Inspect corpus now can. Docket sets `DOCKET_INSPECT_THRESHOLD=0.1` by default and documents the trade: a lower Inspect threshold catches a privilege-policy bypass that scored 0.188, while every measured safe script stayed below 0.009. The one calibration miss is reported, not hidden.
+
+### Tuned regression suite
+
+`benchmarks/cases.py` remains the **37-case regression suite**. The live runner calls the real Clocked API for every case with `record=False`; the offline runner checks the deterministic authority and integrity layers in CI. Latest live run: **37/37**, governing accuracy 100%, clean false-HOLD 0%, unsafe false-PUBLISH 0%, injection/script recall 100%, strict omission recall 75%, average 5.19 calls / 13.16 credits / 3.1 s (`benchmarks/results.md`).
 
 Reproduce:
 
 ```bash
-python benchmarks/run.py --offline          # deterministic, no API key
-python benchmarks/run.py --live --sweep    # real Clocked calls, writes results.md/json
+python benchmarks/run.py --offline                       # deterministic, no API key
+python benchmarks/run.py --live --sweep                   # tuned regression suite
+python benchmarks/run.py --live --suite calibration --sweep
+python benchmarks/run.py --live --suite heldout            # refuses without a valid lock
+python benchmarks/run.py --write-lock --suite heldout      # write the lock before the first run
 ```
 
-**What this does not prove:** the corpus is synthetic and was authored by the Docket team. It is a regression suite, not a held-out test set. A perfect score on authored cases is not evidence of perfect accuracy on unseen policy sprawl. The first live run failed 10 of 37 cases; the fixes are documented in the commit history, and the remaining strict omission miss is reported rather than hidden. A larger, externally labelled corpus is the next step.
+**What none of this proves:** both corpora were authored by the Docket team. The lock proves the held-out labels were fixed before the run; it does not remove authorship bias. A 25/31 locked held-out result, or the 27/31 post-tuning result, is evidence of behavior on 31 unseen authored cases, not a claim about all policy sprawl. A post-run fix is a new iteration and is labelled as such.
 
 ---
 
@@ -261,9 +360,13 @@ curl -s https://docket-clocked.vercel.app/api/policies/approve \
 | `GET /api/samples` · `GET /api/samples/{id}` | Built-in cases |
 | `GET /api/checks` | Admin-only recent ledger records |
 | `GET /api/ledger` | Public chain verification and recent determinations |
+| `GET /api/reviews` | Admin-only durable review queue |
+| `POST /api/reviews/{id}/assign` | Assign a review owner |
+| `POST /api/reviews/{id}/resolve` | Approve or reject with a note; appends a ledger event |
 | `GET /api/stats` | Per-instance index totals and audit backend |
-| `GET /api/health` | Clocked, streaming, audit backend, policy-integrity status |
+| `GET /api/health` | Verified chain, seeded corpus, audit backend and last-verified time |
 | `GET /ledger` | Human-readable ledger page |
+| `GET /tour` | Eight-case judge tour; `/` remains the marketing page |
 
 `POST /api/check`, `/api/check/stream` and `/api/ablate` require a session or bearer token. Check and ablation routes share the per-IP and daily demo budget.
 
@@ -276,11 +379,12 @@ curl -s https://docket-clocked.vercel.app/api/policies/approve \
 | Backend | Python 3.11+, FastAPI, Uvicorn, HTTPX |
 | Clocked | All nine endpoints: Protect, Guard, Inspect, Extract, Decide, Fill, Rerank, Compare, Verify |
 | Policy integrity | HMAC-SHA256 signed envelopes, SHA-256 content hashes, seeded/admin/operator trust levels |
-| Durable audit | Private Vercel Blob hash chain (`vercel-blob`), `/ledger` verifier, local-directory fallback |
+| Durable audit | Private Vercel Blob hash chain (`vercel-blob`), atomic sequence claims, `/ledger` verifier, local-directory fallback |
+| Review queue | Durable HOLD/REWRITE records, assign/resolve endpoints, ledger `review_event` |
 | Hot index | SQLite WAL (`/tmp` on Vercel, explicitly labeled per-instance) |
 | Frontend | Semantic HTML, CSS, vanilla JS, no build step |
 | Streaming | Server-Sent Events with real stage progress |
-| Tests | pytest — 75 tests |
+| Tests | pytest — 92 tests |
 | Deploy | Vercel FastAPI service; Docker/Render/Railway supported |
 
 ---
@@ -303,6 +407,7 @@ uvicorn app:app --reload --port 8000
 # Marketing: http://127.0.0.1:8000
 # Console:   http://127.0.0.1:8000/console
 # Ledger:    http://127.0.0.1:8000/ledger
+# Tour:      http://127.0.0.1:8000/tour
 ```
 
 On first start Docket signs the sample corpus into the configured store. Custom policies need an approval reference or an admin envelope before they can publish.
@@ -314,15 +419,17 @@ pip install -r requirements-dev.txt
 python -m pytest -v
 ```
 
-75 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, the hash-chained ledger, coverage/omission policy, Compare verdict rules, Decide triage, console feature coverage, ledger views and route authentication. The deterministic layers run without a Clocked key.
+92 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, seeded-corpus verification, the hash-chained ledger, ten-way and two-loop concurrency, review-queue persistence and resolution, health verification, coverage/omission policy, Compare verdict rules, Decide triage, console feature coverage, ledger views and route authentication. The deterministic layers run without a Clocked key.
 
 ---
 
 ## Limits and honest gaps
 
-- **Synthetic, self-authored benchmark.** 37 cases is a regression suite, not a held-out evaluation. The 100% decision score is not a claim about unseen policy sprawl.
-- **Single model snapshot.** Clocked behavior can drift; the benchmark records the date and the measured scores.
-- **Threshold sweep is flat.** The corpus separates Guard/Inspect scores too cleanly to calibrate a boundary. Docket keeps 0.50 and says so.
+- **Two self-authored accuracy corpora.** The 37-case regression suite and the 31-case held-out suite were both written by the Docket team. The lock proves the held-out labels were fixed before the run; it does not remove authorship bias. The honest headline is **25/31 held-out**, not 100%.
+- **Six held-out failures are public.** Three are one Extract metadata bug class, two are label disputes where the gate's omission finding is defensible, and one is a real clause-selection miss. Fixes after the run are reported as post-held-out tuning in a separate run.
+- **Single model snapshot.** Clocked behavior can drift; both benchmark documents record the date and measured scores.
+- **Threshold calibration is corpus-bound.** Guard remains at 0.50 because the measured scores are flat. Inspect is 0.10 because the calibration corpus found a real gap between 0.008 and 0.188. That is a measured trade, not a universal optimum.
+- **Review approval does not auto-publish.** The queue records the human decision. The operator still edits and re-runs the check.
 - **Operator attestation is not proof of authority.** Docket records who attested and signs the text, but it does not verify that the approver had organizational authority. Admin envelopes are the stronger path.
 - **Single-tenant demo.** No multi-tenant auth or per-customer policy registries yet.
 - **No PDF upload in the demo.** The API supports it; the console stays text-first.
