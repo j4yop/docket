@@ -480,8 +480,8 @@ def write_results(
     lines = [
         f"# Docket benchmark results — {suite}",
         "",
-        f"**Run:** {payload['run_at']}  ",
-        f"**Mode:** {mode}  ",
+        f"**Run:** {payload['run_at']}",
+        f"**Mode:** {mode}",
         f"**Suite:** `{suite}`  ",
         f"**Cases:** {summary['cases']}",
         "",
@@ -490,10 +490,10 @@ def write_results(
         lines += [
             "## Suite lock",
             "",
-            f"- Lock file: `benchmarks/heldout.lock`  ",
-            f"- Locked before the run: **{lock.get('locked_at')}**  ",
-            f"- Locked cases: **{lock.get('case_count')}**  ",
-            f"- Lock digest: `{lock.get('sha256')}`  ",
+            f"- Lock file: `benchmarks/heldout.lock`",
+            f"- Locked before the run: **{lock.get('locked_at')}**",
+            f"- Locked cases: **{lock.get('case_count')}**",
+            f"- Lock digest: `{lock.get('sha256')}`",
             "- Verification: the case fingerprints matched the lock before this run.",
             "",
         ]

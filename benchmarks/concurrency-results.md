@@ -1,8 +1,8 @@
 # Docket concurrency check
 
-**Run:** 2026-11-05T18:31:11+00:00  
-**Checks:** 10 concurrent  
-**Case:** `expense-update`  
+**Run:** 2026-11-05T18:31:11+00:00
+**Checks:** 10 concurrent
+**Case:** `expense-update`
 **Storage:** `local`
 
 ## Result

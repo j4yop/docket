@@ -3,9 +3,9 @@
 > **Calibration corpus, not accuracy evidence.** These cases are deliberately borderline and exist to measure Guard/Inspect thresholds. Do not quote this score as a benchmark result.
 
 
-**Run:** 2026-11-05T18:21:39+00:00  
-**Mode:** live  
-**Suite:** `calibration`  
+**Run:** 2026-11-05T18:21:39+00:00
+**Mode:** live
+**Suite:** `calibration`
 **Cases:** 14
 
 ## Summary

@@ -1,16 +1,16 @@
 # Docket benchmark results — heldout
 
-**Run:** 2026-11-05T18:23:24+00:00  
-**Mode:** live  
-**Suite:** `heldout`  
+**Run:** 2026-11-05T18:23:24+00:00
+**Mode:** live
+**Suite:** `heldout`
 **Cases:** 31
 
 ## Suite lock
 
-- Lock file: `benchmarks/heldout.lock`  
-- Locked before the run: **2026-11-05T18:16:42+00:00**  
-- Locked cases: **31**  
-- Lock digest: `e8de3c5766edfa31c56c50a8fdd5f66e832a264f57f6cfa97ccfa6afd657b903`  
+- Lock file: `benchmarks/heldout.lock`
+- Locked before the run: **2026-11-05T18:16:42+00:00**
+- Locked cases: **31**
+- Lock digest: `e8de3c5766edfa31c56c50a8fdd5f66e832a264f57f6cfa97ccfa6afd657b903`
 - Verification: the case fingerprints matched the lock before this run.
 
 ## Summary
