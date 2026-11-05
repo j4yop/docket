@@ -192,7 +192,7 @@
 
     // Every Get Started CTA -> Open console.
     document
-      .querySelectorAll('a[href$="/sign-up"], a[href$="/signup"], a[data-docket-console="true"]')
+      .querySelectorAll('a[href$="/sign-up"], a[href$="/signup"], header a[href$="/console"], a[data-docket-console="true"]')
       .forEach(function (link) {
         link.dataset.docketConsole = "true";
         if (link.getAttribute("href") !== CONSOLE) {
@@ -236,6 +236,11 @@
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       link.dataset.docketGithubLink = "true";
+      link.style.visibility = "visible";
+      link.style.opacity = "1";
+      link.style.transform = "none";
+      link.style.translate = "none";
+      link.style.pointerEvents = "auto";
       link.setAttribute("aria-label", "Docket on GitHub");
       link.setAttribute("title", "Docket on GitHub");
       link.innerHTML = button.innerHTML;
