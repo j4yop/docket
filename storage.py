@@ -71,9 +71,22 @@ async def put_json(
         return
     target = LOCAL_DIR / pathname
     target.parent.mkdir(parents=True, exist_ok=True)
-    if target.exists() and not allow_overwrite:
-        raise FileExistsError(pathname)
-    target.write_bytes(body)
+    if not allow_overwrite:
+        # O_EXCL is the local equivalent of Blob's conditional create. It makes
+        # sequence claims and checkpoint writes atomic across processes.
+        try:
+            descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+        except FileExistsError:
+            raise FileExistsError(pathname) from None
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(body)
+            handle.flush()
+            os.fsync(handle.fileno())
+        return
+    # Atomic replace: a reader never sees a half-written JSON document.
+    temporary = target.with_name(f"{target.name}.{os.getpid()}.{time.time_ns()}.tmp")
+    temporary.write_bytes(body)
+    os.replace(temporary, target)
 
 
 async def get_json(pathname: str) -> dict | None:
@@ -123,3 +136,21 @@ async def delete(pathname: str) -> None:
     target = LOCAL_DIR / pathname
     if target.exists():
         target.unlink()
+
+
+async def claim(pathname: str, data: dict) -> bool:
+    """Atomically claim a name. Returns False when another writer owns it.
+
+    Vercel Blob enforces ``allow_overwrite=False`` on create, so the same call
+    is the cross-instance lock. The local backend uses O_EXCL.
+    """
+    try:
+        await put_json(pathname, data, allow_overwrite=False)
+        return True
+    except FileExistsError:
+        return False
+    except Exception as exc:  # noqa: BLE001 - backend-specific conflict class
+        message = str(exc).lower()
+        if "already exists" in message or "overwrite" in message or "conflict" in message:
+            return False
+        raise
