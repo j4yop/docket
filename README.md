@@ -276,7 +276,7 @@ curl -s https://docket-clocked.vercel.app/api/policies/approve \
 | Hot index | SQLite WAL (`/tmp` on Vercel, explicitly labeled per-instance) |
 | Frontend | Semantic HTML, CSS, vanilla JS, no build step |
 | Streaming | Server-Sent Events with real stage progress |
-| Tests | pytest — 71 tests |
+| Tests | pytest — 72 tests |
 | Deploy | Vercel FastAPI service; Docker/Render/Railway supported |
 
 ---
