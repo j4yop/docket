@@ -15,6 +15,17 @@ Built for the [Clocked Build Challenge](https://clocked.rezolve.ai/challenge), N
 
 ---
 
+## Marketing site
+
+The FastAPI app now serves the Docket marketing page at `/` from `website/`, and the
+interactive gate at `/console`. The API routes under `/api/*` are unchanged, and the
+gate continues to call them from the same origin.
+
+The site's static assets are served by the app, including the captured Next image
+variants used by the mirrored landing page. `/integrations` redirects to `/console`.
+
+---
+
 ## The problem
 
 An AI assistant answers an employee from the knowledge base. The answer is fluent, cited,

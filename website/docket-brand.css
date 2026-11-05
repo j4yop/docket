@@ -1,0 +1,36 @@
+/* Docket brand layer — injected by server.mjs, so React's tree stays pristine. */
+
+a[href="/"]:has(> svg[viewBox="0 0 155 26"]) > svg[viewBox="0 0 155 26"] {
+  display: none !important;
+}
+
+a[href="/"]:has(> svg[viewBox="0 0 155 26"])::after {
+  content: "";
+  position: absolute;
+  top: 24.606px;
+  left: 44.4322%;
+  width: 58%;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  background: url("/images/header/docket-logo.svg") center / contain no-repeat;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Mobile logo tab */
+a[href="/"]:has(> svg[viewBox="0 0 132 54"]) > svg[viewBox="0 0 155 26"] {
+  display: none !important;
+}
+
+a[href="/"]:has(> svg[viewBox="0 0 132 54"])::after {
+  content: "";
+  position: absolute;
+  top: 17px;
+  left: 56px;
+  width: 83.5px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  background: url("/images/header/docket-logo.svg") center / contain no-repeat;
+  pointer-events: none;
+  z-index: 2;
+}

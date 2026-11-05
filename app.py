@@ -13,12 +13,20 @@ import os
 import time
 import traceback
 from datetime import datetime, timezone
+from functools import lru_cache
 import uuid
 from pathlib import Path
 from typing import Awaitable, Callable, Literal
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    Response,
+    StreamingResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -54,9 +62,22 @@ load_env(Path(__file__).resolve().parent / ".env")
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
+WEBSITE_DIR = BASE_DIR / "website"
+WEBSITE_INDEX = WEBSITE_DIR / "index.html"
+WEBSITE_FLAGS_FILE = WEBSITE_DIR / "_source" / "feature-flags.json"
+WEBSITE_FLAGS = WEBSITE_FLAGS_FILE.read_bytes() if WEBSITE_FLAGS_FILE.exists() else b'{"flags":{}}'
 
 app = FastAPI(title="Docket", version="1.0.0", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@lru_cache(maxsize=1)
+def website_index_html() -> str:
+    """Serve the mirrored page with the Docket brand layer injected."""
+    html = WEBSITE_INDEX.read_text(encoding="utf-8")
+    head = (WEBSITE_DIR / "_build" / "brand-head.html").read_text(encoding="utf-8")
+    body = (WEBSITE_DIR / "_build" / "brand-body.html").read_text(encoding="utf-8")
+    return html.replace("</head>", head + "</head>", 1).replace("</body>", body + "</body>", 1)
 
 
 class DocumentIn(BaseModel):
@@ -599,8 +620,67 @@ async def run_check(req: CheckRequest, emit: Emit | None = None) -> dict:
 # routes
 # --------------------------------------------------------------------------
 @app.get("/")
-async def index() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
+async def index() -> HTMLResponse:
+    return HTMLResponse(website_index_html(), headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/console")
+@app.get("/console/")
+async def console() -> FileResponse:
+    return FileResponse(WEBSITE_DIR / "integrations" / "index.html")
+
+
+@app.get("/integrations")
+@app.get("/integrations/")
+async def integrations_redirect() -> RedirectResponse:
+    return RedirectResponse(url="/console", status_code=302)
+
+
+@app.get("/_next/image")
+async def next_image(url: str = "", w: str = "", q: str = "75") -> FileResponse:
+    """Reproduce the local mirror's Next image optimizer lookup."""
+    if not url.startswith("/") or ".." in url.split("?")[0].split("/"):
+        raise HTTPException(status_code=404)
+    clean = url.split("?")[0]
+    rel = clean.lstrip("/")
+    dot = rel.rfind(".")
+    if dot == -1:
+        base, ext = rel, ".bin"
+    else:
+        base, ext = rel[:dot], rel[dot:]
+    width = w if w.isdigit() else "0"
+    quality = q if q.isdigit() else "75"
+    root = WEBSITE_DIR.resolve()
+    candidates = [
+        WEBSITE_DIR / "_next" / "image" / f"{base}.w{width}q{quality}{ext}",
+        WEBSITE_DIR / rel,
+    ]
+    for candidate in candidates:
+        try:
+            resolved = candidate.resolve()
+        except OSError:
+            continue
+        if (resolved == root or root in resolved.parents) and resolved.is_file():
+            return FileResponse(resolved)
+    raise HTTPException(status_code=404)
+
+
+@app.get("/v1/feature-flags/public")
+async def public_feature_flags() -> Response:
+    return Response(
+        content=WEBSITE_FLAGS,
+        media_type="application/json",
+        headers={"Cache-Control": "no-store", "Access-Control-Allow-Origin": "*"},
+    )
+
+
+@app.get("/_vercel/insights/script.js")
+async def vercel_insights_stub() -> Response:
+    return Response(
+        content="(function(){})();",
+        media_type="text/javascript",
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 
 @app.get("/api/samples")
@@ -682,5 +762,9 @@ async def health() -> dict:
         "streaming": os.environ.get("DOCKET_STREAMING", "1") != "0",
     }
 
+
+# Keep the API routes above this mount. Static files from the marketing site
+# are served only after the explicit API and page routes have been matched.
+app.mount("/", StaticFiles(directory=WEBSITE_DIR), name="website")
 
 db.init()

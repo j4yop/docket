@@ -1,0 +1,17 @@
+# Never upload local secrets or runtime state.
+.env
+.env.*
+!.env.example
+.vercel
+.git
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.db
+*.db-shm
+*.db-wal
+docs/
+tests/
