@@ -37,6 +37,9 @@ def evaluate(
     verify: dict | None,
     internal_conflict: bool = False,
     coverage: dict | None = None,
+    compare_unacknowledged: list[dict] | None = None,
+    triage_review: bool = False,
+    triage_reason: str | None = None,
     failed_stage: str | None = None,
     failed_message: str | None = None,
 ) -> Verdict:
@@ -107,6 +110,18 @@ def evaluate(
             ["unsupported"],
         )
 
+    if compare_unacknowledged:
+        first = compare_unacknowledged[0]
+        reasons = [
+            "The draft repeats a value or rule from a superseded policy that the governing policy overrides.",
+            f"Superseded text: \"{str(first.get('superseded_quote') or '')[:240]}\"",
+            f"Governing text: \"{str(first.get('governing_quote') or '')[:240]}\"",
+            "Replace the superseded value with the governing one before publishing.",
+        ]
+        if len(compare_unacknowledged) > 1:
+            reasons.insert(0, f"Compare found {len(compare_unacknowledged)} unacknowledged superseded values in the draft.")
+        return Verdict(Decision.REWRITE, reasons, ["superseded_value"])
+
     if coverage is not None:
         coverage_value = coverage.get("value")
         if coverage_value is True:
@@ -145,6 +160,16 @@ def evaluate(
             Decision.REWRITE,
             [f"Overall support is {grounded:.0%}, below the 50% publish threshold."],
             ["low_support"],
+        )
+
+    if triage_review:
+        return Verdict(
+            Decision.HOLD,
+            [
+                triage_reason or "Decide routed this case to human review.",
+                "A reviewer must confirm the answer before it is published.",
+            ],
+            ["triage_review"],
         )
 
     return Verdict(

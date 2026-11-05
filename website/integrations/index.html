@@ -144,6 +144,18 @@
             <span class="gate-stage-sub">script</span>
             <span class="gate-stage-meta"></span>
           </div>
+          <div class="gate-stage" data-stage="extract">
+            <span class="gate-stage-dot" aria-hidden="true"></span>
+            <span class="gate-stage-name">Extract</span>
+            <span class="gate-stage-sub">policy facts</span>
+            <span class="gate-stage-meta"></span>
+          </div>
+          <div class="gate-stage" data-stage="decide">
+            <span class="gate-stage-dot" aria-hidden="true"></span>
+            <span class="gate-stage-name">Decide</span>
+            <span class="gate-stage-sub">triage</span>
+            <span class="gate-stage-meta"></span>
+          </div>
           <div class="gate-stage" data-stage="rerank">
             <span class="gate-stage-dot" aria-hidden="true"></span>
             <span class="gate-stage-name">Rerank</span>
@@ -236,6 +248,32 @@
             <div class="gate-trace" id="gate-trace"></div>
           </section>
 
+          <section class="gate-block" id="gate-ablation-block">
+            <div class="gate-block-head"><h3>Counterfactual</h3><span>same inputs · one endpoint disabled</span></div>
+            <div class="gate-ablation">
+              <div class="gate-ablation-controls">
+                <label class="gate-sr-only" for="gate-ablate-endpoint">Endpoint to disable</label>
+                <select id="gate-ablate-endpoint" class="gate-select">
+                  <option value="guard">Guard</option>
+                  <option value="inspect">Inspect</option>
+                  <option value="extract">Extract</option>
+                  <option value="decide">Decide</option>
+                  <option value="compare" selected>Compare</option>
+                  <option value="coverage">Fill / Coverage</option>
+                  <option value="verify">Verify</option>
+                </select>
+                <button type="button" class="gate-secondary" id="gate-ablate-run">Run without it</button>
+              </div>
+              <p class="gate-ablation-note">Runs this case again with one endpoint skipped. This is a simulation: no audit record and no publication.</p>
+              <div id="gate-ablation-result" class="gate-ablation-result" hidden></div>
+            </div>
+          </section>
+
+          <section class="gate-block" id="gate-policies-block" hidden>
+            <div class="gate-block-head"><h3>Policy integrity</h3><span id="gate-policies-meta">0 approved</span></div>
+            <div class="gate-policies" id="gate-policies"></div>
+          </section>
+
           <section class="gate-block">
             <div class="gate-block-head"><h3>Authority</h3><span>jurisdiction / precedence / date</span></div>
             <div class="gate-authority" id="gate-authority"></div>
@@ -254,6 +292,16 @@
           <section class="gate-block" id="gate-inspect-block" hidden>
             <div class="gate-block-head"><h3>Inspect</h3><span id="gate-inspect-meta">no script</span></div>
             <div class="gate-guard" id="gate-inspect"></div>
+          </section>
+
+          <section class="gate-block" id="gate-extract-block" hidden>
+            <div class="gate-block-head"><h3>Extract</h3><span id="gate-extract-meta">0 facts</span></div>
+            <div class="gate-extract" id="gate-extract"></div>
+          </section>
+
+          <section class="gate-block" id="gate-decide-block" hidden>
+            <div class="gate-block-head"><h3>Decide</h3><span id="gate-decide-meta">triage</span></div>
+            <div class="gate-decide" id="gate-decide"></div>
           </section>
 
           <section class="gate-block" id="gate-coverage-block" hidden>
@@ -292,7 +340,7 @@
     </div>
 
     <!-- ------------------------------------------------------------- AUDIT -->
-    <p class="gate-audit-note"><strong>Audit preview:</strong> per-instance SQLite. On Vercel, <code>/tmp</code> is ephemeral; export the raw JSON for a durable record.</p>
+    <p class="gate-audit-note" id="gate-audit-note"><strong>Audit:</strong> every determination is written to a tamper-evident ledger. <a href="/ledger">Open the ledger</a>.</p>
 </div>
 </section>
 

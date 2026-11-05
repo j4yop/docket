@@ -36,6 +36,8 @@
     effective_date: "",
     expires_date: "",
     precedence: 0,
+    approved_by: "",
+    approval_reference: "",
     text: "",
   });
 
@@ -105,11 +107,24 @@
       inspectBlock: $("gate-inspect-block"),
       inspectMeta: $("gate-inspect-meta"),
       inspect: $("gate-inspect"),
+      extractBlock: $("gate-extract-block"),
+      extractMeta: $("gate-extract-meta"),
+      extract: $("gate-extract"),
+      decideBlock: $("gate-decide-block"),
+      decideMeta: $("gate-decide-meta"),
+      decide: $("gate-decide"),
       coverageBlock: $("gate-coverage-block"),
       coverageMeta: $("gate-coverage-meta"),
       coverage: $("gate-coverage"),
       conflictsBlock: $("gate-conflicts-block"),
       conflicts: $("gate-conflicts"),
+      policiesBlock: $("gate-policies-block"),
+      policiesMeta: $("gate-policies-meta"),
+      policies: $("gate-policies"),
+      auditNote: $("gate-audit-note"),
+      ablateEndpoint: $("gate-ablate-endpoint"),
+      ablateRun: $("gate-ablate-run"),
+      ablationResult: $("gate-ablation-result"),
       rerank: $("gate-rerank"),
       requestJson: $("gate-request-json"),
       rawJson: $("gate-raw-json"),
@@ -372,6 +387,7 @@
     });
     refs.exportButton.addEventListener("click", exportCase);
     refs.clearButton.addEventListener("click", clearAll);
+    refs.ablateRun.addEventListener("click", runAblation);
 
     refs.examples.addEventListener("click", (event) => {
       const card = event.target.closest(".gate-example");
@@ -492,6 +508,17 @@
           </select>
         </div>
       </div>
+      <div class="gate-doc-grid gate-doc-approval">
+        <div class="gate-field">
+          <label for="gate-doc-approved-by">Approved by</label>
+          <input id="gate-doc-approved-by" type="text" maxlength="120" placeholder="Name or role" data-field="approved_by" />
+        </div>
+        <div class="gate-field">
+          <label for="gate-doc-reference">Approval reference</label>
+          <input id="gate-doc-reference" type="text" maxlength="200" placeholder="Ticket, email or date" data-field="approval_reference" />
+        </div>
+      </div>
+      <p class="gate-doc-hint">Built-in examples are pre-approved. A custom policy needs an approval reference, or an admin approval, before the gate can publish.</p>
       <div class="gate-field">
         <label for="gate-doc-text">Policy text</label>
         <textarea id="gate-doc-text" rows="7" maxlength="60000" placeholder="Paste the policy text…" data-field="text"></textarea>
@@ -504,6 +531,8 @@
     $("gate-doc-date").value = doc.effective_date || "";
     $("gate-doc-expires").value = doc.expires_date || "";
     $("gate-doc-precedence").value = String(doc.precedence);
+    $("gate-doc-approved-by").value = doc.approved_by || "";
+    $("gate-doc-reference").value = doc.approval_reference || "";
     $("gate-doc-text").value = doc.text;
 
     refs.docCount.textContent = `${state.documents.length} of ${MAX_DOCS}`;
@@ -564,6 +593,8 @@
         effective_date: doc.effective_date || "",
         expires_date: doc.expires_date || "",
         precedence: Number(doc.precedence) || 0,
+        approved_by: (doc.approved_by || "").trim(),
+        approval_reference: (doc.approval_reference || "").trim(),
         text: doc.text.trim(),
       })),
     };
@@ -610,6 +641,7 @@
 
   let sessionToken = null;
   let sessionExpires = 0;
+  let ablateBusy = false;
 
   async function getSession() {
     if (sessionToken && Date.now() / 1000 < sessionExpires - 30) return sessionToken;
@@ -747,6 +779,47 @@
     }
   }
 
+  async function runAblation() {
+    if (!state.lastPayload || !state.last || ablateBusy) return;
+    const endpoint = refs.ablateEndpoint.value;
+    ablateBusy = true;
+    refs.ablateRun.disabled = true;
+    refs.ablateRun.textContent = "Running…";
+    refs.ablationResult.hidden = false;
+    refs.ablationResult.innerHTML = `<p class="gate-claim-quote">Running the same case without ${esc(endpoint)}…</p>`;
+    try {
+      const response = await authFetch("/api/ablate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.assign({}, state.lastPayload, { endpoint })),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        const detail = (body && (body.detail || body.error)) || `HTTP ${response.status}`;
+        throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+      }
+      const baseline = String((state.last && state.last.decision) || "hold").toUpperCase();
+      const ablated = String(body.decision || "hold").toUpperCase();
+      const changed = baseline !== ablated;
+      const reasons = (body.reasons || []).slice(0, 3).map((reason) => `<li>${esc(reason)}</li>`).join("");
+      refs.ablationResult.innerHTML = `
+        <div class="gate-ablation-compare">
+          <div><b>Baseline</b><span data-decision="${esc(baseline.toLowerCase())}">${esc(baseline)}</span></div>
+          <div><b>Without ${esc(endpoint)}</b><span data-decision="${esc(ablated.toLowerCase())}">${esc(ablated)}</span></div>
+          <div><b>Decision</b><span>${changed ? "changed" : "unchanged"}</span></div>
+          <div><b>Cost</b><span>${esc(formatCredits(body.credits))} credits · ${body.api_calls || 0} calls</span></div>
+        </div>
+        <ul class="gate-reasons gate-ablation-reasons">${reasons}</ul>
+        <p class="gate-ablation-note">${esc((body.ablation && body.ablation.note) || "Simulation only.")}</p>`;
+    } catch (error) {
+      refs.ablationResult.innerHTML = `<p class="gate-claim-quote">Counterfactual failed: ${esc(error.message)}</p>`;
+    } finally {
+      ablateBusy = false;
+      refs.ablateRun.disabled = false;
+      refs.ablateRun.textContent = "Run without it";
+    }
+  }
+
   function renderFailClosed(error) {
     const result = {
       checked_at: new Date().toISOString(),
@@ -776,6 +849,8 @@
     const ref = makeRef(result);
 
     state.lastPayload = payload || state.lastPayload;
+    refs.ablationResult.hidden = true;
+    refs.ablationResult.innerHTML = "";
     refs.empty.hidden = true;
     refs.checking.hidden = true;
     refs.result.hidden = false;
@@ -811,6 +886,15 @@
     const grounded = Number((result.verify && result.verify.grounded) || 0);
     refs.rulerMarker.style.left = `${Math.max(0, Math.min(100, grounded * 100))}%`;
 
+    const audit = result.audit || {};
+    if (audit.error) {
+      refs.auditNote.innerHTML = `<strong>Audit failed:</strong> the durable ledger did not record this check, so the verdict was held. <a href="/ledger">Open the ledger</a>.`;
+    } else if (audit.hash) {
+      refs.auditNote.innerHTML = `<strong>Audit:</strong> ${esc(audit.storage)} · seq ${esc(audit.seq)} · hash <span title="${esc(audit.hash)}">${esc(String(audit.hash).slice(0, 12))}…</span> · <a href="/ledger">Open the ledger</a>.`;
+    } else {
+      refs.auditNote.innerHTML = "<strong>Simulation:</strong> this run was not written to the audit ledger. <a href=\"/ledger\">Open the ledger</a>.";
+    }
+
     refs.reasons.innerHTML = (result.reasons || [])
       .map((reason) => `<li>${esc(reason)}</li>`)
       .join("") || "<li>No reasons returned.</li>";
@@ -818,10 +902,13 @@
     renderStages(result);
     renderTrace(result);
     renderDelivery(result, payload);
+    renderPolicies(result);
     renderAuthority(result);
     renderClaims(result);
     renderGuard(result);
     renderInspect(result);
+    renderExtract(result);
+    renderDecide(result);
     renderCoverage(result);
     renderConflicts(result);
     renderRerank(result);
@@ -848,11 +935,15 @@
     const guard = result.guard || {};
     const inspect = result.inspect || {};
     const protect = result.protect || {};
+    const guardThreshold = Number(guard.threshold ?? 0.5);
+    const inspectThreshold = Number(inspect.threshold ?? 0.5);
     const roles = {
       authority: "Resolves jurisdiction, precedence and valid time.",
       protect: "Redacts personal data before the audit preview is stored.",
       guard: "Screens source and draft for prompt injection.",
       inspect: "Reviews runbook scripts before an employee runs them.",
+      extract: "Verifies the dates, jurisdiction and constraints authority depends on.",
+      decide: "Classifies the request and routes high-impact cases to review.",
       rerank: "Selects the governing clauses that answer the question.",
       compare: "Aligns conflicts with superseded clauses.",
       coverage: "Extracts obligations and finds material omissions.",
@@ -861,28 +952,48 @@
     const without = {
       authority: "Without Authority, the newest policy could win.",
       protect: protect.entity_count ? "Without Protect, the audit preview would store raw PII." : "Without Protect, PII screening would be skipped.",
-      guard: Number(guard.injection) >= 0.5 ? "Without Guard, the injected source would continue to Rerank." : "Without Guard, injection risk would be unchecked.",
+      guard: Number(guard.injection) >= guardThreshold ? "Without Guard, the injected source would continue to Rerank." : "Without Guard, injection risk would be unchecked.",
       inspect: inspect.verdict ? "Without Inspect, this script would not get a safety review." : "No runnable script in this draft.",
+      extract: (result.extract && result.extract.conflicts && result.extract.conflicts.length)
+        ? "Without Extract, the metadata conflict would be invisible."
+        : "Without Extract, the policy facts behind authority would be unverified.",
+      decide: (result.decide && result.decide.review_required)
+        ? "Without Decide, this case would publish without human review."
+        : "Without Decide, every request would use one generic verification profile.",
       rerank: "Without Rerank, authority would not select clause-level evidence.",
-      compare: "Without Compare, the superseded-clause diff would be missing.",
+      compare: (result.compare_unacknowledged || []).length
+        ? "Without Compare, the superseded value in the draft would go unnoticed."
+        : "Without Compare, the superseded-clause diff would be missing.",
       coverage: coverage.value === true ? "Without Fill, the omission would be invisible." : "Without Fill, completeness would be unverified.",
       verify: contradicted ? "Without Verify, the contradiction would not be caught." : "Without Verify, support would be an assertion.",
     };
     const effects = {
-      authority: "governing",
+      authority: result.authority && result.authority.governing ? "governing" : "blocked",
       protect: protect.entity_count ? `${protect.entity_count} redacted` : "clean",
-      guard: Number(guard.injection) >= 0.5 ? "HOLD" : "benign",
+      guard: Number(guard.injection) >= guardThreshold ? "HOLD" : "benign",
       inspect: inspect.verdict || (inspect.error ? "error" : "skipped"),
+      extract: (result.extract && result.extract.conflicts && result.extract.conflicts.length)
+        ? "HOLD"
+        : `${Object.values((result.extract && result.extract.governing) || {}).filter(Boolean).length} facts`,
+      decide: (result.decide && result.decide.review_required)
+        ? "HOLD · review"
+        : `${(result.decide && result.decide.request_type) || "skipped"}`,
       rerank: `${(result.rerank && result.rerank.selected && result.rerank.selected.length) || 0} clauses`,
-      compare: result.compare && result.compare.pairs ? "conflicts" : "none",
+      compare: (result.compare_unacknowledged || []).length
+        ? `REWRITE · ${result.compare_unacknowledged.length} used`
+        : result.compare && result.compare.pairs ? "conflicts" : "none",
       coverage: coverage.value === true ? "REWRITE" : "no omission",
       verify: `${supported}/${claims.length} supported`,
     };
     const impactFor = (stage) => {
       if (stage.status === "error") return "error";
       if (stage.status === "skipped") return "skip";
-      if (stage.stage === "guard" && Number(guard.injection) >= 0.5) return "hold";
-      if (stage.stage === "inspect" && (inspect.malicious === true || String(inspect.verdict || "").toLowerCase() === "malicious")) return "hold";
+      if (stage.stage === "guard" && Number(guard.injection) >= guardThreshold) return "hold";
+      if (stage.stage === "inspect" && (inspect.malicious === true || Number(inspect.probability) >= inspectThreshold)) return "hold";
+      if (stage.stage === "authority" && (result.codes || []).some((code) => String(code).startsWith("policy_"))) return "hold";
+      if (stage.stage === "extract" && (result.codes || []).includes("metadata_conflict")) return "hold";
+      if (stage.stage === "decide" && (result.codes || []).includes("triage_review")) return "hold";
+      if (stage.stage === "compare" && (result.compare_unacknowledged || []).length) return "rewrite";
       if (stage.stage === "coverage" && coverage.value === true) return "rewrite";
       if (stage.stage === "verify" && contradicted) return "rewrite";
       return "support";
@@ -1018,6 +1129,40 @@
       </div>`;
   }
 
+  function renderPolicies(result) {
+    const integrity = result && result.policy_integrity;
+    const envelopes = (result && result.policy_envelopes) || [];
+    if (!integrity && !envelopes.length) {
+      refs.policiesBlock.hidden = true;
+      return;
+    }
+    refs.policiesBlock.hidden = false;
+    const failures = (integrity && integrity.failures) || [];
+    refs.policiesMeta.textContent = failures.length
+      ? `${failures.length} failed`
+      : `${envelopes.length} approved`;
+    if (failures.length) {
+      refs.policies.innerHTML = failures
+        .map((item) => `<div class="gate-policy gate-policy-failed">
+          <div class="gate-policy-main"><b>${esc(item.code === "policy_tampered" ? "Tampered" : "Unapproved")}</b><span>${esc(item.message)}</span></div>
+        </div>`)
+        .join("");
+      return;
+    }
+    refs.policies.innerHTML = envelopes
+      .map((envelope) => `<div class="gate-policy">
+        <div class="gate-policy-main">
+          <b>${esc(envelope.title || "Policy")}</b>
+          <span>${esc(envelope.approval_type || "approved")} · ${esc(envelope.approved_by || "")}</span>
+        </div>
+        <div class="gate-policy-meta">
+          <span>${esc(envelope.policy_id || "")}</span>
+          <span title="${esc(envelope.content_hash || "")}">${esc(String(envelope.content_hash || "").slice(0, 12))}</span>
+        </div>
+      </div>`)
+      .join("");
+  }
+
   function renderAuthority(result) {
     const trace = [...((result.authority && result.authority.trace) || [])].sort(
       (left, right) => outcomeRank(left.outcome) - outcomeRank(right.outcome)
@@ -1090,7 +1235,8 @@
     }
     refs.guardBlock.hidden = false;
     const risk = Math.max(0, Math.min(100, guard.injection * 100));
-    const risky = guard.verdict === "injection" || risk >= 50;
+    const threshold = Number(guard.threshold ?? 0.5);
+    const risky = guard.verdict === "injection" || guard.injection >= threshold;
     refs.guard.dataset.risky = String(risky);
     refs.guardMeta.textContent = risky ? "injection risk" : "safe";
     const evidence = Array.isArray(guard.evidence) ? guard.evidence : [];
@@ -1123,12 +1269,13 @@
     }
     refs.inspectBlock.hidden = false;
     const verdict = String(inspect.verdict || "").toLowerCase();
+    const threshold = Number(inspect.threshold ?? 0.5);
     const risky =
       inspect.malicious === true ||
       verdict === "malicious" ||
       verdict === "suspicious" ||
       verdict === "unsafe" ||
-      Number(inspect.probability) >= 0.5;
+      Number(inspect.probability) >= threshold;
     const probability = Number(inspect.probability);
     const risk = Number.isFinite(probability)
       ? Math.max(0, Math.min(100, probability * 100))
@@ -1183,6 +1330,61 @@
     `;
   }
 
+  function renderExtract(result) {
+    const extract = result && result.extract;
+    const documents = (extract && extract.documents) || [];
+    if (!documents.length) {
+      refs.extractBlock.hidden = true;
+      return;
+    }
+    refs.extractBlock.hidden = false;
+    const facts = (extract && extract.governing) || {};
+    const labels = {
+      policy_id: "Policy ID",
+      effective_date: "Effective date",
+      expiry_date: "Expiry date",
+      jurisdiction: "Jurisdiction",
+      approval_required: "Approval",
+      amount_limit: "Amount limit",
+      deadline_days: "Deadline",
+      exception_condition: "Exception",
+    };
+    const present = Object.entries(labels).filter(([key]) => facts[key]);
+    const conflicts = (extract && extract.conflicts) || [];
+    refs.extractMeta.textContent = `${present.length} facts · ${conflicts.length} conflicts`;
+    const factHtml = present
+      .map(([key, label]) => `<div class="gate-fact"><b>${esc(label)}</b><span>${esc(facts[key])}</span></div>`)
+      .join("");
+    const conflictHtml = conflicts
+      .map((item) => `<div class="gate-fact-alert">${esc(item)}</div>`)
+      .join("");
+    const adopted = (extract && extract.adopted) || [];
+    const adoptedHtml = adopted
+      .map((item) => `<div class="gate-fact-alert">${esc(item)}</div>`)
+      .join("");
+    refs.extract.innerHTML = `<div class="gate-facts">${factHtml || '<div class="gate-fact"><b>Facts</b><span>No named fact was stated in the policy text.</span></div>'}</div>${conflictHtml}${adoptedHtml}`;
+  }
+
+  function renderDecide(result) {
+    const decide = result && result.decide;
+    if (!decide || !decide.request_type) {
+      refs.decideBlock.hidden = true;
+      return;
+    }
+    refs.decideBlock.hidden = false;
+    const probability = Number(decide.review_probability);
+    const probabilityText = Number.isFinite(probability) ? `${Math.round(probability * 100)}%` : "n/a";
+    refs.decideMeta.textContent = `${decide.request_type} · ${decide.risk}`;
+    refs.decide.innerHTML = `
+      <div class="gate-triage">
+        <div class="gate-triage-cell"><b>Request</b><span>${esc(decide.request_type)}</span></div>
+        <div class="gate-triage-cell"><b>Risk</b><span>${esc(decide.risk)}</span></div>
+        <div class="gate-triage-cell" data-alert="${decide.review_required ? "true" : "false"}"><b>Human review</b><span>${decide.review_required ? "required" : "not required"} · ${probabilityText}</span></div>
+        <div class="gate-triage-cell"><b>Profile</b><span>${esc(decide.request_type)}</span></div>
+      </div>
+      <div class="gate-triage-profile">${esc(decide.profile || "General verification profile.")}</div>`;
+  }
+
   function renderConflicts(result) {
     const pairs = result.compare && result.compare.pairs;
     if (!pairs || !pairs.length) {
@@ -1214,12 +1416,16 @@
         const governingDoc = governing === a ? aDoc : bDoc;
         const supersededDoc = governing === a ? bDoc : aDoc;
 
+        const used = (result.compare_unacknowledged || []).find(
+          (item) => item.superseded_quote === supersededQuote.quote
+        );
         blocks.push(`<div class="gate-conflict">
           <div class="gate-conflict-head">Conflicting · ${esc(governingDoc.title)} vs ${esc(supersededDoc.title)}</div>
           <div class="gate-conflict-grid">
             <div class="gate-conflict-col"><b>Governing</b><p>${esc(governing.quote)}</p></div>
             <div class="gate-conflict-col"><b>Superseded</b><p>${esc(supersededQuote.quote)}</p></div>
           </div>
+          ${used ? `<div class="gate-conflict-used">Used in the draft: ${(used.used_values || []).map(esc).join(", ")}</div>` : ""}
         </div>`);
 
         if (blocks.length >= 4) break;

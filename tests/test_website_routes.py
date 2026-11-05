@@ -75,3 +75,57 @@ def test_check_rejects_an_invalid_session() -> None:
         headers={"X-Docket-Session": "not-a-valid-token"},
     )
     assert response.status_code == 401
+
+
+def _session_headers() -> dict:
+    token = client.get("/api/session").json()["token"]
+    return {"X-Docket-Session": token}
+
+
+def test_ablate_requires_a_session() -> None:
+    response = client.post("/api/ablate", json={**_check_payload(), "endpoint": "guard"})
+    assert response.status_code == 401
+
+
+def test_ablate_rejects_an_unknown_endpoint() -> None:
+    response = client.post(
+        "/api/ablate",
+        json={**_check_payload(), "endpoint": "authority"},
+        headers=_session_headers(),
+    )
+    assert response.status_code == 400
+
+
+def test_ablate_skips_the_endpoint_without_recording(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+    seen = {}
+
+    async def fake_run_check(req, emit=None, ablate=None, record=True):
+        seen["ablate"] = ablate
+        seen["record"] = record
+        return {
+            "decision": "publish",
+            "reasons": [],
+            "codes": [],
+            "credits": 0,
+            "api_calls": 0,
+            "latency_ms": 0,
+            "headline": "",
+            "recorded": record,
+            "simulation": not record,
+        }
+
+    monkeypatch.setattr(module, "run_check", fake_run_check)
+    response = client.post(
+        "/api/ablate",
+        json={**_check_payload(), "endpoint": "guard"},
+        headers=_session_headers(),
+    )
+    assert response.status_code == 200
+    assert seen == {"ablate": {"guard"}, "record": False}
+    body = response.json()
+    assert body["simulation"] is True
+    assert body["ablation"]["endpoint"] == "guard"
+    assert "not written to the audit ledger" in body["ablation"]["note"]

@@ -24,3 +24,5 @@ venv/
 
 # keep the template
 !.env.example
+
+.docket-store/
