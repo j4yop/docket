@@ -12,7 +12,7 @@
 [![Console](https://img.shields.io/badge/Gate_Console-%2Fconsole-059669?style=for-the-badge&labelColor=1e293b)](https://docket-clocked.vercel.app/console)
 
 <p align="center">
-  <img src="docs/pipeline.svg" alt="Docket Automated Publish Gate Pipeline" width="100%" />
+  <img src="docs/docket-pipeline.svg" alt="Docket Automated Publish Gate Pipeline" width="100%" />
 </p>
 
 ---
