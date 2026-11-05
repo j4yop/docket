@@ -28,8 +28,8 @@
     {
       label: "Social",
       links: [
-        { label: "LinkedIn", href: "https://www.linkedin.com/company/docket", external: true },
-        { label: "X", href: "https://x.com/docket", external: true },
+        { label: "LinkedIn", href: "https://www.linkedin.com/in/jaygopaltripathy/", external: true },
+        { label: "X", href: "https://x.com/j4y_op", external: true },
         { label: "GitHub", href: GITHUB, external: true },
       ],
     },
@@ -243,11 +243,18 @@
     // the Docket content is not overwritten by a late render.
     window.addEventListener("load", () => {
       setTimeout(apply, 350);
-      setTimeout(apply, 1300);
+      setTimeout(() => {
+        apply();
+        document.documentElement.classList.add("dk-footer-ready");
+      }, 1300);
     });
   } else if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", apply);
+    document.addEventListener("DOMContentLoaded", () => {
+      apply();
+      document.documentElement.classList.add("dk-footer-ready");
+    });
   } else {
     apply();
+    document.documentElement.classList.add("dk-footer-ready");
   }
 })();

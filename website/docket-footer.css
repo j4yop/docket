@@ -223,3 +223,13 @@ footer form button:active { transform: translateY(0) scale(0.99); }
 @media (max-width: 767px) {
   .dk-console-city-band { height: 220px; }
 }
+
+/* Prevent the mirrored footer from being painted before Docket replaces it. */
+footer[data-page-find-surface="red"],
+.bg-background > footer {
+  visibility: hidden !important;
+}
+html.dk-footer-ready footer[data-page-find-surface="red"],
+html.dk-footer-ready .bg-background > footer {
+  visibility: visible !important;
+}
