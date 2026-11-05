@@ -35,12 +35,15 @@ a[href="/"]:has(> svg[viewBox="0 0 132 54"])::after {
   z-index: 2;
 }
 
-/* Keep the transparent header from covering scrolled content. */
+/* The header stays visible on scroll. This neutralises the old hide class so
+   a cached copy of the previous brand script cannot make the nav vanish. */
 header {
-  transition: transform 220ms ease;
+  opacity: 1;
+  visibility: visible;
 }
 header.dk-header-hidden {
-  transform: translateY(-110%);
-  opacity: 0;
-  pointer-events: none;
+  transform: none;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
