@@ -37,7 +37,7 @@ a[href="/"]:has(> svg[viewBox="0 0 132 54"])::after {
 
 /* Keep the transparent header from covering scrolled content. */
 header {
-  transition: transform 220ms ease, opacity 180ms ease;
+  transition: transform 220ms ease;
 }
 header.dk-header-hidden {
   transform: translateY(-110%);
