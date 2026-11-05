@@ -232,20 +232,6 @@ python -m pytest -v
 
 ---
 
-## Rubric Mapping
+## License
 
-| Criterion | How Docket Delivers |
-|---|---|
-| **Practical Usefulness (25 pts)** | Directly solves the "grounded in the wrong source" failure mode for enterprise AI assistants. Provides automated gating with clear before/after replacement quotes. |
-| **Core Clocked Integration (30 pts)** | All three Clocked endpoints (**Rerank**, **Compare**, **Verify**) are load-bearing to the business logic. |
-| **Additional Endpoints (15 pts)** | Seven meaningful endpoints across all three groups: Protect, Guard, Inspect, Fill, Rerank, Compare, Verify. Each changes what the app stores, decides, or shows. Full Safety and Knowledge breadth; Fill anchors Decisions. |
-| **Implementation & UX (20 pts)** | Responsive red/black console, real SSE stage progress, Protect/Guard/Inspect/Coverage stages, interactive diffs, import/export. Axe checks pass on the shipped home and console. |
-| **Explanation & Reproducibility (10 pts)** | Clean architecture, 43 offline unit tests, live Vercel deployment, transparent raw Clocked JSON inspect tabs. |
-
----
-
-## Attribution and license
-
-The console, backend, policy engine and Clocked integration are original work built for the Clocked Build Challenge 2026. The marketing page is a mirrored static layout used as a demo surface; all third-party brand names, logos, customer marks, testimonials, blog posts and social links from the reference shell have been removed or replaced. Spline Sans and JetBrains Mono are self-hosted under the SIL Open Font License 1.1. See `THIRD_PARTY_NOTICES.md` for the shell and asset notes. The marketing shell has a known recoverable client/server text mismatch from its older React tree; the app catches only that React #418 recoverable error, and `?debug=hydration` surfaces it for development.
-
-MIT License. See [LICENSE](LICENSE) for details.
+MIT. See [LICENSE](LICENSE). The console and backend are original; the marketing page is a mirrored static shell. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
