@@ -1,4 +1,4 @@
-# docket ⚡
+# Docket
 
 **A publish gate for service-desk knowledge and AI assistants.**
 
