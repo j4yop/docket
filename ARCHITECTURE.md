@@ -23,11 +23,12 @@ The failure is not hallucination. It is **grounded in the wrong source**. Retrie
 | 1 | Does the audit preview contain personal data? | **Protect** | Clocked `/pii` replaces personal data before the admin-only preview is stored. |
 | 2 | Is the source trying to take control? | **Guard** | Clocked `/injection` screens the policies and draft for instruction overrides, fabricated approvals and secret extraction. A positive signal holds before Rerank. |
 | 3 | Which document governs this employee? | **App** (deterministic) | Jurisdiction, precedence, effective date and expiry resolve authority. Future-dated and expired documents cannot govern. No model call. |
-| 4 | Do the sources disagree? | **Compare** | Clause-level comparison of the governing and superseded text, with both passages quoted. |
-| 5 | Does the draft omit a material condition? | **Fill** | Clocked `/fill` extracts material obligations and returns an omission judgment plus the missing condition. |
-| 6 | Does the draft claim only what the governing source supports? | **Verify** | Claim-by-claim supported / contradicted / not stated, with source evidence. |
-| 7 | Which passage applies to this employee? | **Rerank** | `use` / `expand` / `skip` per clause, conditioned on country, role, plan, and the authority rule. |
-| 8 | What should happen now? | **App policy** (deterministic) | Publish, Rewrite or Hold, with reason codes. |
+| 4 | Does the draft contain a runbook script? | **Inspect** | Clocked `/script` reviews fenced code blocks and command sequences for destructive behavior, security blinding, persistence or exfiltration. A risky script holds before Rerank. |
+| 5 | Do the sources disagree? | **Compare** | Clause-level comparison of the governing and superseded text, with both passages quoted. |
+| 6 | Does the draft omit a material condition? | **Fill** | Clocked `/fill` extracts material obligations and returns an omission judgment plus the missing condition. |
+| 7 | Does the draft claim only what the governing source supports? | **Verify** | Claim-by-claim supported / contradicted / not stated, with source evidence. |
+| 8 | Which passage applies to this employee? | **Rerank** | `use` / `expand` / `skip` per clause, conditioned on country, role, plan, and the authority rule. |
+| 9 | What should happen now? | **App policy** (deterministic) | Publish, Rewrite or Hold, with reason codes. |
 | 9 | Can we prove it? | **App** | Offsets, quotes, per-claim evidence, credits, latency, and the raw API responses. |
 
 **The core insight:** authority is a business rule; relevance is a model judgment. The app must never delegate "which policy wins" to a model, and must never let a model's relevance score override a stated precedence rule.
@@ -60,6 +61,9 @@ input
   │
   ├─ Guard   (policies + draft, untrusted source)
   │     → injection / prompt takeover = HOLD, before any retrieval
+  │
+  ├─ Inspect (script blocks in the draft, if any)
+  │     → unsafe runbook / security blinding = HOLD, before Rerank
   │
   ├─ Rerank  (all candidate clauses, with the authority rule in instructions)
   │     → governing clauses marked use / expand
@@ -112,7 +116,7 @@ FastAPI
    └─ app.py          routes, orchestration, SSE
          │
          ▼
-   Clocked API  (Protect, Guard, Rerank, Compare, Fill, Verify)
+   Clocked API  (Protect, Guard, Inspect, Rerank, Compare, Fill, Verify)
 ```
 
 **No hardcoded results.** The verdict is a pure function of the API responses and the user's authority metadata. The sample corpus is editable input, not a fixture the app depends on. Running the same check twice produces the same decision because the inputs are the same, not because the answer is stored.
@@ -129,7 +133,7 @@ FastAPI
 | Tests | pytest | Authority resolver, coverage, and verdict policy are pure functions |
 | Deploy | Vercel FastAPI service; Docker / Render / Railway also supported (Procfile included) | Live demo, one process, no database server |
 
-**Rejected:** Next.js (build step and hydration risk for a six-day scope), a vector database (not needed; clauses are small), an LLM-generated rewrite (adds a fourth endpoint and a new failure mode).
+**Rejected for the console:** Next.js (build step and hydration risk for a six-day scope), a vector database (not needed; clauses are small), an LLM-generated rewrite (adds a fourth endpoint and a new failure mode).
 
 ## 6. Accessibility
 
@@ -160,9 +164,9 @@ FastAPI
 |---|---|
 | Practical usefulness (25) | A named buyer, a documented failure mode, a blocked publish, and a measurable outcome |
 | Core Clocked integration (30) | All three group endpoints are load-bearing: Rerank selects, Compare evidences, Verify decides |
-| Additional endpoints (15) | Six meaningful endpoints across all three groups: Protect, Guard, Fill, Rerank, Compare, Verify. Each changes what the app stores, decides, or shows. Full group breadth and strong Best Overall breadth. |
+| Additional endpoints (15) | Seven meaningful endpoints across all three groups: Protect, Guard, Inspect, Fill, Rerank, Compare, Verify. Each changes what the app stores, decides, or shows. Full Safety and Knowledge breadth; Fill anchors Decisions. |
 | Implementation / UX (20) | A clear desk, real SSE stage progress, citations, keyboard and mobile support, axe-checked WCAG A/AA |
-| Explanation / reproducibility (10) | README, architecture, 39 pure-function tests, failure table, raw JSON |
+| Explanation / reproducibility (10) | README, architecture, 43 pure-function tests, failure table, raw JSON |
 
 ## 9. Failure behaviour
 
@@ -174,6 +178,7 @@ FastAPI
 | 5xx / timeout | Bounded retry, then HOLD |
 | 400 / 422 | HOLD with the endpoint's detail |
 | Prompt injection | HOLD before Rerank, with the risky passage |
+| Unsafe runbook script | HOLD before Rerank, with the offending line |
 | Material omission | REWRITE with the missing condition quoted |
 | Missing coverage judgment | HOLD |
 | Protect failure | Raw preview is suppressed; the check continues with redaction unavailable |

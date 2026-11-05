@@ -100,6 +100,11 @@
       guardBlock: $("gate-guard-block"),
       guardMeta: $("gate-guard-meta"),
       guard: $("gate-guard"),
+      traceBlock: $("gate-trace-block"),
+      trace: $("gate-trace"),
+      inspectBlock: $("gate-inspect-block"),
+      inspectMeta: $("gate-inspect-meta"),
+      inspect: $("gate-inspect"),
       coverageBlock: $("gate-coverage-block"),
       coverageMeta: $("gate-coverage-meta"),
       coverage: $("gate-coverage"),
@@ -811,10 +816,12 @@
       .join("") || "<li>No reasons returned.</li>";
 
     renderStages(result);
+    renderTrace(result);
     renderDelivery(result, payload);
     renderAuthority(result);
     renderClaims(result);
     renderGuard(result);
+    renderInspect(result);
     renderCoverage(result);
     renderConflicts(result);
     renderRerank(result);
@@ -824,6 +831,78 @@
     if (window.matchMedia("(max-width: 1100px)").matches) {
       refs.result.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  }
+
+  function renderTrace(result) {
+    const stages = result && result.stages;
+    if (!Array.isArray(stages) || !stages.length) {
+      refs.traceBlock.hidden = true;
+      return;
+    }
+    refs.traceBlock.hidden = false;
+    const coverage = result.coverage || {};
+    const verify = result.verify || {};
+    const claims = (verify.claims || []).filter((claim) => claim.counted !== false);
+    const contradicted = claims.filter((claim) => claim.verdict === "contradicted").length;
+    const supported = claims.filter((claim) => claim.verdict === "supported").length;
+    const guard = result.guard || {};
+    const inspect = result.inspect || {};
+    const protect = result.protect || {};
+    const roles = {
+      authority: "Resolves jurisdiction, precedence and valid time.",
+      protect: "Redacts personal data before the audit preview is stored.",
+      guard: "Screens source and draft for prompt injection.",
+      inspect: "Reviews runbook scripts before an employee runs them.",
+      rerank: "Selects the governing clauses that answer the question.",
+      compare: "Aligns conflicts with superseded clauses.",
+      coverage: "Extracts obligations and finds material omissions.",
+      verify: "Checks every claim against the governing text.",
+    };
+    const without = {
+      authority: "Without Authority, the newest policy could win.",
+      protect: protect.entity_count ? "Without Protect, the audit preview would store raw PII." : "Without Protect, PII screening would be skipped.",
+      guard: Number(guard.injection) >= 0.5 ? "Without Guard, the injected source would continue to Rerank." : "Without Guard, injection risk would be unchecked.",
+      inspect: inspect.verdict ? "Without Inspect, this script would not get a safety review." : "No runnable script in this draft.",
+      rerank: "Without Rerank, authority would not select clause-level evidence.",
+      compare: "Without Compare, the superseded-clause diff would be missing.",
+      coverage: coverage.value === true ? "Without Fill, the omission would be invisible." : "Without Fill, completeness would be unverified.",
+      verify: contradicted ? "Without Verify, the contradiction would not be caught." : "Without Verify, support would be an assertion.",
+    };
+    const effects = {
+      authority: "governing",
+      protect: protect.entity_count ? `${protect.entity_count} redacted` : "clean",
+      guard: Number(guard.injection) >= 0.5 ? "HOLD" : "benign",
+      inspect: inspect.verdict || (inspect.error ? "error" : "skipped"),
+      rerank: `${(result.rerank && result.rerank.selected && result.rerank.selected.length) || 0} clauses`,
+      compare: result.compare && result.compare.pairs ? "conflicts" : "none",
+      coverage: coverage.value === true ? "REWRITE" : "no omission",
+      verify: `${supported}/${claims.length} supported`,
+    };
+    const impactFor = (stage) => {
+      if (stage.status === "error") return "error";
+      if (stage.status === "skipped") return "skip";
+      if (stage.stage === "guard" && Number(guard.injection) >= 0.5) return "hold";
+      if (stage.stage === "inspect" && (inspect.malicious === true || String(inspect.verdict || "").toLowerCase() === "malicious")) return "hold";
+      if (stage.stage === "coverage" && coverage.value === true) return "rewrite";
+      if (stage.stage === "verify" && contradicted) return "rewrite";
+      return "support";
+    };
+    refs.trace.innerHTML = stages
+      .map((stage) => {
+        const name = stage.stage;
+        const role = roles[name] || "Endpoint contribution.";
+        const impact = impactFor(stage);
+        const effect = stage.status === "skipped" ? "skipped" : effects[name] || stage.status;
+        return `<div class="gate-trace-row" data-impact="${impact}">
+          <span class="gate-trace-endpoint">${esc(name)}</span>
+          <span class="gate-trace-body">
+            <span class="gate-trace-role">${esc(role)}</span>
+            <span class="gate-trace-without">${esc(without[name] || "")}</span>
+          </span>
+          <span class="gate-trace-effect">${esc(effect)}</span>
+        </div>`;
+      })
+      .join("");
   }
 
   function makeRef(result) {
@@ -1028,6 +1107,50 @@
                 (item) => `<div class="gate-guard-quote">
                   <b>${esc(item.category || "instruction")} · ${(Number(item.confidence || 0) * 100).toFixed(0)}%</b>
                   <p>${esc(item.quote || "")}</p>
+                </div>`
+              )
+              .join("")}</div>`
+          : ""
+      }
+    `;
+  }
+
+  function renderInspect(result) {
+    const inspect = result && result.inspect;
+    if (!inspect) {
+      refs.inspectBlock.hidden = true;
+      return;
+    }
+    refs.inspectBlock.hidden = false;
+    const verdict = String(inspect.verdict || "").toLowerCase();
+    const risky =
+      inspect.malicious === true ||
+      verdict === "malicious" ||
+      verdict === "suspicious" ||
+      verdict === "unsafe" ||
+      Number(inspect.probability) >= 0.5;
+    const probability = Number(inspect.probability);
+    const risk = Number.isFinite(probability)
+      ? Math.max(0, Math.min(100, probability * 100))
+      : risky
+        ? 100
+        : 0;
+    refs.inspect.dataset.risky = String(risky);
+    refs.inspectMeta.textContent = risky ? "unsafe script" : "script cleared";
+    const evidence = Array.isArray(inspect.evidence) ? inspect.evidence : [];
+    refs.inspect.innerHTML = `
+      <div class="gate-guard-meter"><span style="width:${risk}%"></span></div>
+      <div class="gate-guard-head">
+        <strong>${risk.toFixed(0)}%</strong>
+        <span>${esc(inspect.category || "script risk")} · ${esc(inspect.severity || "unknown")}</span>
+      </div>
+      ${
+        evidence.length
+          ? `<div class="gate-guard-evidence">${evidence
+              .map(
+                (item) => `<div class="gate-guard-quote">
+                  <b>${esc(item.category || "script")} · ${(Number(item.confidence || 0) * 100).toFixed(0)}%</b>
+                  <p>${esc(item.quote || item.line || "")}</p>
                 </div>`
               )
               .join("")}</div>`

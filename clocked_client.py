@@ -155,6 +155,18 @@ class ClockedClient:
             idem_key,
         )
 
+    async def inspect(self, *, script: str, instructions: str, idem_key: str) -> CallResult:
+        return await self._post(
+            "script",
+            {
+                "script": script[:60_000],
+                "instructions": instructions,
+                "threshold": 0.5,
+                "evidence": True,
+            },
+            idem_key,
+        )
+
     async def rerank(
         self, *, query: str, documents: list[dict], context: dict, instructions: str, idem_key: str
     ) -> CallResult:

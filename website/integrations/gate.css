@@ -531,7 +531,7 @@ body.gate-mode::before { display: none !important; }
 /* ------------------------------------------------------------- verdict */
 .gate-stages {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   padding: 12px 0 12px;
   border-bottom: 1px solid var(--gate-line);
@@ -1665,3 +1665,65 @@ footer form button:active { transform: translateY(0) scale(0.99); }
   font-size: 12px;
   line-height: 1.6;
 }
+
+/* Endpoint-to-verdict trace. */
+.gate-trace {
+  display: grid;
+  gap: 0;
+}
+.gate-trace-row {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--gate-line-soft);
+}
+.gate-trace-row:last-child { border-bottom: 0; }
+.gate-trace-endpoint {
+  color: var(--gate-muted);
+  font-family: var(--gate-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding-top: 2px;
+  text-transform: uppercase;
+}
+.gate-trace-body {
+  min-width: 0;
+}
+.gate-trace-role {
+  color: var(--gate-text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.gate-trace-without {
+  color: var(--gate-dim);
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 3px;
+}
+.gate-trace-effect {
+  color: var(--gate-green);
+  font-family: var(--gate-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-align: right;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.gate-trace-row[data-impact="hold"] .gate-trace-effect { color: var(--gate-hold); }
+.gate-trace-row[data-impact="rewrite"] .gate-trace-effect { color: var(--gate-amber); }
+.gate-trace-row[data-impact="skip"] .gate-trace-effect { color: var(--gate-dim); }
+.gate-trace-row[data-impact="error"] .gate-trace-effect { color: var(--gate-hold); }
+
+/* The audit store is intentionally demo-grade on serverless. */
+.gate-audit-note {
+  color: var(--gate-dim);
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 18px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--gate-line-soft);
+}
+.gate-audit-note strong { color: var(--gate-muted); font-weight: 500; }
+.gate-audit-note code { color: var(--gate-muted); font-family: var(--gate-mono); }

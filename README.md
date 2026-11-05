@@ -6,7 +6,7 @@
 [![Category](https://img.shields.io/badge/CATEGORY-VERIFY_%7C_COMPARE_%7C_RERANK-38BDF8?style=for-the-badge&labelColor=1e293b&color=38BDF8)](https://clocked.rezolve.ai)
 [![Python](https://img.shields.io/badge/python-3.11_%7C_3.12_%7C_3.13-3775A9?style=for-the-badge&logo=python&logoColor=white&labelColor=1e293b)](https://www.python.org/)
 [![Dependencies](https://img.shields.io/badge/dependencies-3-10B981?style=for-the-badge&labelColor=1e293b&color=10B981)](#tech-stack)
-[![Tests](https://img.shields.io/badge/tests-39_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
+[![Tests](https://img.shields.io/badge/tests-43_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
 [![License](https://img.shields.io/badge/license-MIT-FEEA3B?style=for-the-badge&labelColor=1e293b&color=FEEA3B)](LICENSE)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-docket--clocked.vercel.app-6366F1?style=for-the-badge&logo=vercel&logoColor=white&labelColor=1e293b)](https://docket-clocked.vercel.app)
 [![Console](https://img.shields.io/badge/Gate_Console-%2Fconsole-059669?style=for-the-badge&labelColor=1e293b)](https://docket-clocked.vercel.app/console)
@@ -26,11 +26,12 @@ When an AI service-desk assistant drafts an answer from internal company documen
 1. **Protects the Record:** Clocked Protect finds and replaces personal data before the audit preview is written.
 2. **Resolves Document Authority:** Deterministically identifies which currently effective policy governs (jurisdiction, precedence, effective date, expiry).
 3. **Screens the Sources:** Clocked Guard checks the policies and draft for prompt injection before any downstream model reads them.
-4. **Selects the Governing Text:** Clocked Rerank picks the clauses that answer the question and skips superseded text.
-5. **Surfaces Clause-Level Conflicts:** Clocked Compare pinpoints exact discrepancies between governing and superseded documents.
-6. **Checks Completeness:** Clocked Fill extracts material obligations and judges whether the draft omits a condition or exception.
-7. **Verifies Every Assertion:** Clocked Verify checks every claim in the draft against the governing document.
-8. **Gates the Response:** Returns an actionable verdict — **Publish**, **Rewrite**, or **Hold** — with citations, a case record, credits and latency.
+4. **Inspects Runbooks:** Clocked Inspect reviews any script block in the draft before an employee can run it.
+5. **Selects the Governing Text:** Clocked Rerank picks the clauses that answer the question and skips superseded text.
+6. **Surfaces Clause-Level Conflicts:** Clocked Compare pinpoints exact discrepancies between governing and superseded documents.
+7. **Checks Completeness:** Clocked Fill extracts material obligations and judges whether the draft omits a condition or exception.
+8. **Verifies Every Assertion:** Clocked Verify checks every claim in the draft against the governing document.
+9. **Gates the Response:** Returns an actionable verdict — **Publish**, **Rewrite**, or **Hold** — with citations, a case record, credits and latency.
 
 ---
 
@@ -44,20 +45,21 @@ Most critical AI service-desk failures are not pure hallucinations. The answer i
 
 Standard RAG evaluators cannot catch this because the answer is 100% faithful to the retrieved passage.
 
-### The 8 Questions Docket Asks
+### The 9 Questions Docket Asks
 
-Before any answer is published to an employee, Docket resolves eight questions:
+Before any answer is published to an employee, Docket resolves nine questions:
 
 | # | Question | Answered By | How |
 |---|---|---|---|
 | **1** | Does the audit preview contain personal data? | **Clocked Protect** (`/clocked/pii`) | Finds and replaces personal data before the admin-only preview is stored. The check runs on the original input; the record keeps only the redacted copy. |
 | **2** | Is the source trying to take control? | **Clocked Guard** (`/clocked/injection`) | Screens policy text and the draft for instruction overrides, fabricated approvals, secret extraction, and tool misuse. A positive signal holds the answer before Rerank; the console shows the exact risky passage and confidence. |
 | **3** | Which policy governs this employee? | **App Engine** (Deterministic) | Ranks documents by precedence, country specificity, effective date and expiry. Future-dated and expired documents cannot govern. Resolves ties into a **Hold**. No LLM call. |
-| **4** | Which clause answers the question? | **Clocked Rerank** (`/clocked/rerank`) | Scans candidate clauses with authority constraints injected into instructions. Selects governing clauses (`use`/`expand`) and skips superseded ones. |
-| **5** | Where do the policies disagree? | **Clocked Compare** (`/clocked/compare`) | Aligns governing clauses with superseded clauses to quote exact text discrepancies. |
-| **6** | Does the draft omit a material condition? | **Clocked Fill** (`/clocked/fill`) | Extracts material obligations and returns a yes/no omission judgment plus the missing condition. A material omission forces **Rewrite**. |
-| **7** | Does the draft claim only what the governing text supports? | **Clocked Verify** (`/clocked/grounding`) | Checks discrete sentence claims against the complete governing document for `supported`, `contradicted`, or `not_stated`. |
-| **8** | What action must be taken now? | **App Policy** (Deterministic) | Enforces strict publication thresholds. Contradicted, unsupported, missing, or unverifiable claims and material omissions block release. |
+| **4** | Does the draft contain a runbook script? | **Clocked Inspect** (`/clocked/script`) | Reviews any fenced code block or command sequence in the draft for destructive behavior, security blinding, persistence, or exfiltration. A risky script forces **Hold** before Rerank. |
+| **5** | Which clause answers the question? | **Clocked Rerank** (`/clocked/rerank`) | Scans candidate clauses with authority constraints injected into instructions. Selects governing clauses (`use`/`expand`) and skips superseded ones. |
+| **6** | Where do the policies disagree? | **Clocked Compare** (`/clocked/compare`) | Aligns governing clauses with superseded clauses to quote exact text discrepancies. |
+| **7** | Does the draft omit a material condition? | **Clocked Fill** (`/clocked/fill`) | Extracts material obligations and returns a yes/no omission judgment plus the missing condition. A material omission forces **Rewrite**. |
+| **8** | Does the draft claim only what the governing text supports? | **Clocked Verify** (`/clocked/grounding`) | Checks discrete sentence claims against the complete governing document for `supported`, `contradicted`, or `not_stated`. |
+| **9** | What action must be taken now? | **App Policy** (Deterministic) | Enforces strict publication thresholds. Contradicted, unsupported, missing, or unverifiable claims and material omissions block release. |
 
 > **Core Thesis:** Authority is a business rule; relevance is a model judgment.  
 > Never delegate "which policy wins" to an LLM, and never let a model's relevance score bypass an explicit precedence rule.
@@ -66,8 +68,8 @@ Before any answer is published to an employee, Docket resolves eight questions:
 
 ## How Clocked is Used
 
-Six Clocked endpoints across all three groups are load-bearing to Docket's
-decision engine: Protect and Guard (safety), Fill (decisions), and
+Seven Clocked endpoints across all three groups are load-bearing to Docket's
+decision engine: Protect, Guard and Inspect (safety), Fill (decisions), and
 Rerank, Compare, and Verify (knowledge).
 
 ```
@@ -81,6 +83,9 @@ Rerank, Compare, and Verify (knowledge).
                     │
                     ▼
      Clocked Guard (/clocked/injection)      → HOLD on injection / prompt takeover
+                    │
+                    ▼
+     Clocked Inspect (/clocked/script)       → HOLD on unsafe runbook scripts
                     │
                     ▼
      Clocked Rerank (/clocked/rerank)        → Selects governing clause; skips old text
@@ -122,13 +127,14 @@ Rerank, Compare, and Verify (knowledge).
 
 ## Live Scenarios
 
-Docket includes five built-in reference cases tested live against Clocked:
+Docket includes six built-in reference cases tested live against Clocked:
 
 * **Precedence over Recency (Flagship Case):** An employee in France asks if monitor reimbursement requires manager approval. Global Policy v4 (June 2026, precedence 0) requires approval; France Annex (March 2026, precedence 1) waives approval. Docket identifies France Annex as governing despite being older, rejects the draft, and returns **`REWRITE`**.
 * **Version Supersession:** Expense Policy v5 updates receipt limits to \$50 and deadlines to 60 days. The assistant draft cites v4 limits (\$75 / 30 days). Docket catches the discrepancies and returns **`REWRITE`**.
 * **Clean Access Request (Control Case):** An access request policy requires manager approval and security training. The draft accurately states both conditions. Docket returns **`PUBLISH`**.
 * **Omitted Condition (Completeness Case):** A remote-work policy allows remote work but requires customer-facing employees on-site. The draft states the general rule and omits the exception. Clocked Fill finds the omission and returns **`REWRITE`**.
 * **Injected Policy Note (Safety Case):** A policy document contains an instruction aimed at the assistant. Clocked Guard detects it before Rerank and returns **`HOLD`**.
+* **Unsafe Runbook (Script Safety Case):** A printer fix includes a PowerShell command that disables real-time endpoint protection. Clocked Inspect identifies the unsafe line and returns **`HOLD`** before Rerank.
 
 ---
 
@@ -222,7 +228,7 @@ uvicorn app:app --reload --port 8000
 pip install -r requirements-dev.txt
 python -m pytest -v
 ```
-*39 unit tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, database path selection, coverage/omission policy, and verdict policies offline without requiring an API key.*
+*43 unit tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, database path selection, coverage/omission policy, and verdict policies offline without requiring an API key.*
 
 ---
 
@@ -232,14 +238,14 @@ python -m pytest -v
 |---|---|
 | **Practical Usefulness (25 pts)** | Directly solves the "grounded in the wrong source" failure mode for enterprise AI assistants. Provides automated gating with clear before/after replacement quotes. |
 | **Core Clocked Integration (30 pts)** | All three Clocked endpoints (**Rerank**, **Compare**, **Verify**) are load-bearing to the business logic. |
-| **Additional Endpoints (15 pts)** | Six meaningful endpoints across all three groups: Protect, Guard, Fill, Rerank, Compare, Verify. Each changes what the app stores, decides, or shows. Full group breadth and strong Best Overall breadth. |
-| **Implementation & UX (20 pts)** | Responsive red/black console, real SSE stage progress, Protect/Guard/Coverage stages, interactive diffs, import/export. Axe checks pass on the shipped home and console. |
-| **Explanation & Reproducibility (10 pts)** | Clean architecture, 39 offline unit tests, live Vercel deployment, transparent raw Clocked JSON inspect tabs. |
+| **Additional Endpoints (15 pts)** | Seven meaningful endpoints across all three groups: Protect, Guard, Inspect, Fill, Rerank, Compare, Verify. Each changes what the app stores, decides, or shows. Full Safety and Knowledge breadth; Fill anchors Decisions. |
+| **Implementation & UX (20 pts)** | Responsive red/black console, real SSE stage progress, Protect/Guard/Inspect/Coverage stages, interactive diffs, import/export. Axe checks pass on the shipped home and console. |
+| **Explanation & Reproducibility (10 pts)** | Clean architecture, 43 offline unit tests, live Vercel deployment, transparent raw Clocked JSON inspect tabs. |
 
 ---
 
 ## Attribution and license
 
-Docket's marketing page and console shell are original. Spline Sans and JetBrains Mono are self-hosted under the SIL Open Font License 1.1. No third-party brand metadata, testimonials, blog posts, or social links remain in the served pages.
+The console, backend, policy engine and Clocked integration are original work built for the Clocked Build Challenge 2026. The marketing page is a mirrored static layout used as a demo surface; all third-party brand names, logos, customer marks, testimonials, blog posts and social links from the reference shell have been removed or replaced. Spline Sans and JetBrains Mono are self-hosted under the SIL Open Font License 1.1. See `THIRD_PARTY_NOTICES.md` for the shell and asset notes. The marketing shell has a known recoverable client/server text mismatch from its older React tree; the app catches only that React #418 recoverable error, and `?debug=hydration` surfaces it for development.
 
 MIT License. See [LICENSE](LICENSE) for details.

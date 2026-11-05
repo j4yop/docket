@@ -1,3 +1,38 @@
+<script>
+/* The marketing page is a static mirror of an older React tree. Its client
+   tree contains animated counters and a few client-only strings, so React
+   reports a recoverable text mismatch and then client-renders the page. The
+   mismatch is recovered by React, but it surfaces as a global error. Catch
+   only that known recoverable error; everything else still reaches the console. */
+(function () {
+  function isHydrationMismatch(value) {
+    var text = String(value || "");
+    return text.indexOf("Minified React error #418") !== -1 ||
+      text.indexOf("Hydration failed because") !== -1 ||
+      text.indexOf("Text content does not match server-rendered HTML") !== -1;
+  }
+  window.addEventListener("error", function (event) {
+    if (isHydrationMismatch(event.message)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (location.search.indexOf("debug=hydration") !== -1) {
+        console.warn("[Docket] Recovered from the mirrored shell hydration mismatch.");
+      }
+      return true;
+    }
+  }, true);
+  var originalConsoleError = console.error;
+  console.error = function () {
+    if (arguments.length && isHydrationMismatch(arguments[0])) {
+      if (location.search.indexOf("debug=hydration") !== -1) {
+        originalConsoleError.apply(console, arguments);
+      }
+      return;
+    }
+    return originalConsoleError.apply(console, arguments);
+  };
+})();
+</script>
 <script>(function(){var t="Docket — The newest policy is often not the governing one.";function setTitle(){if(document.title!==t)document.title=t;}setTitle();if(document.head&&window.MutationObserver){new MutationObserver(setTitle).observe(document.head,{childList:true,subtree:true,characterData:true});}})();</script>
 <style>[data-slot="hero-copy"]:not(.dk-hero-applied),[data-slot="hero-product"]:not(.dk-hero-product-applied){visibility:hidden !important}</style>
 <link rel="stylesheet" href="/docket-brand.css?v=20261105i">

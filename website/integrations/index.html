@@ -19,7 +19,7 @@
   </script>
   <link rel="stylesheet" href="/_next/static/chunks/903dbd2dea79002f.css" />
   <link rel="stylesheet" href="/_next/static/chunks/59b07a433639f987.css" />
-  <link rel="stylesheet" href="/integrations/gate.css?v=20261105a" />
+  <link rel="stylesheet" href="/integrations/gate.css?v=20261105d" />
   <link rel="stylesheet" href="/docket-footer.css?v=20261105g" />
   <link rel="stylesheet" href="/docket-brand.css?v=20261105i" />
   <link rel="icon" href="/docket-icon.svg" type="image/svg+xml" />
@@ -107,7 +107,7 @@
         </div>
 
         <div id="gate-panel-examples" role="tabpanel" aria-labelledby="gate-tab-examples" hidden>
-          <p class="gate-panel-copy">Three worked cases. Load one, then edit any field.</p>
+          <p class="gate-panel-copy">Six worked cases. Load one, then edit any field.</p>
           <div class="gate-examples" id="gate-examples"></div>
         </div>
       </section>
@@ -136,6 +136,12 @@
             <span class="gate-stage-dot" aria-hidden="true"></span>
             <span class="gate-stage-name">Guard</span>
             <span class="gate-stage-sub">injection</span>
+            <span class="gate-stage-meta"></span>
+          </div>
+          <div class="gate-stage" data-stage="inspect">
+            <span class="gate-stage-dot" aria-hidden="true"></span>
+            <span class="gate-stage-name">Inspect</span>
+            <span class="gate-stage-sub">script</span>
             <span class="gate-stage-meta"></span>
           </div>
           <div class="gate-stage" data-stage="rerank">
@@ -225,6 +231,11 @@
             <div class="gate-delivery" id="gate-delivery"></div>
           </section>
 
+          <section class="gate-block" id="gate-trace-block" hidden>
+            <div class="gate-block-head"><h3>Why this verdict</h3><span>endpoint → decision</span></div>
+            <div class="gate-trace" id="gate-trace"></div>
+          </section>
+
           <section class="gate-block">
             <div class="gate-block-head"><h3>Authority</h3><span>jurisdiction / precedence / date</span></div>
             <div class="gate-authority" id="gate-authority"></div>
@@ -238,6 +249,11 @@
           <section class="gate-block" id="gate-guard-block" hidden>
             <div class="gate-block-head"><h3>Guard</h3><span id="gate-guard-meta">no injection</span></div>
             <div class="gate-guard" id="gate-guard"></div>
+          </section>
+
+          <section class="gate-block" id="gate-inspect-block" hidden>
+            <div class="gate-block-head"><h3>Inspect</h3><span id="gate-inspect-meta">no script</span></div>
+            <div class="gate-guard" id="gate-inspect"></div>
           </section>
 
           <section class="gate-block" id="gate-coverage-block" hidden>
@@ -276,12 +292,13 @@
     </div>
 
     <!-- ------------------------------------------------------------- AUDIT -->
+    <p class="gate-audit-note"><strong>Audit preview:</strong> per-instance SQLite. On Vercel, <code>/tmp</code> is ephemeral; export the raw JSON for a durable record.</p>
 </div>
 </section>
 
 <div class="bg-background"><footer class="relative flex w-full flex-col justify-end overflow-hidden pb-4 md:pb-10 bg-linear-to-t from-[#7D000E] to-transparent dk-console-footer" data-page-find-surface="red" style="--scale:calc(100vw / 1840px)"><section class="dk-console-city-band" aria-hidden="true"><div class="pointer-events-none absolute inset-0" style="mask-image: linear-gradient(white 70%, transparent 100%);"><img alt="" class="h-full w-full object-cover object-top opacity-25 select-none" loading="eager" decoding="async" width="4096" height="2160" src="/_next/static/media/city-outline.abe9c9cc.png" style="color:transparent"></div></section><div class="relative"><div class="px-sides absolute bottom-0 left-0 z-10 mt-auto w-full mix-blend-overlay dk-footer-mark md:px-12"><img alt="" class="mx-auto block w-full max-w-lg select-none md:hidden" data-nimg="1" decoding="async" height="600" loading="lazy" src="/images/footer/docket-mark.svg" style="color:transparent" width="682"/><img alt="" class="hidden w-full select-none md:block" data-nimg="1" decoding="async" height="20" loading="lazy" src="/images/footer/docket-wordmark.svg" style="color:transparent" width="119"/></div><div class="px-sides relative z-20 flex flex-col-reverse gap-x-8 gap-y-12 pb-[max(calc(--spacing(320)*var(--scale)),40px)] sm:pb-[40vw] md:flex-col md:px-12 md:py-[calc(--spacing(20)*var(--scale))] lg:pt-0 lg:pb-[calc(--spacing(42)*var(--scale))] xl:flex-row xl:justify-between dk-footer-no-newsletter"><div class="flex flex-col items-start gap-8 xl:items-end"><div class="grid grid-cols-2 gap-6 min-[900px]:flex min-[900px]:flex-row min-[900px]:justify-end md:gap-10 lg:mx-0 lg:grid-cols-3 lg:gap-20 lg:pr-[calc(--spacing(12)*var(--scale))] max-sm:[&amp;&gt;*:nth-child(n+3)]:col-span-2"><div class="relative h-fit w-max max-w-full dk-footer-col" data-dk-col><span class="dk-footer-col-highlight" aria-hidden="true"></span><span class="dk-footer-col-rail" aria-hidden="true"></span><span class="dk-footer-col-label font-misc">Product</span><div class="dk-footer-col-links"><a href="#docket-gate">Live Gate</a><a href="#gate-stages">How it Works</a><a href="#gate-panel-examples">Scenarios</a><a href="https://github.com/j4yop/docket#api" target="_blank" rel="noopener noreferrer">API</a></div></div><div class="relative h-fit w-max max-w-full dk-footer-col" data-dk-col><span class="dk-footer-col-highlight" aria-hidden="true"></span><span class="dk-footer-col-rail" aria-hidden="true"></span><span class="dk-footer-col-label font-misc">Build</span><div class="dk-footer-col-links"><a href="https://github.com/j4yop/docket" target="_blank" rel="noopener noreferrer">GitHub</a><a href="https://github.com/j4yop/docket#readme" target="_blank" rel="noopener noreferrer">README</a><a href="https://github.com/j4yop/docket/blob/main/ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">Architecture</a><a href="https://clocked.rezolve.ai/" target="_blank" rel="noopener noreferrer">Clocked</a></div></div><div class="relative h-fit w-max max-w-full dk-footer-col" data-dk-col><span class="dk-footer-col-highlight" aria-hidden="true"></span><span class="dk-footer-col-rail" aria-hidden="true"></span><span class="dk-footer-col-label font-misc">Social</span><div class="dk-footer-col-links"><a href="https://www.linkedin.com/in/jaygopaltripathy/" target="_blank" rel="noopener noreferrer">LinkedIn</a><a href="https://x.com/j4y_op" target="_blank" rel="noopener noreferrer">X</a><a href="https://github.com/j4yop/docket" target="_blank" rel="noopener noreferrer">GitHub</a></div></div></div></div></div></div><div class="px-sides relative bottom-0 left-0 z-20 flex w-full justify-center gap-4 dk-reveal dk-footer-legal pt-6 pb-2 md:absolute md:justify-between md:px-12 md:pt-10 xl:pb-[max(calc(--spacing(10)*var(--scale)),8px)] 2xl:pb-[calc(--spacing(6)*var(--scale))]"><div class="hidden w-full items-center gap-2 lg:flex xl:ml-[24.12%]"><svg aria-hidden="true" class="text-primary h-4 w-auto" fill="none" focusable="false" viewbox="0 0 484 16" xmlns="http://www.w3.org/2000/svg"><path d="M479.784 0.956299C481.369 0.956299 482.654 2.24149 482.654 3.82642V11.4797C482.654 13.0648 481.369 14.3499 479.784 14.3499H8.29785C7.2771 14.3499 6.33268 13.8077 5.81836 12.926L1.35449 5.27271C0.238432 3.35945 1.61805 0.956349 3.83301 0.956299H479.784Z" stroke="currentColor" stroke-width="1.9133"></path><path d="M7.42773 4.30591H392.25C393.042 4.30591 393.685 4.94806 393.686 5.74048V9.56763C393.685 10.36 393.042 11.0022 392.25 11.0022H9.34766C8.80477 11.0022 8.30784 10.6955 8.06445 10.2102L6.14551 6.38403C5.66699 5.42995 6.36049 4.30624 7.42773 4.30591Z" fill="currentColor" stroke="currentColor" stroke-width="0.956652"></path><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="321.939" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="333.42" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="344.898" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="356.377" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="367.857" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="379.336" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="390.818" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="402.299" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="413.779" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="425.26" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="436.738" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="448.217" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="459.697" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="471.178" y="3.82739"></rect></svg><span class="font-misc text-primary text-sm whitespace-nowrap uppercase">Publish With Proof</span></div></div></footer></div>
   <script src="/docket-brand.js?v=20261105l" defer></script>
   <script src="/docket-footer.js?v=20261105i" defer></script>
-  <script src="/integrations/gate.js?v=20261105a" defer></script>
+  <script src="/integrations/gate.js?v=20261105c" defer></script>
 </body>
 </html>
