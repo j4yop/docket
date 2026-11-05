@@ -121,7 +121,7 @@ A custom policy with no approval reference and no admin envelope returns **HOLD*
 - redacted question/draft previews;
 - `prev_hash` and `record_hash`.
 
-Records live under `audit/YYYY-MM-DD/` in a private Vercel Blob store; `ledger/head.json` holds the latest hash. `/api/ledger` recomputes the chain and `/ledger` shows the result. Editing or deleting a record breaks verification at that sequence. Without a Blob token the same chain is written to `.docket-store/` and labeled as a local fallback. SQLite remains a per-instance hot index for the console, not the system of record.
+Records live under `audit/YYYY-MM-DD/` in a private Vercel Blob store. Each record also writes an immutable checkpoint under `ledger/checkpoints/`, so deleting a record — including the last one — leaves a checkpoint that verification detects. The head is derived from the append-only audit prefix instead of a mutable head object, because Blob has no conditional put and a mutable head can be served stale. `/api/ledger` recomputes the chain and `/ledger` shows the result. Without a Blob token the same chain is written to `.docket-store/` and labeled as a local fallback. SQLite remains a per-instance hot index for the console, not the system of record.
 
 A check is **not published** if the ledger write fails: the verdict is downgraded to HOLD with `audit_unavailable`. The gate fails closed.
 

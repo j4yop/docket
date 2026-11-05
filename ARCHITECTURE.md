@@ -205,7 +205,9 @@ FastAPI
 }
 ```
 
-`record_hash = SHA-256(canonical record without record_hash)`. The next record's `prev_hash` is this hash. `ledger/head.json` holds the latest sequence and hash.
+`record_hash = SHA-256(canonical record without record_hash)`. The next record's `prev_hash` is this hash. Each record also writes an immutable checkpoint under `ledger/checkpoints/{seq}-{hash-prefix}.json`. Verification derives the head from the highest sequence in the append-only audit prefix, checks every link and hash, and checks that every record has a checkpoint and every checkpoint has a record. Deleting the last record is therefore detectable.
+
+There is no mutable head object. Vercel Blob does not offer a conditional put, and a mutable head can be served stale from the CDN, which would create duplicate sequence numbers. The append-only prefix plus checkpoints avoids that failure while remaining tamper-evident.
 
 ## 8. Security and failure behaviour
 
@@ -224,6 +226,7 @@ FastAPI
 | Missing coverage or support score | HOLD |
 | Authority tie / no governing clause | HOLD |
 | 402 / 409 / 429 / 5xx | Bounded retry with the same idempotency key, then HOLD |
+| Concurrent ledger append | Detected by chain verification as a fork; the demo's traffic is serialized per instance, and the append path does not rely on a mutable head |
 | Protect failure | Raw preview suppressed; check continues with redaction unavailable |
 
 Every retry reuses the same `Idempotency-Key` and payload. Each endpoint gets its own key.
