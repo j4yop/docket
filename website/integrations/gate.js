@@ -97,6 +97,9 @@
       authority: $("gate-authority"),
       claims: $("gate-claims"),
       claimsMeta: $("gate-claims-meta"),
+      guardBlock: $("gate-guard-block"),
+      guardMeta: $("gate-guard-meta"),
+      guard: $("gate-guard"),
       coverageBlock: $("gate-coverage-block"),
       coverageMeta: $("gate-coverage-meta"),
       coverage: $("gate-coverage"),
@@ -811,6 +814,7 @@
     renderDelivery(result, payload);
     renderAuthority(result);
     renderClaims(result);
+    renderGuard(result);
     renderCoverage(result);
     renderConflicts(result);
     renderRerank(result);
@@ -997,6 +1001,39 @@
         </div>`;
       })
       .join("");
+  }
+
+  function renderGuard(result) {
+    const guard = result && result.guard;
+    if (!guard || typeof guard.injection !== "number") {
+      refs.guardBlock.hidden = true;
+      return;
+    }
+    refs.guardBlock.hidden = false;
+    const risk = Math.max(0, Math.min(100, guard.injection * 100));
+    const risky = guard.verdict === "injection" || risk >= 50;
+    refs.guard.dataset.risky = String(risky);
+    refs.guardMeta.textContent = risky ? "injection risk" : "safe";
+    const evidence = Array.isArray(guard.evidence) ? guard.evidence : [];
+    refs.guard.innerHTML = `
+      <div class="gate-guard-meter"><span style="width:${risk}%"></span></div>
+      <div class="gate-guard-head">
+        <strong>${risk.toFixed(0)}%</strong>
+        <span>${esc(guard.category || "instruction risk")} · ${esc(guard.severity || "unknown")}</span>
+      </div>
+      ${
+        evidence.length
+          ? `<div class="gate-guard-evidence">${evidence
+              .map(
+                (item) => `<div class="gate-guard-quote">
+                  <b>${esc(item.category || "instruction")} · ${(Number(item.confidence || 0) * 100).toFixed(0)}%</b>
+                  <p>${esc(item.quote || "")}</p>
+                </div>`
+              )
+              .join("")}</div>`
+          : ""
+      }
+    `;
   }
 
   function renderCoverage(result) {
