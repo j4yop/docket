@@ -205,3 +205,163 @@ def test_ledger_api_returns_the_verified_chain(monkeypatch) -> None:
     assert body["ledger"]["ok"] is True
     assert body["ledger"]["records"] == 2
     assert body["records"] == []
+
+
+def test_tour_route_is_additive() -> None:
+    response = client.get("/tour")
+    assert response.status_code == 200
+    assert "The live judge tour." in response.text
+    assert "/tour.js" in response.text
+
+
+def test_console_exposes_health_approval_and_review_queue() -> None:
+    response = client.get("/console")
+    assert response.status_code == 200
+    for fragment in (
+        'id="gate-approve-policy"',
+        'id="gate-admin-token"',
+        'id="gate-review-load"',
+        'id="gate-review-list"',
+        'id="gate-health-ledger"',
+        'href="/tour"',
+    ):
+        assert fragment in response.text
+
+
+def test_health_verifies_the_ledger_and_policy_corpus(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+
+    async def fake_verify():
+        return {
+            "ok": True,
+            "records": 5,
+            "checks": 4,
+            "events": 1,
+            "broken_at": None,
+            "detail": "The chain is intact.",
+            "head": {"seq": 5, "hash": "a" * 64, "updated_at": "2026-11-05T12:00:00+00:00"},
+            "storage": "local",
+        }
+
+    async def fake_seed_status(samples):
+        return {
+            "ok": True,
+            "count": 12,
+            "registered": 12,
+            "seed_id": "seed",
+            "expected_seed_id": "seed",
+            "seeded_at": "2026-11-05T12:00:00+00:00",
+            "missing": [],
+            "invalid": [],
+        }
+
+    monkeypatch.setattr(module.ledger, "verify", fake_verify)
+    monkeypatch.setattr(module.policy_registry, "seed_status", fake_seed_status)
+    monkeypatch.setenv("CLOCKED_API_KEY", "test-key")
+    module._HEALTH_CACHE["at"] = 0.0
+    module._HEALTH_CACHE["payload"] = None
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert body["ledger"]["records"] == 5
+    assert body["policy_registry"]["registered"] == 12
+    assert body["last_verified_at"]
+
+
+def test_health_reports_a_broken_chain(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+
+    async def fake_verify():
+        return {
+            "ok": False,
+            "records": 2,
+            "checks": 2,
+            "events": 0,
+            "broken_at": 2,
+            "detail": "A record does not link to the previous hash.",
+            "head": {"seq": 2, "hash": "b" * 64, "updated_at": None},
+            "storage": "local",
+        }
+
+    async def fake_seed_status(samples):
+        return {"ok": True, "count": 1, "registered": 1, "missing": [], "invalid": []}
+
+    monkeypatch.setattr(module.ledger, "verify", fake_verify)
+    monkeypatch.setattr(module.policy_registry, "seed_status", fake_seed_status)
+    monkeypatch.setenv("CLOCKED_API_KEY", "test-key")
+    module._HEALTH_CACHE["at"] = 0.0
+    module._HEALTH_CACHE["payload"] = None
+    body = client.get("/api/health").json()
+    assert body["ok"] is False
+    assert body["ledger"]["broken_at"] == 2
+
+
+def test_review_api_lists_assigns_and_resolves(monkeypatch, tmp_path) -> None:
+    import asyncio
+    import importlib
+
+    import reviews
+    import storage
+
+    module = importlib.import_module("app")
+    monkeypatch.setattr(storage, "LOCAL_DIR", tmp_path)
+    monkeypatch.setenv("DOCKET_ADMIN_TOKEN", "test-admin")
+
+    review = asyncio.run(
+        reviews.create(
+            {
+                "decision": "hold",
+                "codes": ["prompt_injection"],
+                "question": "Is this answer safe?",
+                "draft": "Draft.",
+                "reasons": ["Guard found an instruction."],
+                "checked_at": "2026-11-05T12:00:00+00:00",
+                "audit": {"seq": 3, "hash": "c" * 64},
+            }
+        )
+    )
+
+    async def fake_event(event):
+        return {
+            "seq": 9,
+            "record_hash": "d" * 64,
+            "prev_hash": "c" * 64,
+        }
+
+    monkeypatch.setattr(module.ledger, "append_event", fake_event)
+    headers = {"X-Docket-Admin": "test-admin"}
+
+    listing = client.get("/api/reviews?status=open", headers=headers)
+    assert listing.status_code == 200
+    assert listing.json()["reviews"][0]["id"] == review["id"]
+    assert listing.json()["counts"]["open"] == 1
+
+    assigned = client.post(
+        f"/api/reviews/{review['id']}/assign",
+        json={"assignee": "reviewer@example.com"},
+        headers=headers,
+    )
+    assert assigned.status_code == 200
+    assert assigned.json()["review"]["status"] == "assigned"
+
+    resolved = client.post(
+        f"/api/reviews/{review['id']}/resolve",
+        json={
+            "action": "reject",
+            "note": "Remove the injected instruction and resubmit.",
+            "resolved_by": "reviewer@example.com",
+        },
+        headers=headers,
+    )
+    assert resolved.status_code == 200
+    body = resolved.json()
+    assert body["review"]["status"] == "resolved"
+    assert body["review"]["resolution"]["ledger"]["seq"] == 9
+    assert body["audit"]["seq"] == 9
+
+    assert client.get("/api/reviews", headers={"X-Docket-Admin": "wrong"}).status_code == 404

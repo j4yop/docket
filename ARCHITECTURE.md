@@ -152,14 +152,15 @@ FastAPI
    ├─ authority.py        clause segmentation + authority resolver (pure, tested)
    ├─ policy_registry.py  signed envelopes, seeded/admin/operator trust, tamper checks
    ├─ policy.py           verdict order (pure, tested)
-   ├─ ledger.py           hash-chained records, verification, public history
+   ├─ ledger.py           hash-chained records, review events, verification
+   ├─ reviews.py          durable HOLD/REWRITE queue and resolution
    ├─ storage.py          Vercel Blob or local-directory JSON store
    ├─ clocked_client.py   auth, idempotency, bounded retries, error classes
    ├─ db.py               per-instance SQLite hot index (redacted)
    └─ app.py              routes, orchestration, SSE, policy envelopes
          │
          ├─ Clocked API: Protect, Guard, Inspect, Extract, Decide, Fill, Rerank, Compare, Verify
-         ├─ Vercel Blob: policies/ and audit/ chains
+         ├─ Vercel Blob: policies/, audit/ chain, ledger/claims/, reviews/
          └─ SQLite: per-instance console index
 ```
 
@@ -211,7 +212,21 @@ FastAPI
 
 `record_hash = SHA-256(canonical record without record_hash)`. The next record's `prev_hash` is this hash. Each record also writes an immutable checkpoint under `ledger/checkpoints/{seq}-{hash-prefix}.json`. Verification derives the head from the highest sequence in the append-only audit prefix, checks every link and hash, and checks that every record has a checkpoint and every checkpoint has a record. Deleting the last record is therefore detectable.
 
-There is no mutable head object. Vercel Blob does not offer a conditional put, and a mutable head can be served stale from the CDN, which would create duplicate sequence numbers. The append-only prefix plus checkpoints avoids that failure while remaining tamper-evident.
+There is no mutable head object. Sequence allocation uses an atomic create at `ledger/claims/{seq}.json` (`allow_overwrite=False` on Blob, `O_EXCL` locally). Two instances that read the same head cannot both own the same sequence: the loser retries after the winner advances the head. A writer that owns a sequence waits for its predecessor before it hashes the record. This is what keeps the chain from forking when Vercel runs concurrent instances. Verification still detects a fork if the storage layer ever violates the claim.
+
+Review events use the same chain and sequence allocator. A `review_resolved` record stores the review id, action, actor, note and the original check sequence and hash. The ledger therefore contains both the determination and the human decision about it.
+
+### Review queue
+
+A recorded HOLD or REWRITE creates `reviews/RV-{timestamp}-{hex}.json` with `status: open`, the decision, codes, question/draft previews, the audit `seq` and `hash`, and a history array. Assignment sets `status: assigned`, owner and timestamp. Resolution sets `status: resolved`, the action (`approve` or `reject`), note, resolver and the ledger event sequence.
+
+The queue is durable because it uses the same `storage.py` backend as the ledger. A cold start reads it from Blob/local storage. The API is admin-only (`X-Docket-Admin`); a missing or wrong token returns 404. Resolution appends the ledger event first, then writes the review record with that event link. Approval records a human decision; it does not automatically publish the held answer.
+
+### Health verification
+
+`GET /api/health` calls `ledger.verify()` and `policy_registry.seed_status()` and caches the result for 20 seconds. The policy check recomputes the expected seed digest, loads every seeded envelope, and verifies its HMAC. Health is `ok` only when Clocked is configured, the chain verifies, and every seeded policy is present and valid. `last_verified_at` is the time of the snapshot, not the time of the request.
+
+A live harness (`benchmarks/concurrency.py`) runs ten real checks in parallel against one local ledger, then verifies the chain. Latest result: 10/10 unique sequences, chain intact, 10 review records, 271 credits, 13.33 s (`benchmarks/concurrency-results.md`).
 
 ## 8. Security and failure behaviour
 
@@ -230,21 +245,25 @@ There is no mutable head object. Vercel Blob does not offer a conditional put, a
 | Missing coverage or support score | HOLD |
 | Authority tie / no governing clause | HOLD |
 | 402 / 409 / 429 / 5xx | Bounded retry with the same idempotency key, then HOLD |
-| Concurrent ledger append | Detected by chain verification as a fork; the demo's traffic is serialized per instance, and the append path does not rely on a mutable head |
+| Concurrent ledger append | Atomic sequence claim prevents a fork across instances; ten-way and two-loop tests verify one chain. Verification still detects a fork if the claim is bypassed. |
 | Protect failure | Raw preview suppressed; check continues with redaction unavailable |
 
 Every retry reuses the same `Idempotency-Key` and payload. Each endpoint gets its own key.
 
 ## 9. Measured behaviour
 
-The benchmark and results live in `benchmarks/`. The latest live run covered 37 synthetic cases: 37/37 passed, governing accuracy 100%, clean false-HOLD 0%, unsafe false-PUBLISH 0%, injection recall 100%, script recall 100%, strict omission recall 75%, average 5.19 calls / 13.16 credits / 3.1 s.
+The evidence lives in `benchmarks/` as three separate suites:
+
+- **Tuned regression:** 37 cases, 37/37, governing accuracy 100%, clean false-HOLD 0%, unsafe false-PUBLISH 0%, injection/script recall 100%, strict omission recall 75%, average 5.19 calls / 13.16 credits / 3.1 s.
+- **Held-out (locked before the run):** 31 cases, 25/31, decision accuracy 80.6%, governing accuracy 100%, clean false-HOLD 20%, unsafe false-PUBLISH 0%, injection/script/omission recall 100%, average 4.61 calls / 14.65 credits / 3.25 s. The six failures are published in `benchmarks/heldout-results.md`; three are one Extract metadata false-positive class, two are label disputes where the gate's omission finding is defensible, and one is a real clause-selection miss. A separate post-tuning run fixed the metadata class and reached 27/31 (87.1%) with 0% clean false-HOLD; it is published separately and is not the locked result.
+- **Calibration:** 14 borderline cases, 13/14. Guard remains at 0.50 because its scores are flat. Inspect moves to **0.10** because the measured gap runs from 0.008 (highest safe) to 0.188 (lowest unsafe).
 
 Two design discoveries from live testing:
 
 1. **Compare is clause-level.** Whole-document Compare produced false conflicts and cost far more. Aligned clause pairs are accurate and cheap.
 2. **Retrieval must not drop short-policy clauses.** A fixed three-clause cap missed the 14-day leave-notice clause on a four-clause policy, turning an omission case into `no_governing_clause`. Short policies now go to Rerank whole.
 
-The corpus is authored and synthetic. It is a regression suite, not a held-out test set. The threshold sweep is flat (Guard/Inspect scores separate cleanly at 0.3–0.8), so Docket keeps 0.50 and reports the limitation.
+Both corpora are authored and synthetic. The held-out lock proves the labels were fixed before the run; it does not remove authorship bias. The tuning corpus is a regression suite, not a held-out test set. Guard keeps 0.50 because the measured scores are flat; Inspect uses 0.10 because the calibration corpus found a real gap. Any fix made after the held-out run is reported as post-held-out tuning in a separate run.
 
 ## 10. Accessibility
 

@@ -233,3 +233,46 @@ async def approve(
     )
     _CACHE[envelope["content_hash"]] = envelope
     return envelope
+
+async def seed_status(samples) -> dict:
+    """Verify that every seeded policy is present and its signature is valid."""
+    documents = []
+    seen: set[str] = set()
+    for sample in samples:
+        for document in sample.get("documents") or []:
+            digest = content_hash(document.get("text") or "")
+            if digest in seen:
+                continue
+            seen.add(digest)
+            documents.append(document)
+    expected_id = hashlib.sha256(
+        "|".join(content_hash(document.get("text") or "") for document in documents).encode("utf-8")
+    ).hexdigest()[:16]
+    marker = await storage.get_json(SEED_PATH)
+    missing: list[str] = []
+    invalid: list[str] = []
+    for document in documents:
+        digest = content_hash(document.get("text") or "")
+        envelope = await storage.get_json(f"policies/{digest}.json")
+        if not isinstance(envelope, dict):
+            missing.append(document.get("title") or digest[:12])
+            continue
+        fields = {key: value for key, value in envelope.items() if key not in {"signature", "doc_id"}}
+        if not verify(fields, envelope.get("signature")):
+            invalid.append(document.get("title") or digest[:12])
+    marker_id = marker.get("seed_id") if isinstance(marker, dict) else None
+    return {
+        "ok": bool(
+            isinstance(marker, dict)
+            and marker_id == expected_id
+            and not missing
+            and not invalid
+        ),
+        "count": len(documents),
+        "registered": len(documents) - len(missing) - len(invalid),
+        "seed_id": marker_id,
+        "expected_seed_id": expected_id,
+        "seeded_at": marker.get("seeded_at") if isinstance(marker, dict) else None,
+        "missing": missing,
+        "invalid": invalid,
+    }
