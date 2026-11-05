@@ -210,7 +210,9 @@
     document
       .querySelectorAll('a[href*="demo=true"], a[data-docket-github="true"]')
       .forEach(function (link) {
+        if (link.dataset.docketGithubReady === "true") return;
         link.dataset.docketGithub = "true";
+        link.dataset.docketGithubReady = "true";
         if (link.getAttribute("href") !== GITHUB) {
           link.setAttribute("href", GITHUB);
           link.setAttribute("target", "_blank");
@@ -220,6 +222,11 @@
           link.setAttribute("aria-label", "Docket on GitHub");
         }
         replaceLabel(link, "Book a Demo", "GitHub");
+        // The mirrored footer CTA still carries a React click handler that
+        // rewrites the URL to ?demo=true. Replacing the node keeps the visual
+        // anchor but removes that handler, so the repo link wins.
+        var clean = link.cloneNode(true);
+        link.replaceWith(clean);
       });
   }
 
