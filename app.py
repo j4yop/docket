@@ -1053,6 +1053,14 @@ async def index() -> HTMLResponse:
     return HTMLResponse(website_index_html(), headers={"Cache-Control": "no-cache"})
 
 
+@app.get("/sign-up")
+@app.get("/signup")
+@app.get("/get-started")
+async def signup_redirect() -> RedirectResponse:
+    """Send legacy sign-up links to the live console."""
+    return RedirectResponse(url="/console", status_code=307)
+
+
 @app.get("/console")
 @app.get("/console/")
 async def console() -> FileResponse:

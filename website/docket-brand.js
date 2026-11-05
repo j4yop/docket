@@ -192,7 +192,7 @@
 
     // Every Get Started CTA -> Open console.
     document
-      .querySelectorAll('a[data-docket-console="true"]')
+      .querySelectorAll('a[href$="/sign-up"], a[href$="/signup"], a[data-docket-console="true"]')
       .forEach(function (link) {
         link.dataset.docketConsole = "true";
         if (link.getAttribute("href") !== CONSOLE) {

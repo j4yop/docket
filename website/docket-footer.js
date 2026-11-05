@@ -112,7 +112,7 @@
 
     footer.querySelectorAll("a").forEach((link) => {
       const href = link.getAttribute("href") || "";
-      if (link.dataset.docketConsole === "true") {
+      if (link.dataset.docketConsole === "true" || /\/sign-?up$/.test(href)) {
         link.href = CONSOLE;
         link.removeAttribute("target");
         link.removeAttribute("rel");
