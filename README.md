@@ -51,7 +51,7 @@ Before any answer is published to an employee, Docket resolves eight questions:
 | # | Question | Answered By | How |
 |---|---|---|---|
 | **1** | Does the audit preview contain personal data? | **Clocked Protect** (`/clocked/pii`) | Finds and replaces personal data before the admin-only preview is stored. The check runs on the original input; the record keeps only the redacted copy. |
-| **2** | Is the source trying to take control? | **Clocked Guard** (`/clocked/injection`) | Screens policy text and the draft for instruction overrides, fabricated approvals, secret extraction, and tool misuse. A positive signal holds the answer before Rerank. |
+| **2** | Is the source trying to take control? | **Clocked Guard** (`/clocked/injection`) | Screens policy text and the draft for instruction overrides, fabricated approvals, secret extraction, and tool misuse. A positive signal holds the answer before Rerank; the console shows the exact risky passage and confidence. |
 | **3** | Which policy governs this employee? | **App Engine** (Deterministic) | Ranks documents by precedence, country specificity, effective date and expiry. Future-dated and expired documents cannot govern. Resolves ties into a **Hold**. No LLM call. |
 | **4** | Which clause answers the question? | **Clocked Rerank** (`/clocked/rerank`) | Scans candidate clauses with authority constraints injected into instructions. Selects governing clauses (`use`/`expand`) and skips superseded ones. |
 | **5** | Where do the policies disagree? | **Clocked Compare** (`/clocked/compare`) | Aligns governing clauses with superseded clauses to quote exact text discrepancies. |
@@ -240,6 +240,6 @@ python -m pytest -v
 
 ## Attribution and license
 
-Docket's marketing page and console shell are original. Spline Sans and JetBrains Mono are self-hosted under the SIL Open Font License; the license texts are in `website/fonts/`. No third-party brand metadata, testimonials, blog posts, or social links remain in the served pages.
+Docket's marketing page and console shell are original. Spline Sans and JetBrains Mono are self-hosted under the SIL Open Font License 1.1. No third-party brand metadata, testimonials, blog posts, or social links remain in the served pages.
 
 MIT License. See [LICENSE](LICENSE) for details.

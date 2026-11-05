@@ -91,11 +91,11 @@
   outline-offset: 3px;
 }
 .dk-hero-cta-primary {
-  background: #ff0024;
+  background: #d9001f;
   box-shadow: 0 0 18px rgba(255, 0, 36, 0.14);
 }
 .dk-hero-cta-primary:hover {
-  background: #d9001f;
+  background: #b8001a;
   box-shadow: 0 0 0 1px rgba(255, 0, 36, 0.32), 0 10px 28px rgba(255, 0, 36, 0.18);
 }
 .dk-hero-cta-secondary {
