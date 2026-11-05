@@ -1870,7 +1870,7 @@ async def run_check(
         credits += verify_res.credits
         governing_clauses = [c for c in all_clauses if c.doc_id == governing.id]
         for claim in verify_res.data.get("claims") or []:
-            if not claim.get("evidence"):
+            if not claim.get("governing_quote"):
                 matches = top_clauses_for_text(claim.get("claim") or "", governing_clauses, limit=2)
                 if matches:
                     claim["governing_quote"] = matches[0].text
