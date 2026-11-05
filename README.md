@@ -77,6 +77,8 @@ Signed policy envelopes + hash-chained audit record
 
 Protect changes what is stored. Rerank changes the evidence set. The other seven can move the verdict on their own, on the cases where their signal exists. Docket does not claim every endpoint changes every verdict.
 
+Clocked also offers a Pipeline composition endpoint. Docket deliberately does not call it: the product's value is the deterministic authority, policy-integrity and verdict rules *between* the primitives, which one opaque Pipeline call would hide. All nine primitive endpoints are used; Pipeline would be a checkbox.
+
 ---
 
 ## Trust architecture
