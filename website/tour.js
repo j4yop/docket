@@ -133,6 +133,36 @@
     return state.sessionToken;
   }
 
+  const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+  async function postCheck(payload, token) {
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const response = await fetch("/api/check", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Docket-Session": token,
+          },
+          body: JSON.stringify(payload),
+        });
+        if (response.status >= 500 && attempt < 2) {
+          await sleep(600 * (attempt + 1));
+          continue;
+        }
+        return response;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) {
+          await sleep(600 * (attempt + 1));
+          continue;
+        }
+      }
+    }
+    throw lastError || new Error("The check could not reach Docket.");
+  }
+
   async function getSample(sampleId) {
     if (state.samples[sampleId]) return state.samples[sampleId];
     const response = await fetch(`/api/samples/${encodeURIComponent(sampleId)}`, { cache: "no-store" });
@@ -283,14 +313,7 @@
         $("tour-note").textContent = `Running ${index + 1} of ${queue.length}: ${item.name}.`;
         try {
           const payload = await payloadFor(item);
-          const response = await fetch("/api/check", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Docket-Session": token,
-            },
-            body: JSON.stringify(payload),
-          });
+          const response = await postCheck(payload, token);
           const body = await response.json().catch(() => null);
           if (!response.ok) {
             const detail = (body && (body.detail || body.error)) || `HTTP ${response.status}`;
