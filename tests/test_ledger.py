@@ -76,3 +76,81 @@ def test_head_records_the_latest_hash(monkeypatch, tmp_path):
     head = asyncio.run(ledger.head())
     assert head["seq"] == 1
     assert head["hash"] == record["record_hash"]
+
+
+def test_ten_concurrent_appends_keep_one_chain(monkeypatch, tmp_path):
+    use_temp_store(monkeypatch, tmp_path)
+
+    async def run():
+        return await asyncio.gather(
+            *[ledger.append(payload(), question=f"q{index}", draft=f"d{index}") for index in range(10)]
+        )
+
+    records = asyncio.run(run())
+    state = asyncio.run(ledger.verify())
+    assert state["ok"] is True
+    assert state["records"] == 10
+    assert state["checks"] == 10
+    assert sorted(record["seq"] for record in records) == list(range(1, 11))
+
+
+def test_two_event_loops_do_not_fork_the_chain(monkeypatch, tmp_path):
+    """Two loops simulate two app instances sharing one store.
+
+    Each loop has its own asyncio lock. Only the atomic sequence claim prevents
+    both instances from allocating the same sequence.
+    """
+    use_temp_store(monkeypatch, tmp_path)
+    from concurrent.futures import ThreadPoolExecutor
+
+    def writer(prefix, count):
+        async def run():
+            for index in range(count):
+                await ledger.append(payload(), question=f"{prefix}{index}", draft="d")
+
+        return asyncio.run(run())
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(writer, prefix, 5) for prefix in ("a", "b")]
+        for future in futures:
+            future.result()
+
+    state = asyncio.run(ledger.verify())
+    assert state["ok"] is True
+    assert state["records"] == 10
+
+
+def test_review_event_links_into_the_same_chain(monkeypatch, tmp_path):
+    use_temp_store(monkeypatch, tmp_path)
+    check = asyncio.run(ledger.append(payload(decision="hold"), question="q1", draft="d1"))
+    event = asyncio.run(
+        ledger.append_event(
+            {
+                "event": "review_resolved",
+                "review_id": "RV-20261105T120000-abcd1234",
+                "action": "approve",
+                "actor": "admin",
+                "note": "Approved after review.",
+                "check_seq": check["seq"],
+                "check_hash": check["record_hash"],
+            }
+        )
+    )
+    assert event["kind"] == "review_event"
+    assert event["prev_hash"] == check["record_hash"]
+    state = asyncio.run(ledger.verify())
+    assert state["ok"] is True
+    assert state["records"] == 2
+    assert state["checks"] == 1
+    assert state["events"] == 1
+
+
+def test_sequence_claim_is_exclusive(monkeypatch, tmp_path):
+    use_temp_store(monkeypatch, tmp_path)
+
+    async def run():
+        first = await storage.claim("ledger/claims/00000001.json", {"seq": 1})
+        second = await storage.claim("ledger/claims/00000001.json", {"seq": 1})
+        return first, second
+
+    assert asyncio.run(run()) == (True, False)
