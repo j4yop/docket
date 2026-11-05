@@ -154,7 +154,7 @@ def _client_ip(request: Request) -> str:
 def _enforce_check_rate(request: Request) -> dict[str, str]:
     now = time.time()
     ip = _client_ip(request)
-    limit = max(1, int(os.environ.get("DOCKET_RATE_LIMIT_PER_HOUR", "20")))
+    limit = max(1, int(os.environ.get("DOCKET_RATE_LIMIT_PER_HOUR", "60")))
     bucket = _CHECK_RATE.setdefault(ip, [])
     bucket[:] = [stamp for stamp in bucket if now - stamp < _CHECK_WINDOW_SECONDS]
     if len(bucket) >= limit:

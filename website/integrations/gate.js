@@ -1766,14 +1766,24 @@
   }
 
   async function checkHealth() {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 12000);
     try {
-      const response = await fetch("/api/health", { cache: "no-store" });
+      const response = await fetch("/api/health", { cache: "no-store", signal: controller.signal });
       const data = await response.json();
       renderHealth(data || {});
       setLive(Boolean(data && data.ok));
-    } catch {
-      renderHealth({ ok: false });
+    } catch (error) {
+      renderHealth({
+        ok: false,
+        error: error && error.name === "AbortError" ? "verification timed out" : "health check failed",
+        ledger: { ok: false, detail: "Unavailable" },
+        policy_registry: { ok: false, count: 0, registered: 0, missing: [], invalid: [] },
+        audit_backend: "unknown",
+      });
       setLive(false);
+    } finally {
+      window.clearTimeout(timeout);
     }
   }
 

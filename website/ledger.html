@@ -187,8 +187,10 @@
     }
 
     async function loadHealth() {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 10000);
       try {
-        const response = await fetch("/api/health", { cache: "no-store" });
+        const response = await fetch("/api/health", { cache: "no-store", signal: controller.signal });
         const health = await response.json();
         const policy = health.policy_registry || {};
         $("policy-state").textContent = policy.ok
@@ -199,6 +201,9 @@
       } catch {
         $("policy-state").textContent = "Unavailable";
         $("policy-state").className = "bad";
+        $("last-verified").textContent = "Verification timed out";
+      } finally {
+        window.clearTimeout(timeout);
       }
     }
 
@@ -208,7 +213,14 @@
       button.textContent = "Verifying…";
       try {
         await loadHealth();
-        const response = await fetch("/api/ledger?limit=25", { cache: "no-store" });
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 12000);
+        let response;
+        try {
+          response = await fetch("/api/ledger?limit=25", { cache: "no-store", signal: controller.signal });
+        } finally {
+          window.clearTimeout(timeout);
+        }
         const body = await response.json();
         if (!response.ok) throw new Error(body.detail || "Ledger unavailable");
         const state = body.ledger || {};

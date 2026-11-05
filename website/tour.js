@@ -82,6 +82,8 @@
     samples: {},
     cleanEnvelope: null,
     running: false,
+    retryIds: new Set(),
+    matched: 0,
   };
 
   function decisionLabel(value) {
@@ -246,31 +248,39 @@
 
   async function runTour() {
     if (state.running) return;
+    const retrying = state.retryIds.size > 0;
+    const queue = retrying ? TOUR.filter((item) => state.retryIds.has(item.id)) : TOUR;
+    if (!queue.length) return;
+
     state.running = true;
-    state.cleanEnvelope = null;
-    renderRows();
+    if (!retrying) {
+      state.cleanEnvelope = null;
+      state.matched = 0;
+      state.retryIds.clear();
+      renderRows();
+    }
     const button = $("run-tour");
     button.disabled = true;
     button.textContent = "Running…";
     $("tour-status").textContent = "Running";
     $("tour-status").dataset.state = "running";
     $("tour-note").dataset.state = "";
-    $("tour-note").textContent = "Running the eight cases in order. This takes about half a minute.";
-    $("tour-count").textContent = "0/8";
+    $("tour-note").textContent = retrying
+      ? `Retrying ${queue.length} failed case${queue.length === 1 ? "" : "s"}.`
+      : "Running the eight cases in order. This takes about half a minute.";
+    $("tour-count").textContent = `${state.matched}/8`;
     $("tour-meta").textContent = "Starting…";
 
     let credits = 0;
     let latency = 0;
-    let matched = 0;
-    let completed = 0;
     let fatal = null;
 
     try {
       const token = await getSession();
-      for (let index = 0; index < TOUR.length; index += 1) {
-        const item = TOUR[index];
+      for (let index = 0; index < queue.length; index += 1) {
+        const item = queue[index];
         setRowStatus(item, "Running", "running");
-        $("tour-note").textContent = `Running ${index + 1} of 8: ${item.name}.`;
+        $("tour-note").textContent = `Running ${index + 1} of ${queue.length}: ${item.name}.`;
         try {
           const payload = await payloadFor(item);
           const response = await fetch("/api/check", {
@@ -286,47 +296,59 @@
             const detail = (body && (body.detail || body.error)) || `HTTP ${response.status}`;
             const error = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
             error.fatal = response.status === 429 || response.status === 401;
+            error.retryAfter = Number(response.headers.get("retry-after")) || 0;
             throw error;
           }
+          state.retryIds.delete(item.id);
           const isMatch = updateRow(item, body);
-          if (isMatch) matched += 1;
+          if (isMatch) state.matched += 1;
           if (item.id === "clean" && Array.isArray(body.policy_envelopes) && body.policy_envelopes[0]) {
             state.cleanEnvelope = body.policy_envelopes[0];
           }
           credits += Number(body.credits || 0);
           latency += Number(body.latency_ms || 0);
-          completed += 1;
         } catch (error) {
           setRowError(item, error);
+          state.retryIds.add(item.id);
           if (error.fatal) {
             fatal = error;
+            for (const remaining of queue.slice(index + 1)) state.retryIds.add(remaining.id);
             break;
           }
         }
-        $("tour-count").textContent = `${completed}/8`;
+        $("tour-count").textContent = `${state.matched}/8`;
       }
 
+      const remaining = state.retryIds.size;
+      const completed = TOUR.length - remaining;
       if (fatal) {
+        const wait = fatal.retryAfter ? ` Retry in about ${Math.max(1, Math.ceil(fatal.retryAfter / 60))} minute(s).` : "";
         $("tour-status").textContent = "Stopped";
         $("tour-status").dataset.state = "held";
         $("tour-note").dataset.state = "error";
-        $("tour-note").textContent = `The tour stopped: ${fatal.message}`;
+        $("tour-note").textContent = `The tour stopped: ${fatal.message}${wait}`;
+      } else if (remaining) {
+        $("tour-status").textContent = "Incomplete";
+        $("tour-status").dataset.state = "held";
+        $("tour-note").dataset.state = "error";
+        $("tour-note").textContent = `${remaining} case${remaining === 1 ? "" : "s"} failed. The tour is not complete; retry only the failed cases.`;
       } else {
         $("tour-status").textContent = "Complete";
         $("tour-status").dataset.state = "determined";
-        $("tour-note").textContent = "Every case ran. Open the ledger to verify the records.";
+        $("tour-note").textContent = "All eight cases ran. Open the ledger to verify the records.";
       }
-      $("tour-count").textContent = `${matched}/8`;
-      $("tour-meta").textContent = `${completed} cases run · ${formatCredits(credits)} credits · ${(latency / 1000).toFixed(1)}s total`;
+      $("tour-count").textContent = `${state.matched}/8`;
+      $("tour-meta").textContent = `${completed} of 8 ran · ${state.matched} as expected · ${formatCredits(credits)} credits · ${(latency / 1000).toFixed(1)}s total`;
+      button.textContent = remaining ? "Retry failed cases" : "Run again";
     } catch (error) {
       $("tour-status").textContent = "Stopped";
       $("tour-status").dataset.state = "held";
       $("tour-note").dataset.state = "error";
       $("tour-note").textContent = `The tour could not start: ${error.message}`;
+      button.textContent = "Retry failed cases";
     } finally {
       state.running = false;
       button.disabled = false;
-      button.textContent = "Run again";
     }
   }
 
