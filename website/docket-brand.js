@@ -192,7 +192,7 @@
 
     // Every Get Started CTA -> Open console.
     document
-      .querySelectorAll('a[href*="app.docket.com/sign-up"], a[data-docket-console="true"]')
+      .querySelectorAll('a[data-docket-console="true"]')
       .forEach(function (link) {
         link.dataset.docketConsole = "true";
         if (link.getAttribute("href") !== CONSOLE) {
@@ -796,6 +796,7 @@
     applyMobileNav();
     applyLogo();
     applyCtas();
+    syncHeader();
   }
 
   // The header demo button carries a React click handler. Capture the click
@@ -815,30 +816,26 @@
     true
   );
 
-  // Hide the transparent header on scroll-down and reveal it on scroll-up.
-  (function () {
+  // The transparent header fades out once the page moves past the hero. It
+  // only returns near the top, so it can never sit over scrolled content.
+  var headerTicking = false;
+  function syncHeader() {
+    headerTicking = false;
     var siteHeader = document.querySelector("header");
     if (!siteHeader) return;
-    var lastY = window.scrollY;
-    var ticking = false;
-    var sync = function () {
-      ticking = false;
-      var y = window.scrollY;
-      if (y < 80) siteHeader.classList.remove("dk-header-hidden");
-      else if (y > lastY + 8) siteHeader.classList.add("dk-header-hidden");
-      else if (y < lastY - 8) siteHeader.classList.remove("dk-header-hidden");
-      lastY = y;
-    };
-    window.addEventListener(
-      "scroll",
-      function () {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(sync);
-      },
-      { passive: true }
-    );
-  })();
+    siteHeader.classList.toggle("dk-header-hidden", window.scrollY >= 80);
+  }
+  window.addEventListener(
+    "scroll",
+    function () {
+      if (headerTicking) return;
+      headerTicking = true;
+      requestAnimationFrame(syncHeader);
+    },
+    { passive: true }
+  );
+  window.addEventListener("resize", syncHeader, { passive: true });
+  window.addEventListener("load", syncHeader);
 
   apply();
   window.addEventListener("load", function () {

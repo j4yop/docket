@@ -99,7 +99,7 @@
     const hidden = document.querySelector("section.sr-only");
     if (hidden) {
       hidden.innerHTML =
-        `<h1 id="home-page-title">${TITLE}</h1>` +
+        `<p id="home-page-title">${TITLE}</p>` +
         `<p>Docket reads the policies, resolves which one governs, and holds the AI answer that cites a superseded rule. Publish, Rewrite, or Hold — with citations.</p>`;
     }
     document.title = "Docket — The newest policy is often not the governing one.";

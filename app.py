@@ -1103,6 +1103,13 @@ async def public_feature_flags() -> Response:
     )
 
 
+@app.post("/v1/logs")
+@app.post("/ingest")
+async def client_telemetry_stub() -> Response:
+    """Keep the mirrored shell's client telemetry same-origin and silent."""
+    return Response(status_code=204)
+
+
 @app.get("/_vercel/insights/script.js")
 async def vercel_insights_stub() -> Response:
     return Response(
