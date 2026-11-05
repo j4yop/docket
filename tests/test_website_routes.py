@@ -158,3 +158,50 @@ def test_check_holds_when_the_policy_registry_fails(monkeypatch) -> None:
     assert body["decision"] == "hold"
     assert body["codes"] == ["check_failed"]
     assert "policy registry could not be read" in body["reasons"][0]
+
+
+def test_console_exposes_the_pipeline_features() -> None:
+    response = client.get("/console")
+    assert response.status_code == 200
+    for fragment in (
+        'data-stage="extract"',
+        'data-stage="decide"',
+        'id="gate-ablate-endpoint"',
+        'id="gate-policies-block"',
+        'id="gate-audit-note"',
+    ):
+        assert fragment in response.text
+
+
+def test_ledger_page_serves_the_public_ledger() -> None:
+    response = client.get("/ledger")
+    assert response.status_code == 200
+    assert "The audit ledger." in response.text
+
+
+def test_ledger_api_returns_the_verified_chain(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+
+    async def fake_verify():
+        return {
+            "ok": True,
+            "records": 2,
+            "broken_at": None,
+            "detail": "The chain is intact.",
+            "head": {"seq": 2, "hash": "a" * 64, "updated_at": "2026-11-05T12:00:00+00:00"},
+            "storage": "local",
+        }
+
+    async def fake_recent(limit=12):
+        return []
+
+    monkeypatch.setattr(module.ledger, "verify", fake_verify)
+    monkeypatch.setattr(module.ledger, "recent", fake_recent)
+    response = client.get("/api/ledger")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ledger"]["ok"] is True
+    assert body["ledger"]["records"] == 2
+    assert body["records"] == []

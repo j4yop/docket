@@ -129,6 +129,10 @@ Decide classifies the request and its risk. It selects a verification profile (d
 
 Compare is accurate and cheap on short aligned passages, and unreliable on full documents. The app segments first, pairs governing and superseded clauses by token overlap and position, then sends only aligned pairs. See the measured note in §9.
 
+### Every claim carries its governing passage
+
+Verify returns a verdict per claim. The app also attaches the best matching governing clause quote whenever Verify returns only an evidence span. The console, API and audit record then show the passage that decides the claim, not only the label. This keeps the claim table inspectable on the same screen as the verdict.
+
 ### Verify excludes command lines
 
 A command is an action, not a factual assertion. Inspect owns script safety; Verify reads the prose around the command. This prevents a safe runbook from being marked unsupported because a shell verb is not stated in the policy.

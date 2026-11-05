@@ -5,7 +5,7 @@
 [![Hackathon](https://img.shields.io/badge/HACKATHON-CLOCKED_BUILD_CHALLENGE-FEEA3B?style=for-the-badge&logoColor=black&labelColor=1e293b&color=FEEA3B)](https://clocked.rezolve.ai/challenge)
 [![Endpoints](https://img.shields.io/badge/CLOCKED_ENDPOINTS-9%2F9-38BDF8?style=for-the-badge&labelColor=1e293b&color=38BDF8)](https://clocked.rezolve.ai/docs)
 [![Benchmark](https://img.shields.io/badge/BENCHMARK-37%2F37-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#measured-accuracy)
-[![Tests](https://img.shields.io/badge/tests-72_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
+[![Tests](https://img.shields.io/badge/tests-75_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
 [![Python](https://img.shields.io/badge/python-3.11_%7C_3.12_%7C_3.13-3775A9?style=for-the-badge&logo=python&logoColor=white&labelColor=1e293b)](https://www.python.org/)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-docket--clocked.vercel.app-6366F1?style=for-the-badge&logo=vercel&logoColor=white&labelColor=1e293b)](https://docket-clocked.vercel.app)
 [![Console](https://img.shields.io/badge/Gate_Console-%2Fconsole-059669?style=for-the-badge&labelColor=1e293b)](https://docket-clocked.vercel.app/console)
@@ -76,6 +76,8 @@ Signed policy envelopes + hash-chained audit record
 | **Verify** `/grounding` | Knowledge | Checks every counted claim against the governing text | **Yes — REWRITE / HOLD** |
 
 Protect changes what is stored. Rerank changes the evidence set. The other seven can move the verdict on their own, on the cases where their signal exists. Docket does not claim every endpoint changes every verdict.
+
+Every counted claim is paired with the governing quote that supports or overrides it. The console, API and audit record show the passage behind the verdict, not just the label.
 
 Clocked also offers a Pipeline composition endpoint. Docket deliberately does not call it: the product's value is the deterministic authority, policy-integrity and verdict rules *between* the primitives, which one opaque Pipeline call would hide. All nine primitive endpoints are used; Pipeline would be a checkbox.
 
@@ -278,7 +280,7 @@ curl -s https://docket-clocked.vercel.app/api/policies/approve \
 | Hot index | SQLite WAL (`/tmp` on Vercel, explicitly labeled per-instance) |
 | Frontend | Semantic HTML, CSS, vanilla JS, no build step |
 | Streaming | Server-Sent Events with real stage progress |
-| Tests | pytest — 72 tests |
+| Tests | pytest — 75 tests |
 | Deploy | Vercel FastAPI service; Docker/Render/Railway supported |
 
 ---
@@ -312,7 +314,7 @@ pip install -r requirements-dev.txt
 python -m pytest -v
 ```
 
-72 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, the hash-chained ledger, coverage/omission policy, Compare verdict rules, Decide triage, and route authentication. The deterministic layers run without a Clocked key.
+75 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, the hash-chained ledger, coverage/omission policy, Compare verdict rules, Decide triage, console feature coverage, ledger views and route authentication. The deterministic layers run without a Clocked key.
 
 ---
 
