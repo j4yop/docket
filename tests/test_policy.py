@@ -162,3 +162,57 @@ def test_out_of_range_grounded_score_holds():
         )
         assert verdict.decision is Decision.HOLD
         assert verdict.codes == ["verification_missing"]
+
+
+def test_unacknowledged_superseded_value_forces_rewrite_even_when_verify_passes():
+    verdict = evaluate(
+        authority_error=None,
+        selected_count=1,
+        verify={"grounded": 0.95, "claims": [claim("supported")]},
+        compare_unacknowledged=[
+            {
+                "kind": "value",
+                "governing_quote": "Employees may claim up to EUR 60 per day.",
+                "superseded_quote": "Employees may claim up to EUR 45 per day.",
+                "used_values": ["45"],
+            }
+        ],
+    )
+    assert verdict.decision is Decision.REWRITE
+    assert verdict.codes == ["superseded_value"]
+    assert "EUR 45" in " ".join(verdict.reasons)
+    assert "EUR 60" in " ".join(verdict.reasons)
+
+
+def test_acknowledged_compare_conflict_does_not_block_publish():
+    verdict = evaluate(
+        authority_error=None,
+        selected_count=1,
+        verify={"grounded": 0.95, "claims": [claim("supported")]},
+        compare_unacknowledged=[],
+    )
+    assert verdict.decision is Decision.PUBLISH
+
+
+def test_triage_review_holds_a_clean_draft():
+    verdict = evaluate(
+        authority_error=None,
+        selected_count=1,
+        verify={"grounded": 0.95, "claims": [claim("supported")]},
+        triage_review=True,
+        triage_reason="Decide classified this as a high risk approval request.",
+    )
+    assert verdict.decision is Decision.HOLD
+    assert verdict.codes == ["triage_review"]
+    assert "high risk approval" in " ".join(verdict.reasons)
+
+
+def test_triage_review_does_not_mask_a_contradiction():
+    verdict = evaluate(
+        authority_error=None,
+        selected_count=1,
+        verify={"grounded": 0.3, "claims": [claim("contradicted")]},
+        triage_review=True,
+    )
+    assert verdict.decision is Decision.REWRITE
+    assert verdict.codes == ["contradicted"]

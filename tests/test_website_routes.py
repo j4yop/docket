@@ -75,3 +75,133 @@ def test_check_rejects_an_invalid_session() -> None:
         headers={"X-Docket-Session": "not-a-valid-token"},
     )
     assert response.status_code == 401
+
+
+def _session_headers() -> dict:
+    token = client.get("/api/session").json()["token"]
+    return {"X-Docket-Session": token}
+
+
+def test_ablate_requires_a_session() -> None:
+    response = client.post("/api/ablate", json={**_check_payload(), "endpoint": "guard"})
+    assert response.status_code == 401
+
+
+def test_ablate_rejects_an_unknown_endpoint() -> None:
+    response = client.post(
+        "/api/ablate",
+        json={**_check_payload(), "endpoint": "authority"},
+        headers=_session_headers(),
+    )
+    assert response.status_code == 400
+
+
+def test_ablate_skips_the_endpoint_without_recording(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+    seen = {}
+
+    async def fake_run_check(req, emit=None, ablate=None, record=True):
+        seen["ablate"] = ablate
+        seen["record"] = record
+        return {
+            "decision": "publish",
+            "reasons": [],
+            "codes": [],
+            "credits": 0,
+            "api_calls": 0,
+            "latency_ms": 0,
+            "headline": "",
+            "recorded": record,
+            "simulation": not record,
+        }
+
+    monkeypatch.setattr(module, "run_check", fake_run_check)
+    response = client.post(
+        "/api/ablate",
+        json={**_check_payload(), "endpoint": "guard"},
+        headers=_session_headers(),
+    )
+    assert response.status_code == 200
+    assert seen == {"ablate": {"guard"}, "record": False}
+    body = response.json()
+    assert body["simulation"] is True
+    assert body["ablation"]["endpoint"] == "guard"
+    assert "not written to the audit ledger" in body["ablation"]["note"]
+
+
+def test_check_holds_when_the_policy_registry_fails(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+
+    async def boom(*args, **kwargs):
+        raise RuntimeError("blob unavailable")
+
+    async def fake_append(payload, *, question, draft):
+        return {
+            "seq": 1,
+            "record_hash": "a" * 64,
+            "prev_hash": "0" * 64,
+        }
+
+    monkeypatch.setattr(module.policy_registry, "resolve", boom)
+    monkeypatch.setattr(module.ledger, "append", fake_append)
+    response = client.post(
+        "/api/check",
+        json=_check_payload(),
+        headers=_session_headers(),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["decision"] == "hold"
+    assert body["codes"] == ["check_failed"]
+    assert "policy registry could not be read" in body["reasons"][0]
+
+
+def test_console_exposes_the_pipeline_features() -> None:
+    response = client.get("/console")
+    assert response.status_code == 200
+    for fragment in (
+        'data-stage="extract"',
+        'data-stage="decide"',
+        'id="gate-ablate-endpoint"',
+        'id="gate-policies-block"',
+        'id="gate-audit-note"',
+    ):
+        assert fragment in response.text
+
+
+def test_ledger_page_serves_the_public_ledger() -> None:
+    response = client.get("/ledger")
+    assert response.status_code == 200
+    assert "The audit ledger." in response.text
+
+
+def test_ledger_api_returns_the_verified_chain(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+
+    async def fake_verify():
+        return {
+            "ok": True,
+            "records": 2,
+            "broken_at": None,
+            "detail": "The chain is intact.",
+            "head": {"seq": 2, "hash": "a" * 64, "updated_at": "2026-11-05T12:00:00+00:00"},
+            "storage": "local",
+        }
+
+    async def fake_recent(limit=12):
+        return []
+
+    monkeypatch.setattr(module.ledger, "verify", fake_verify)
+    monkeypatch.setattr(module.ledger, "recent", fake_recent)
+    response = client.get("/api/ledger")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ledger"]["ok"] is True
+    assert body["ledger"]["records"] == 2
+    assert body["records"] == []

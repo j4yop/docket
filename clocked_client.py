@@ -167,6 +167,33 @@ class ClockedClient:
             idem_key,
         )
 
+    async def extract(
+        self, *, text: str, fields: dict, instructions: str, idem_key: str
+    ) -> CallResult:
+        return await self._post(
+            "extract",
+            {
+                "text": text[:200_000],
+                "fields": fields,
+                "instructions": instructions,
+            },
+            idem_key,
+        )
+
+    async def decide(
+        self, *, state: str, questions: dict, instructions: str, idem_key: str
+    ) -> CallResult:
+        return await self._post(
+            "decide",
+            {
+                "state": state[:200_000],
+                "questions": questions,
+                "instructions": instructions,
+                "calibration_temperature": 4,
+            },
+            idem_key,
+        )
+
     async def rerank(
         self, *, query: str, documents: list[dict], context: dict, instructions: str, idem_key: str
     ) -> CallResult:

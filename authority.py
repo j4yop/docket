@@ -266,7 +266,10 @@ def candidate_clauses(
     picked: list[tuple[float, Clause]] = []
     for doc_clauses in by_doc.values():
         doc_clauses.sort(key=lambda item: item[0], reverse=True)
-        picked.extend(doc_clauses[:per_doc])
+        # A short policy can be read whole. Dropping its fourth clause to save
+        # a little Rerank cost creates a real retrieval miss on questions that
+        # match a condition instead of the headline rule.
+        picked.extend(doc_clauses if len(doc_clauses) <= per_doc + 2 else doc_clauses[:per_doc])
 
     picked.sort(key=lambda item: item[0], reverse=True)
     return [clause for _, clause in picked[:limit]]
