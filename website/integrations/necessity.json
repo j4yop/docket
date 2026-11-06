@@ -1,7 +1,7 @@
 {
-  "recorded_at": "2026-11-06T06:32:41+00:00",
+  "recorded_at": "2026-11-06T06:37:51+00:00",
   "mode": "live",
-  "base_url": "http://127.0.0.1:8020",
+  "base_url": "https://docket-clocked.vercel.app",
   "proofs": [
     {
       "endpoint": "guard",
@@ -34,9 +34,9 @@
           "codes": [
             "prompt_injection"
           ],
-          "credits": 4.0,
-          "api_calls": 2,
-          "latency_ms": 1215,
+          "credits": 5.0,
+          "api_calls": 1,
+          "latency_ms": 149234,
           "governing": "Equipment policy with embedded note",
           "signal": {
             "value": "injection",
@@ -49,9 +49,9 @@
           "codes": [
             "supported"
           ],
-          "credits": 12.0,
-          "api_calls": 6,
-          "latency_ms": 4046,
+          "credits": 16.0,
+          "api_calls": 5,
+          "latency_ms": 149816,
           "governing": "Equipment policy with embedded note",
           "signal": {
             "value": null,
@@ -94,9 +94,9 @@
           "codes": [
             "unsafe_script"
           ],
-          "credits": 4.0,
+          "credits": 5.0,
           "api_calls": 3,
-          "latency_ms": 1730,
+          "latency_ms": 493,
           "governing": "Printer queue recovery runbook",
           "signal": {
             "value": "malicious",
@@ -109,9 +109,9 @@
           "codes": [
             "unsupported"
           ],
-          "credits": 20.0,
+          "credits": 25.0,
           "api_calls": 7,
-          "latency_ms": 3731,
+          "latency_ms": 1184,
           "governing": "Printer queue recovery runbook",
           "signal": {
             "value": null,
@@ -154,9 +154,9 @@
           "codes": [
             "metadata_conflict"
           ],
-          "credits": 6.0,
+          "credits": 8.0,
           "api_calls": 3,
-          "latency_ms": 1799,
+          "latency_ms": 429,
           "governing": "Travel policy with a conflicting date",
           "signal": {
             "value": 1,
@@ -169,9 +169,9 @@
           "codes": [
             "supported"
           ],
-          "credits": 15.0,
+          "credits": 18.0,
           "api_calls": 6,
-          "latency_ms": 3072,
+          "latency_ms": 1049,
           "governing": "Travel policy with a conflicting date",
           "signal": {
             "value": null,
@@ -230,9 +230,9 @@
           "codes": [
             "contradicted"
           ],
-          "credits": 25.0,
+          "credits": 31.0,
           "api_calls": 8,
-          "latency_ms": 5934,
+          "latency_ms": 1758,
           "governing": "France annex",
           "signal": {
             "value": true,
@@ -245,9 +245,9 @@
           "codes": [
             "contradicted"
           ],
-          "credits": 22.0,
+          "credits": 25.0,
           "api_calls": 7,
-          "latency_ms": 4730,
+          "latency_ms": 1837,
           "governing": "France annex",
           "signal": {
             "value": null,
@@ -308,7 +308,7 @@
           ],
           "credits": 24.0,
           "api_calls": 8,
-          "latency_ms": 5694,
+          "latency_ms": 1598,
           "governing": "France annex",
           "signal": {
             "value": 2,
@@ -321,9 +321,9 @@
           "codes": [
             "contradicted"
           ],
-          "credits": 20.0,
+          "credits": 21.0,
           "api_calls": 7,
-          "latency_ms": 4595,
+          "latency_ms": 1401,
           "governing": "France annex",
           "signal": {
             "value": null,
@@ -367,9 +367,9 @@
           "codes": [
             "coverage_gap"
           ],
-          "credits": 19.0,
+          "credits": 20.0,
           "api_calls": 7,
-          "latency_ms": 3781,
+          "latency_ms": 1257,
           "governing": "Remote work policy \u2014 proof case",
           "signal": {
             "value": true,
@@ -382,9 +382,9 @@
           "codes": [
             "supported"
           ],
-          "credits": 10.0,
+          "credits": 14.0,
           "api_calls": 6,
-          "latency_ms": 3260,
+          "latency_ms": 861,
           "governing": "Remote work policy \u2014 proof case",
           "signal": {
             "value": null,
@@ -429,7 +429,7 @@
           ],
           "credits": 16.0,
           "api_calls": 7,
-          "latency_ms": 3963,
+          "latency_ms": 1221,
           "governing": "Access request policy v2",
           "signal": {
             "value": "grounded",
@@ -442,9 +442,9 @@
           "codes": [
             "verification_missing"
           ],
-          "credits": 13.0,
+          "credits": 18.0,
           "api_calls": 6,
-          "latency_ms": 3352,
+          "latency_ms": 1050,
           "governing": "Access request policy v2",
           "signal": {
             "value": null,
@@ -488,9 +488,9 @@
           "codes": [
             "coverage_gap"
           ],
-          "credits": 20.0,
+          "credits": 22.0,
           "api_calls": 7,
-          "latency_ms": 4432,
+          "latency_ms": 1406,
           "governing": "Access request policy v2",
           "signal": {
             "value": 1,
@@ -503,9 +503,9 @@
           "codes": [
             "coverage_gap"
           ],
-          "credits": 17.0,
+          "credits": 20.0,
           "api_calls": 6,
-          "latency_ms": 3382,
+          "latency_ms": 1193,
           "governing": "Access request policy v2",
           "signal": {
             "value": null,
@@ -564,9 +564,9 @@
           "codes": [
             "contradicted"
           ],
-          "credits": 24.0,
+          "credits": 26.0,
           "api_calls": 8,
-          "latency_ms": 5241,
+          "latency_ms": 1854,
           "governing": "France annex",
           "signal": {
             "value": [
@@ -582,9 +582,9 @@
           "codes": [
             "contradicted"
           ],
-          "credits": 25.0,
+          "credits": 26.0,
           "api_calls": 7,
-          "latency_ms": 4698,
+          "latency_ms": 1642,
           "governing": "France annex",
           "signal": {
             "value": [

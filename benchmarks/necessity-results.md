@@ -1,8 +1,8 @@
 # Docket endpoint necessity proofs
 
-**Recorded:** 2026-11-06T06:32:41+00:00
+**Recorded:** 2026-11-06T06:37:51+00:00
 **Mode:** live
-**Base URL:** `http://127.0.0.1:8020`
+**Base URL:** `https://docket-clocked.vercel.app`
 
 Each row is one live baseline and one live counterfactual. All nine endpoints are ablated; Protect and Rerank change the record or evidence set, not the verdict. `/api/prove` writes no audit record.
 
