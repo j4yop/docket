@@ -306,17 +306,6 @@ make preflight-local         # checks the public surfaces on :8000
 
 ---
 
-## Limits and honest gaps
-
-- **Self-authored accuracy corpora.** The locked and post-tuning results are evidence on 31 authored cases, not a claim about all policy sprawl. The headline is **0 unsafe false-PUBLISH**; the exact-label results are reported separately and honestly.
-- **Single Clocked model snapshot.** Clocked behavior can drift. Both benchmark documents record the date and measured scores.
-- **Thresholds are corpus-bound.** Guard remains at 0.50 because measured scores are flat; Inspect is 0.10 because the calibration corpus found a real gap. This is a measured trade, not a universal optimum.
-- **Review approval does not auto-publish.** The queue records the human decision; the operator still edits and re-runs.
-- **Operator attestation is not proof of organizational authority.** Admin envelopes are the stronger path.
-- **Single-tenant demo.** No multi-tenant auth or per-customer policy registries yet. The console is text-first.
-
-More detail: [`JUDGES.md`](JUDGES.md) · [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/strategy/`](docs/strategy/)
-
 ## License
 
 MIT. See [LICENSE](LICENSE).
