@@ -374,3 +374,4 @@ def test_brand_nav_includes_the_judge_tour() -> None:
     assert '"/tour"' in response.text
     assert "makeTourTab" in response.text
     assert "dk-tour-tab" in response.text
+    assert "267.5px" in response.text

@@ -249,7 +249,20 @@
     tab.setAttribute("aria-label", "Take the Judge Tour");
     tab.setAttribute("title", "Take the Judge Tour");
     tab.classList.add("dk-tour-tab");
-    tab.style.right = "347px";
+    // The tab fills the parallelogram up to GitHub's left edge: its bottom
+    // right corner meets GitHub's bottom-left corner instead of leaving the
+    // black triangular gap that a 216px clone leaves.
+    var shapePath = "M 0 0 C 6 0 9 5 13 10.14 L 34.7 38 C 39.5 44.16 42.5 46.666 51.5 46.666 H 267.5 L 216 0 H 0 Z";
+    tab.style.width = "267.5px";
+    tab.style.right = "295.5px";
+    tab.style.clipPath = 'path("' + shapePath + '")';
+    var shape = tab.querySelector('svg[viewBox="0 0 216 56"]');
+    if (shape) {
+      shape.setAttribute("viewBox", "0 0 267.5 56");
+      Array.prototype.forEach.call(shape.querySelectorAll("path"), function (pathNode) {
+        pathNode.setAttribute("d", shapePath);
+      });
+    }
     var label = tab.querySelector('[data-docket-cta="github"]');
     if (label) {
       label.removeAttribute("data-docket-cta");
@@ -257,7 +270,7 @@
         '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false" fill="currentColor" style="flex:none">' +
         '<path d="M4.75 2.9c0-.77.84-1.25 1.5-.86l8 5.1c.62.4.62 1.32 0 1.72l-8 5.1c-.66.39-1.5-.09-1.5-.86V2.9Z"></path>' +
         "</svg><span>Judge Tour</span>";
-      label.style.left = "104px";
+      label.style.left = "134px";
       label.style.gap = "8px";
     }
     github.parentNode.insertBefore(tab, github);
