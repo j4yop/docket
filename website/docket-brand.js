@@ -268,7 +268,12 @@
       // GitHub centers its inset hover frame at 104px on a 216px tab. The
       // Judge Tour parallelogram adds 51.5px on the bottom-right, so the
       // visual center is 134px; shift the same inset frame to stay centered.
-      overlay.style.left = "56px";
+      // Scale the inset frame with the wider parallelogram, and center it on
+      // the label so the hover graphic does not sit off to one side.
+      overlay.style.left = "44px";
+      overlay.style.top = "22px";
+      overlay.style.width = "180px";
+      overlay.style.height = "38px";
     }
     var label = tab.querySelector('[data-docket-cta="github"]');
     if (label) {
