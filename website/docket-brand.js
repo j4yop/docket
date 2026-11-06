@@ -250,14 +250,15 @@
     tab.setAttribute("title", "Take the Judge Tour");
     tab.classList.add("dk-tour-tab");
     tab.style.right = "347px";
-    var overlay = tab.querySelector('[data-slot="header-button-overlay"]');
-    if (overlay) overlay.remove();
     var label = tab.querySelector('[data-docket-cta="github"]');
     if (label) {
       label.removeAttribute("data-docket-cta");
-      label.innerHTML = "<span>Judge Tour</span>";
-      label.style.left = "108px";
-      label.style.gap = "0";
+      label.innerHTML =
+        '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false" fill="currentColor" style="flex:none">' +
+        '<path d="M4.75 2.9c0-.77.84-1.25 1.5-.86l8 5.1c.62.4.62 1.32 0 1.72l-8 5.1c-.66.39-1.5-.09-1.5-.86V2.9Z"></path>' +
+        "</svg><span>Judge Tour</span>";
+      label.style.left = "104px";
+      label.style.gap = "8px";
     }
     github.parentNode.insertBefore(tab, github);
   }
