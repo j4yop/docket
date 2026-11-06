@@ -12,6 +12,18 @@
 3. Open an **audit seq** link to verify the hash-chained record in `/ledger`.
 4. Open `/console`, press **Run flagship France case**, then inspect the verdict, the decision record and the “What each endpoint changes” table. Re-run any proof row to see the same result live.
 
+## Two-minute demo script
+
+| Time | Do this | Say this |
+|---|---|---|
+| 0:00 | Open `/tour` | “This is the submission demo. It is the product, not a slide.” |
+| 0:15 | Press **Run the tour** | “Eight live cases: precedence, versioning, omission, a clean control, injection, an unsafe script, an unapproved policy and a tampered policy.” |
+| 0:40 | Point at the eight rows and the audit links | “Every row is a real Clocked call, and every determination has a ledger sequence. Nothing here is pre-recorded.” |
+| 0:55 | Open `/console` and press **Run flagship France case** | “The console meets a draft answer waiting to ship. The older France annex governs because of jurisdiction and precedence, not recency.” |
+| 1:15 | Point at the Decision record and review card | “The audit sequence, signed policy envelopes, review state and release/send-back state are in one record. The admin gate is deliberate.” |
+| 1:40 | Scroll to **What each endpoint changes** and re-run Guard | “Each decision lever is proved on the case that triggers it. Guard off turns a HOLD into a PUBLISH. If Clocked is unavailable, the gate holds.” |
+| 1:55 | Close on the evidence | “The headline is 0 unsafe false-PUBLISH across 31 locked held-out cases and 10 adversarial cases, with the exact-label results published honestly.” |
+
 ## What to look for
 
 - **Authority is deterministic:** the France annex overrides the newer global policy because of jurisdiction and precedence, not recency.
