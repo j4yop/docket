@@ -11,7 +11,7 @@
 
 .tour-intro .gate-panel-copy {
   max-width: 62ch;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--gate-muted);
 }
@@ -67,7 +67,7 @@
   padding-top: 22px;
   font-size: 12px;
   line-height: 1.55;
-  color: var(--gate-faint);
+  color: var(--gate-dim);
 }
 
 .tour-results {
@@ -84,7 +84,7 @@
   padding: 8px 10px 8px 0;
   text-align: left;
   font-family: var(--gate-label);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -111,7 +111,7 @@
 .tour-table td.why {
   max-width: 210px;
   font-family: var(--gate-mono);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--gate-dim);
   white-space: normal;
@@ -128,7 +128,7 @@
   display: block;
   margin-top: 2px;
   color: var(--gate-dim);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -176,9 +176,9 @@
 
 .tour-ledger-note {
   margin: 12px 0 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
-  color: var(--gate-faint);
+  color: var(--gate-dim);
 }
 
 .tour-ledger-note a {
