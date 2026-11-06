@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Docket — Council review, Best Overall</title>
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --panel: #ffffff;
+    --ink: #161917;
+    --muted: #5e665f;
+    --line: #d8d4cb;
+    --red: #c90020;
+    --green: #087a55;
+    --amber: #9a6400;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #080b09;
+      --panel: #101512;
+      --ink: #f1f5f1;
+      --muted: #a8b5ad;
+      --line: #2a332d;
+      --red: #ff3b55;
+      --green: #42d99b;
+      --amber: #f2b84b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--sans); }
+  main { max-width: 1120px; margin: 0 auto; padding: 56px 24px 96px; }
+  .kicker { color: var(--red); font: 600 11px/1.2 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+  h1 { margin: 12px 0 10px; font-size: clamp(38px, 6vw, 72px); line-height: .96; letter-spacing: -.045em; }
+  h2 { margin: 48px 0 14px; font-size: 26px; letter-spacing: -.02em; }
+  h3 { margin: 24px 0 8px; font-size: 17px; }
+  p { max-width: 78ch; }
+  a { color: inherit; }
+  .lede { max-width: 820px; color: var(--muted); font-size: 19px; }
+  .verdict { margin: 30px 0; padding: 22px; border: 1px solid var(--line); background: var(--panel); }
+  .verdict b { color: var(--green); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1px; margin: 24px 0; background: var(--line); border: 1px solid var(--line); }
+  .cell { background: var(--panel); padding: 18px; }
+  .cell strong { display: block; margin-bottom: 6px; color: var(--red); font: 600 10px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  .cell span { color: var(--muted); font-size: 14px; }
+  .move { border-top: 2px solid var(--red); padding-top: 14px; margin-top: 24px; }
+  .move .num { font: 600 12px/1 var(--mono); color: var(--red); letter-spacing: .08em; }
+  .move h3 { margin-top: 6px; font-size: 22px; }
+  .tag { display: inline-block; margin-right: 6px; padding: 2px 6px; border: 1px solid var(--line); font: 600 10px/1.4 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  th { font: 600 10px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  details { border-top: 1px solid var(--line); padding: 12px 0; }
+  summary { cursor: pointer; font: 600 13px/1.4 var(--mono); letter-spacing: .03em; }
+  .small { color: var(--muted); font-size: 13px; }
+  .danger { color: var(--red); }
+  .ok { color: var(--green); }
+  ul { max-width: 80ch; }
+  li { margin: 5px 0; }
+  @media (max-width: 640px) {
+    main { padding-top: 32px; }
+    h1 { font-size: 40px; }
+    .lede { font-size: 17px; }
+    table { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="kicker">Council review / Clocked Build Challenge / 6 Nov 2026</div>
+  <h1>Docket can win Best Overall. The product is not the problem. The demo is.</h1>
+  <p class="lede">Independent review against the official 100-point rubric and the public competitor set. Scope: product, demo, evidence and reliability. The marketing page is out of scope.</p>
+
+  <div class="verdict">
+    <b>Verdict:</b> position Docket as the <strong>authority-and-receipt layer</strong> for AI answers, not another document reviewer. Every other entry checks the document; Docket checks whether the policy behind it is still the policy — and records who released the answer. The field is crowded with focused reviewers; Docket is the only entry with policy authority, signed approval, human review and a hash-chained receipt in one loop.
+  </div>
+
+  <h2>The three P0 moves</h2>
+  <div class="move">
+    <div class="num">P0 / 01</div>
+    <h3>Make <code>/tour</code> one story, then breadth</h3>
+    <p>Open with the France case: a support agent is about to send a draft; the newest global policy requires manager approval; the older France annex says it does not; latest-wins would publish the wrong answer. Let the gate resolve authority, contradict the draft, open a review and write an audit record. Then keep the eight-case suite visible as breadth.</p>
+    <p class="small">Fix the defects the review found: the counter shows <span class="danger">8 / 8 while every row is Waiting</span>; the meta line stays on “Starting…”; the “Why” column shows raw codes; partial runs need to render an honest Incomplete state.</p>
+  </div>
+  <div class="move">
+    <div class="num">P0 / 02</div>
+    <h3>Make review honest</h3>
+    <p>“Release answer” does not publish the answer. Approving a review resolves the record; the decision remains HOLD or REWRITE until the operator edits and re-runs. A judge can see “released by reviewer” while the unsafe draft is unchanged. Rename the action to <strong>Approve review</strong>; show <strong>Approved — re-run required to publish</strong>; put the governing quote and deciding claim above the buttons.</p>
+  </div>
+  <div class="move">
+    <div class="num">P0 / 03</div>
+    <h3>Make the demo unable to fail</h3>
+    <p>The deployed budget is 60 checks/hour per IP. One tour is 8 checks; four judges, retries and public voters can exhaust it. Keep a 60-check budget per session, raise the per-IP ceiling to 240–600, raise the daily cap, make partial runs credible, add a two-minute fallback video and a preflight for tour, console, ledger and health.</p>
+  </div>
+
+  <h2>What the council agrees on</h2>
+  <div class="grid">
+    <div class="cell"><strong>Positioning</strong><span>Authority and receipt, not document review. The first 20 seconds must say this.</span></div>
+    <div class="cell"><strong>Demo</strong><span>The tour is a QA harness. France first; the suite is breadth; the evidence strip is proof.</span></div>
+    <div class="cell"><strong>Trust</strong><span>“Release answer” on an unchanged HOLD/REWRITE is a correctness bug, not a label preference.</span></div>
+    <div class="cell"><strong>Reliability</strong><span>60/hour per IP is a silent zero risk. Timebox the fix to half a day.</span></div>
+    <div class="cell"><strong>Awards</strong><span>Enter all four judged awards, led by Verify/Compare/Rerank. One product, one narrative.</span></div>
+    <div class="cell"><strong>Evidence</strong><span>Lead with 0 unsafe false-PUBLISH. Show 25/31 locked and 29/31 post-tuning separately. Add 10/10 adversarial and 9/9 endpoints.</span></div>
+  </div>
+
+  <h2>Competitive read</h2>
+  <table>
+    <thead><tr><th>Project</th><th>Wedge</th><th>Clocked use</th><th>Where Docket wins</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Docket</strong></td><td>Policy authority and release receipt</td><td>All 9</td><td>Only entry proving which policy governs over time and who released the answer</td></tr>
+      <tr><td><strong>ClockedOmniGuard</strong></td><td>Enterprise deal-room / DevSecOps / agent security</td><td>10, MCP</td><td>Sharper authority story and a real review/ledger loop; do not fight on MCP</td></tr>
+      <tr><td><strong>ClientCheck PH</strong></td><td>Contract review</td><td>Guard, Protect, Extract, Verify</td><td>Authority across documents, not one contract</td></tr>
+      <tr><td><strong>Invoice Airlock</strong></td><td>AP supplier-email screening</td><td>Guard, Protect, Extract, Decide, Compare</td><td>Policy governance over time, not one message</td></tr>
+      <tr><td><strong>Gatehouse</strong></td><td>GitHub issue screening</td><td>Guard, Inspect, Protect</td><td>Policy envelopes, review and ledger</td></tr>
+      <tr><td><strong>DocShield</strong></td><td>Document understanding and redaction</td><td>Protect, Extract, Decide, Verify</td><td>Governing-policy resolution and audit</td></tr>
+      <tr><td><strong>AgentShield</strong></td><td>Agent input pre-flight</td><td>Guard, Protect, Inspect</td><td>All nine and a release record</td></tr>
+      <tr><td><strong>Inbox Shield</strong></td><td>Customer-message screening</td><td>Guard, Protect, Decide, Extract</td><td>Authority and release accountability</td></tr>
+      <tr><td><strong>CleanScreen</strong></td><td>Resume hidden-content detection</td><td>Protect, Verify, Decide</td><td>Same discipline applied to policy</td></tr>
+      <tr><td><strong>KitBrief</strong></td><td>Workshop kit quantities</td><td>Extract, Fill</td><td>Broader governance and audit</td></tr>
+      <tr><td><strong>Margin</strong></td><td>Academic integrity review</td><td>Clocked endpoints</td><td>Enterprise policy release problem</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Blind spots the peer review caught</h2>
+  <ul>
+    <li><strong>The scope rule can undermine the safety headline.</strong> The deterministic out-of-scope path bypasses Verify. It is defensible, but make the authority-trace determination visible, add a live scope example, and test a negative scope draft with a substantive extra claim.</li>
+    <li><strong>The benchmark is self-authored.</strong> Keep 25/31 locked as the locked result and 29/31 post-tuning clearly labelled. The honesty is a strength; a hidden switch is a disqualifier in the judge's mind.</li>
+    <li><strong>The first minute does more work than the feature list.</strong> Focused competitors win because the judge understands them immediately. Docket's depth must be legible before the judge scrolls.</li>
+    <li><strong>The 60/hour budget is a single point of failure.</strong> The council splits on whether to spend time on it. The verdict: yes, but only half a day.</li>
+  </ul>
+
+  <h2>Four-day plan</h2>
+  <table>
+    <thead><tr><th>Day</th><th>Ship</th><th>Done when</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Day 1</strong><br>Nov 6</td><td>France-first tour, evidence strip, progress/partial-run fixes, honest review labels and state, delete stale <code>static/</code>.</td><td>The first viewport tells the story; the counter is honest; an approved review says “re-run required.”</td></tr>
+      <tr><td><strong>Day 2</strong><br>Nov 7</td><td>Session budget + IP headroom, scope determination block and live example, unapproved-policy Attest example, one-command evidence.</td><td>Four concurrent sessions and a retry do not 429; scope and attestation are discoverable.</td></tr>
+      <tr><td><strong>Day 3</strong><br>Nov 8</td><td>Full regression, 90-second France video, two-minute fallback, submission copy, all four award selections.</td><td>102 tests, tour 8/8, console, review, attestation, ledger and health all verified.</td></tr>
+      <tr><td><strong>Day 4</strong><br>Nov 9</td><td>Submit; re-run from a clean browser and a second network/session; optional People's Choice post.</td><td>Demo URL is <code>/tour</code>; repo has no secrets; submission is saved before the deadline.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What would make Docket lose</h2>
+  <ul>
+    <li>A 429 during judging.</li>
+    <li>A first screen that still looks like a QA harness.</li>
+    <li>“Release answer” on an unchanged HOLD or REWRITE.</li>
+    <li>Presenting 29/31 as if it were the locked result.</li>
+    <li>A scope rule that looks like a benchmark-specific bypass.</li>
+    <li>Letting ClockedOmniGuard out-breadth Docket or a focused competitor out-clarify it.</li>
+    <li>Spending the four days on MCP or a ledger redesign instead of the first two minutes.</li>
+  </ul>
+
+  <h2>Advisors and peer reviews</h2>
+  <details><summary>Contrarian / Red Team — reliability, story, fake-seeming things</summary><p>The highest-probability zero is the 60/hour per-IP budget. Lead with France, not the suite. Rename “Release answer,” expose Attest, label 25/31 and 29/31 honestly. Cut MCP, ledger redesign and the four-award spray. Strongest objection: reliability is invisible if the live tour works.</p></details>
+  <details><summary>First Principles — authority resolver with a receipt</summary><p>Docket is not a nine-endpoint checker; it decides which policy governs and proves the check ran against that text. Make the first screen a falsifiable contrast. Make the record the product. Spend the rest on reliability and reproducibility. Strongest objection: a fixed hero can look stageable and one-trick.</p></details>
+  <details><summary>Expansionist / Strategist — own the authority layer</summary><p>Every other entry checks the document; Docket checks whether the policy behind it is still the policy. Rebuild the tour around one supersession case. Enter four tailored awards, led by Verify/Compare/Rerank. Make the ledger the shareable proof object. Strongest objection: support answers read lower-stakes than contracts or invoices; keep all nine endpoints visible.</p></details>
+  <details><summary>Outsider / Domain Skeptic — the first two minutes</summary><p>The tour reads like a QA harness; the counter is wrong; raw codes. The console opens on a policy-authoring form. France is the one moment that lands. Make review honest; make the tour one story; put endpoint proof first. Strongest objection: review is the least visible fix; most judges never open it.</p></details>
+  <details><summary>Executor / Pragmatic Engineer — ship in four days</summary><p>Keep the existing runner, add a flagship first act, render the suite below, add the evidence strip. Rename the review action and state. Raise the budget or cap per session. Cut MCP, third-party corpus, ledger redesign, new attestation flow. Freeze code end of Day 3. Strongest objection: restructuring the working tour risks breaking it.</p></details>
+  <details><summary>Peer review 1 — evidence and judge psychology</summary><p>Strongest: the Outsider, for naming the “Release answer” trust bug and the visibility trade-off. Fatal blind spot: the First Principles advisor never addresses the 60/hour demo-failure path. Missing from all five: the rubric itself and the scope rule bypassing Verify.</p></details>
+  <details><summary>Peer review 2 — execution and differentiation</summary><p>Strongest: the Executor, for improving the first 60 seconds without betting the working demo. Fatal blind spot: the Expansionist leaves the authority receipt dishonest and overweights the ledger. Missing: an on-screen authority-trace explanation and a live scope test.</p></details>
+
+  <h2>Sources</h2>
+  <p class="small">Official challenge and rubric: <a href="https://clocked.rezolve.ai/challenge">clocked.rezolve.ai/challenge</a>. Docket: <a href="https://docket-clocked.vercel.app/tour">/tour</a>, <a href="https://docket-clocked.vercel.app/console">/console</a>, <a href="https://docket-clocked.vercel.app/ledger">/ledger</a>. Evidence: README, JUDGES, held-out, post-tuning, adversarial, calibration and necessity results. Competitor signals: Clocked submission alerts on LinkedIn for ClockedOmniGuard, ClientCheck PH, Invoice Airlock, Gatehouse, DocShield, AgentShield, Inbox Shield, CleanScreen, KitBrief and Margin. Full dossier and transcript: <code>docs/strategy/council-review-dossier-2026-11-06.md</code> and <code>council-review-transcript-2026-11-06.md</code>.</p>
+</main>
+</body>
+</html>
