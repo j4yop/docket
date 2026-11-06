@@ -165,7 +165,7 @@ Custom policies can be attested for a single check with the **Attest for this ch
 
 ### Human review, not auto-publish
 
-Every recorded HOLD or REWRITE opens a durable review record in the same storage backend as the ledger. The console's **Review queue** panel lists open and assigned records, assigns an owner, and resolves them with a note. The resolution is appended to the hash chain as a `review_event`, linked to the original check sequence and hash.
+Every recorded HOLD or REWRITE opens a durable review record in the same storage backend as the ledger. The admin **Review queue** panel lists open and assigned records, assigns an owner, and resolves them with a note. The resolution is appended to the hash chain as a `review_event`, linked to the original check sequence and hash.
 
 Approving a review records the human decision. It does **not** publish the held answer automatically. The operator still edits and re-runs the check, because the policy, the draft or both may need to change. Rejecting records why the answer must not ship.
 
