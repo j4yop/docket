@@ -210,8 +210,12 @@ def test_ledger_api_returns_the_verified_chain(monkeypatch) -> None:
 def test_tour_route_is_additive() -> None:
     response = client.get("/tour")
     assert response.status_code == 200
-    assert "The live judge tour." in response.text
+    assert "The judge tour" in response.text
     assert "/tour.js" in response.text
+    assert 'class="gate-page-bg"' in response.text
+    assert "dk-console-footer" in response.text
+    assert "/docket-footer.js" in response.text
+    assert 'id="docket-gate"' in response.text
 
 
 def test_console_exposes_health_approval_and_review_queue() -> None:
