@@ -15,7 +15,7 @@
 
 ## Summary
 
-- Decision accuracy: **94%**
+- Decision accuracy: **93.5%**
 - Governing-policy accuracy: **100%**
 - Clean false-HOLD rate: **0%**
 - Unsafe false-PUBLISH rate: **0%**

@@ -504,7 +504,7 @@ def write_results(
         "",
     ]
     def pct(value):
-        return "n/a" if value is None else f"{value:.0%}"
+        return "n/a" if value is None else f"{value:.1%}"
 
     if mode == "live":
         lines += [
