@@ -8,7 +8,7 @@
 [![Held-out](https://img.shields.io/badge/HELD_OUT-25%2F31-f5b544?style=for-the-badge&labelColor=1e293b&color=e2a65a)](#held-out-locked-before-the-run)
 [![Tests](https://img.shields.io/badge/tests-101_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
 [![Python](https://img.shields.io/badge/python-3.11_%7C_3.12_%7C_3.13-3775A9?style=for-the-badge&logo=python&logoColor=white&labelColor=1e293b)](https://www.python.org/)
-[![Live Demo](https://img.shields.io/badge/Live_Demo-docket--clocked.vercel.app-6366F1?style=for-the-badge&logo=vercel&logoColor=white&labelColor=1e293b)](https://docket-clocked.vercel.app)
+[![Judge Tour](https://img.shields.io/badge/JUDGE_TOUR-docket--clocked.vercel.app%2Ftour-6366F1?style=for-the-badge&logo=vercel&logoColor=white&labelColor=1e293b)](https://docket-clocked.vercel.app/tour)
 [![Console](https://img.shields.io/badge/Gate_Console-%2Fconsole-059669?style=for-the-badge&labelColor=1e293b)](https://docket-clocked.vercel.app/console)
 [![Ledger](https://img.shields.io/badge/Audit_Ledger-%2Fledger-FEEA3B?style=for-the-badge&labelColor=1e293b)](https://docket-clocked.vercel.app/ledger)
 
