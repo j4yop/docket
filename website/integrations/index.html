@@ -100,9 +100,9 @@
               <button type="button" class="gate-mini" id="gate-remove-doc">Remove policy</button>
             </div>
             <details class="gate-admin" id="gate-approval-block">
-              <summary>Policy approval <span>admin only</span></summary>
+              <summary>Shared policy registry <span>admin only</span></summary>
               <div class="gate-admin-body">
-                <p class="gate-admin-copy">Approve the active policy and bind it to a signed envelope. The envelope is sent with the next check; seeded, admin-approved and operator-attested policies are labelled separately.</p>
+                <p class="gate-admin-copy">Approve the active policy into the shared registry and bind it to a signed envelope. For a single check, use <b>Attest for this check</b> above. Seeded, admin-approved and operator-attested policies are labelled separately.</p>
                 <div class="gate-admin-row">
                   <div class="gate-field">
                     <label for="gate-admin-token">Admin token</label>
@@ -409,7 +409,7 @@
 
     <section class="gate-block gate-ops-block" id="gate-review-block" aria-labelledby="gate-review-title">
       <div class="gate-block-head"><h3 id="gate-review-title">Review queue</h3><span id="gate-review-meta">admin only</span></div>
-      <p class="gate-admin-copy">Every HOLD or REWRITE opens a durable record. Assign it, then approve or reject it with a note. The resolution is appended to the audit ledger.</p>
+      <p class="gate-admin-copy">Every HOLD or REWRITE opens a durable record. The record from your check can be claimed and resolved from its Decision record with a scoped capability. This shared queue lists every record and requires an admin token. The resolution is appended to the audit ledger.</p>
       <div class="gate-review-controls">
         <div class="gate-field">
           <label for="gate-queue-token">Admin token</label>
