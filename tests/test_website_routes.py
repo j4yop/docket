@@ -379,3 +379,13 @@ def test_brand_nav_includes_the_judge_tour() -> None:
     assert "makeTourTab" in response.text
     assert "dk-tour-tab" in response.text
     assert "267.5px" in response.text
+
+
+def test_tour_page_has_no_fixture_or_benchmark_copy() -> None:
+    response = client.get("/tour")
+    assert response.status_code == 200
+    text = response.text.lower()
+    assert "expected" not in text
+    assert "fixture" not in text
+    assert "benchmark" not in text
+    assert 'class="tour-actions"' in response.text

@@ -29,6 +29,16 @@
   text-decoration: none;
 }
 
+.tour-actions .gate-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 24px;
+  font-size: 14px;
+  line-height: 1;
+}
+
 .tour-progress {
   display: flex;
   flex-direction: column;
@@ -94,8 +104,17 @@
   border-bottom: 0;
 }
 
-.tour-table td.actual {
-  min-width: 150px;
+.tour-table td.decision {
+  min-width: 112px;
+}
+
+.tour-table td.why {
+  max-width: 210px;
+  font-family: var(--gate-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--gate-dim);
+  white-space: normal;
 }
 
 .tour-case b {
@@ -130,17 +149,7 @@
 .badge[data-v="hold"] { color: var(--gate-hold); }
 .badge[data-v="pending"] { color: var(--gate-faint); }
 .badge[data-v="running"] { color: var(--gate-amber); }
-
-.tour-match {
-  display: block;
-  margin-top: 4px;
-  font-size: 10px;
-  line-height: 1.3;
-}
-
-.tour-match[data-state="matched"] { color: var(--gate-green); }
-.tour-match[data-state="different"] { color: var(--gate-amber); }
-.tour-match[data-state="error"] { color: var(--gate-hold); }
+.badge[data-v="error"] { color: var(--gate-hold); }
 
 .tour-table .audit a {
   color: var(--gate-text);
@@ -153,49 +162,30 @@
   white-space: normal;
 }
 
-.tour-finding p {
-  max-width: 82ch;
-  margin-top: 12px;
-  font-size: 12px;
-  line-height: 1.65;
-  color: var(--gate-muted);
-}
 
-.tour-finding-lede {
-  position: relative;
-  padding-left: 16px;
-}
 
-.tour-finding-lede::before {
-  content: "";
-  position: absolute;
-  top: 0.62em;
-  left: 0;
-  width: 5px;
-  height: 5px;
-  background: var(--gate-red);
-}
 
-.tour-finding-lede strong {
-  color: var(--gate-text);
-}
 
-.tour-caveat {
-  color: var(--gate-faint) !important;
-  font-size: 11px !important;
-}
 
-.tour-caveat a {
-  color: var(--gate-muted);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
 
 #tour-status[data-state="running"] { color: var(--gate-amber); }
 #tour-status[data-state="determined"] { color: var(--gate-green); }
 #tour-status[data-state="held"] { color: var(--gate-hold); }
 
 #tour-note[data-state="error"] { color: var(--gate-hold); }
+
+.tour-ledger-note {
+  margin: 12px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--gate-faint);
+}
+
+.tour-ledger-note a {
+  color: var(--gate-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 #tour-note[data-state=""] { color: var(--gate-faint); }
 
 @media (max-width: 1100px) {

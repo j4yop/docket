@@ -17,62 +17,48 @@
       name: "Precedence over recency",
       proves: "An older France annex overrides a newer global policy.",
       sample: "precedence-recency",
-      expected: "rewrite",
-      code: "contradicted",
     },
     {
       id: "version",
       name: "Version supersession",
       proves: "The draft keeps the old deadline and receipt threshold.",
       sample: "expense-update",
-      expected: "rewrite",
     },
     {
       id: "omission",
       name: "Omitted condition",
       proves: "The draft leaves out a material condition.",
       sample: "omitted-condition",
-      expected: "rewrite",
-      code: "coverage_gap",
     },
     {
       id: "clean",
       name: "Clean access request",
       proves: "A draft that matches the policy publishes.",
       sample: "access-request",
-      expected: "publish",
     },
     {
       id: "injection",
       name: "Injected policy note",
       proves: "Guard holds an instruction inside the source.",
       sample: "injected-policy",
-      expected: "hold",
-      code: "prompt_injection",
     },
     {
       id: "runbook",
       name: "Unsafe runbook",
       proves: "Inspect holds a command that disables endpoint protection.",
       sample: "unsafe-runbook",
-      expected: "hold",
-      code: "unsafe_script",
     },
     {
       id: "unapproved",
       name: "Unapproved policy",
       proves: "A custom policy with no approval cannot publish.",
       kind: "unapproved",
-      expected: "hold",
-      code: "policy_unapproved",
     },
     {
       id: "tampered",
       name: "Tampered policy",
       proves: "A signed policy changed after approval cannot publish.",
       kind: "tampered",
-      expected: "hold",
-      code: "policy_tampered",
     },
   ];
 
@@ -83,7 +69,6 @@
     cleanEnvelope: null,
     running: false,
     retryIds: new Set(),
-    matched: 0,
   };
 
   function decisionLabel(value) {
@@ -109,8 +94,8 @@
     body.innerHTML = TOUR.map(
       (item, index) => `<tr data-case="${esc(item.id)}" style="--row:${index}">
         <td class="tour-case" data-label="Case"><b>${esc(item.name)}</b><span>${esc(item.proves)}</span></td>
-        <td data-label="Expected">${badge(item.expected)}</td>
-        <td class="actual" data-label="Actual">${badge("pending", "Waiting")}</td>
+        <td class="decision" data-label="Decision">${badge("pending", "Waiting")}</td>
+        <td class="why" data-label="Why">—</td>
         <td class="governing" data-label="Governing">—</td>
         <td class="calls" data-label="Calls">—</td>
         <td class="credits" data-label="Credits">—</td>
@@ -277,7 +262,7 @@
   function setRowStatus(item, label, stateName) {
     const row = document.querySelector(`tr[data-case="${CSS.escape(item.id)}"]`);
     if (!row) return;
-    row.querySelector(".actual").innerHTML = badge(stateName || "pending", label);
+    row.querySelector(".decision").innerHTML = badge(stateName || "pending", label);
   }
 
   function updateRow(item, body) {
@@ -285,11 +270,9 @@
     if (!row) return;
     const decision = String(body.decision || "hold").toLowerCase();
     const codes = Array.isArray(body.codes) ? body.codes : [];
-    const decisionOk = decision === item.expected;
-    const codeOk = !item.code || codes.includes(item.code);
-    const matched = decisionOk && codeOk;
     row.dataset.state = "done";
-    row.querySelector(".actual").innerHTML = `${badge(decision)}<span class="tour-match" data-state="${matched ? "matched" : "different"}">${matched ? "as expected" : "different"}</span>`;
+    row.querySelector(".decision").innerHTML = badge(decision);
+    row.querySelector(".why").textContent = codes.length ? codes.join(" · ") : "—";
     const governing = body.authority && body.authority.governing ? body.authority.governing.title : "—";
     row.querySelector(".governing").textContent = governing;
     row.querySelector(".calls").textContent = String(body.api_calls || 0);
@@ -298,14 +281,14 @@
     row.querySelector(".audit").innerHTML = audit.seq
       ? `<a class="text-link" href="/ledger">seq ${esc(audit.seq)}</a>`
       : "—";
-    return matched;
   }
 
   function setRowError(item, error) {
     const row = document.querySelector(`tr[data-case="${CSS.escape(item.id)}"]`);
     if (!row) return;
     row.dataset.state = "error";
-    row.querySelector(".actual").innerHTML = `${badge("hold", "Error")}<span class="tour-match" data-state="error">${esc(error.message || "failed")}</span>`;
+    row.querySelector(".decision").innerHTML = badge("error", "Error");
+    row.querySelector(".why").textContent = error.message || "failed";
   }
 
   async function runTour() {
@@ -317,7 +300,6 @@
     state.running = true;
     if (!retrying) {
       state.cleanEnvelope = null;
-      state.matched = 0;
       state.retryIds.clear();
       renderRows();
     }
@@ -330,7 +312,7 @@
     $("tour-note").textContent = retrying
       ? `Retrying ${queue.length} failed case${queue.length === 1 ? "" : "s"}.`
       : "Running the eight cases in order. This takes about half a minute.";
-    $("tour-count").textContent = `${state.matched}/8`;
+    $("tour-count").textContent = `${TOUR.length - state.retryIds.size} / 8`;
     $("tour-meta").textContent = "Starting…";
 
     let credits = 0;
@@ -355,8 +337,7 @@
             throw error;
           }
           state.retryIds.delete(item.id);
-          const isMatch = updateRow(item, body);
-          if (isMatch) state.matched += 1;
+          updateRow(item, body);
           if (item.id === "clean" && Array.isArray(body.policy_envelopes) && body.policy_envelopes[0]) {
             state.cleanEnvelope = body.policy_envelopes[0];
           }
@@ -371,7 +352,7 @@
             break;
           }
         }
-        $("tour-count").textContent = `${state.matched}/8`;
+        $("tour-count").textContent = `${TOUR.length - state.retryIds.size} / 8`;
       }
 
       const remaining = state.retryIds.size;
@@ -392,8 +373,8 @@
         $("tour-status").dataset.state = "determined";
         $("tour-note").textContent = "All eight cases ran. Open the ledger to verify the records.";
       }
-      $("tour-count").textContent = `${state.matched}/8`;
-      $("tour-meta").textContent = `${completed} of 8 ran · ${state.matched} as expected · ${formatCredits(credits)} credits · ${(latency / 1000).toFixed(1)}s total`;
+      $("tour-count").textContent = `${completed} / 8`;
+      $("tour-meta").textContent = `${completed} of 8 ran · ${formatCredits(credits)} credits · ${(latency / 1000).toFixed(1)}s total`;
       button.textContent = remaining ? "Retry failed cases" : "Run again";
     } catch (error) {
       $("tour-status").textContent = "Stopped";
