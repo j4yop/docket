@@ -10,6 +10,7 @@ that opened it.
 from __future__ import annotations
 
 import asyncio
+import hmac
 import re
 import secrets
 from datetime import datetime, timezone
@@ -36,6 +37,13 @@ def _valid_id(review_id: str) -> bool:
     return bool(_ID_RE.match(review_id or ""))
 
 
+def capability_matches(record: dict, supplied: str) -> bool:
+    stored = str(record.get("capability") or "")
+    if not stored or not supplied:
+        return False
+    return hmac.compare_digest(stored, supplied)
+
+
 def _path(review_id: str) -> str:
     return f"{REVIEW_PREFIX}{review_id}.json"
 
@@ -50,6 +58,7 @@ async def create(payload: dict) -> dict:
     audit = payload.get("audit") or {}
     review = {
         "id": review_id,
+        "capability": secrets.token_urlsafe(24),
         "status": "open",
         "decision": decision,
         "codes": list(payload.get("codes") or []),

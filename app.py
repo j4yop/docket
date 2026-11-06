@@ -40,6 +40,7 @@ import policy_registry
 import reviews
 import storage
 from authority import (
+    STOPWORDS,
     Clause,
     Document,
     align_superseded,
@@ -190,6 +191,20 @@ def _require_admin(request: Request) -> None:
     if not token or not hmac.compare_digest(supplied, token):
         raise HTTPException(status_code=404)
 
+
+def _review_access(request: Request, review: dict) -> str:
+    """Allow an admin, or the scoped capability returned with this review."""
+    try:
+        _require_admin(request)
+        return "admin"
+    except HTTPException as exc:
+        if exc.status_code != 404:
+            raise
+    supplied = request.headers.get("x-docket-review", "")
+    if reviews.capability_matches(review, supplied):
+        return "capability"
+    raise HTTPException(status_code=404)
+
 app = FastAPI(title="Docket", version="1.0.0", docs_url=None, redoc_url=None)
 
 
@@ -224,9 +239,10 @@ class CheckRequest(BaseModel):
     documents: list[DocumentIn] = Field(min_length=1, max_length=6)
 
 
-ABLATABLE_ENDPOINTS = ("guard", "inspect", "extract", "decide", "compare", "coverage", "verify")
+ABLATABLE_ENDPOINTS = ("protect", "guard", "inspect", "extract", "decide", "compare", "coverage", "verify", "rerank")
 
 ABLATION_LABELS = {
+    "protect": "Protect (audit redaction)",
     "guard": "Guard (prompt injection)",
     "inspect": "Inspect (script safety)",
     "extract": "Extract (policy facts and metadata)",
@@ -234,6 +250,7 @@ ABLATION_LABELS = {
     "compare": "Compare (superseded conflicts)",
     "coverage": "Fill (coverage and omissions)",
     "verify": "Verify (claim grounding)",
+    "rerank": "Rerank (evidence selection)",
 }
 
 
@@ -584,6 +601,83 @@ def _metadata_conflicts(doc, extracted: dict | None) -> list[str]:
     return conflicts
 
 
+_SCOPE_QUESTION = re.compile(
+    r"\b(apply|applies|application|scope|scoped|govern|governs|cover|covers|applicable)\b",
+    re.IGNORECASE,
+)
+_NEGATIVE_SCOPE = re.compile(
+    r"\b(no|not|does not|doesn't|is not|isn't|not applicable|out of scope|outside the scope)\b",
+    re.IGNORECASE,
+)
+
+
+def _scope_determination(req: CheckRequest, authority) -> dict | None:
+    """Resolve a narrow applicability question from the authority trace.
+
+    This only fires when the question asks whether one out-of-scope document
+    applies and the draft is a single negative applicability statement. It
+    does not decide substantive policy questions, and it never overrides a
+    tainted source, an injection, a script or a metadata conflict.
+    """
+    if not _SCOPE_QUESTION.search(req.question):
+        return None
+    draft = (req.draft or "").strip()
+    if not draft or len(draft) > 240:
+        return None
+    if not _NEGATIVE_SCOPE.search(draft) or not _SCOPE_QUESTION.search(draft):
+        return None
+    sentences = [part for part in re.split(r"[.!?]+", draft) if part.strip()]
+    if len(sentences) > 1:
+        return None
+    if re.search(r"\d", draft):
+        return None
+    if re.search(r"\b(require|requires|must|shall|need|needs)\b", draft, re.IGNORECASE):
+        return None
+    out_of_scope = [
+        row for row in (authority.trace or []) if row.get("outcome") == "out of scope"
+    ]
+    if len(out_of_scope) != 1:
+        return None
+    subject = out_of_scope[0]
+    title = str(subject.get("title") or "")
+    title_tokens = {
+        word
+        for word in re.findall(r"[a-z0-9]+", title.lower())
+        if len(word) > 2 and word not in STOPWORDS
+    }
+    question_tokens = set(re.findall(r"[a-z0-9]+", req.question.lower()))
+    if not title_tokens or not (title_tokens & question_tokens):
+        return None
+    country = (req.country or "this context").strip() or "this context"
+    return {
+        "document": title,
+        "jurisdiction": subject.get("jurisdiction"),
+        "country": country,
+        "determination": "out_of_scope",
+        "reason": (
+            f"{title} is out of scope for {country}; the draft correctly says it does not apply. "
+            "The applicability answer comes from the authority trace, not a retrieval score."
+        ),
+    }
+
+
+def _fallback_rerank_rows(clauses, doc_map) -> list[dict]:
+    """Deterministic evidence set when Rerank selects nothing or is ablated."""
+    return [
+        {
+            "clause_id": clause.id,
+            "doc_id": clause.doc_id,
+            "doc_title": doc_map[clause.doc_id].title,
+            "text": clause.text,
+            "action": "use",
+            "reason": "fallback",
+            "relevance": 0.0,
+            "document_score": 0.0,
+        }
+        for clause in clauses
+    ]
+
+
 def _compare_unacknowledged(compare: dict | None, draft: str, governing_id: str) -> list[dict]:
     """Find superseded numbers that appear in the draft but not the governing quote."""
     if not compare:
@@ -706,6 +800,12 @@ def build_headline(payload: dict) -> str:
     unsupported = [c for c in claims if (c.get("verdict") or "") == "not_stated"]
 
     if decision == "publish":
+        scope = payload.get("scope") or {}
+        if scope:
+            return (
+                f"{scope.get('document') or 'The named policy'} is out of scope for "
+                f"{scope.get('country') or 'this context'}. This answer can ship."
+            )
         if len(claims) == 1:
             return f"The claim is supported by {governing}. This answer can ship."
         return f"All {len(claims)} claims are supported by {governing}. This answer can ship."
@@ -876,6 +976,7 @@ async def run_check(
                         "id": review["id"],
                         "status": review["status"],
                         "created_at": review["created_at"],
+                        "capability": review.get("capability"),
                     }
                 except Exception as exc:  # noqa: BLE001
                     traceback.print_exc()
@@ -1068,54 +1169,57 @@ async def run_check(
     profile_note = ""
     client = ClockedClient(api_key)
     try:
-        # ---- Protect (audit redaction) ----------------------------------
-        await begin("protect")
-        mark = time.perf_counter()
-        try:
-            protect_res = await client.protect(
-                text=f"QUESTION\n{req.question}\n\nDRAFT\n{req.draft}",
-                idem_key=str(uuid.uuid4()),
-            )
-            credits += protect_res.credits
-            protect_data = protect_res.data
-            entities = protect_data.get("entities") or []
-            counts = protect_data.get("counts") or {}
-            redacted = protect_data.get("anonymized_text") or ""
-            protect_payload = {
-                "entity_count": len(entities),
-                "counts": counts,
-                "redacted": bool(redacted),
-                "error": None,
-            }
-            if redacted:
-                marker = "\n\nDRAFT\n"
-                if marker in redacted:
-                    question_part, draft_part = redacted.split(marker, 1)
-                    audit_question = question_part.removeprefix("QUESTION\n").strip()
-                    audit_draft = draft_part.strip()
-                else:
-                    audit_question = "[redacted]"
-                    audit_draft = redacted[:500]
-            await finish(
-                "protect",
-                int((time.perf_counter() - mark) * 1000),
-                protect_res.credits,
-                {"entities": len(entities), "types": sorted(counts)},
-            )
-        except ClockedError as exc:
-            audit_question = "[redaction unavailable]"
-            audit_draft = "[redaction unavailable]"
-            protect_payload = {
-                "entity_count": 0,
-                "counts": {},
-                "redacted": False,
-                "error": exc.message,
-            }
-            for entry in reversed(stages):
-                if entry["stage"] == "protect":
-                    entry.update(status="error", reason=exc.message)
-                    await send("stage", entry)
-                    break
+        if "protect" in ablate:
+            await skip("protect", "Ablation: Protect disabled. The audit preview carries the unredacted question and draft.")
+        else:
+            # ---- Protect (audit redaction) ----------------------------------
+            await begin("protect")
+            mark = time.perf_counter()
+            try:
+                protect_res = await client.protect(
+                    text=f"QUESTION\n{req.question}\n\nDRAFT\n{req.draft}",
+                    idem_key=str(uuid.uuid4()),
+                )
+                credits += protect_res.credits
+                protect_data = protect_res.data
+                entities = protect_data.get("entities") or []
+                counts = protect_data.get("counts") or {}
+                redacted = protect_data.get("anonymized_text") or ""
+                protect_payload = {
+                    "entity_count": len(entities),
+                    "counts": counts,
+                    "redacted": bool(redacted),
+                    "error": None,
+                }
+                if redacted:
+                    marker = "\n\nDRAFT\n"
+                    if marker in redacted:
+                        question_part, draft_part = redacted.split(marker, 1)
+                        audit_question = question_part.removeprefix("QUESTION\n").strip()
+                        audit_draft = draft_part.strip()
+                    else:
+                        audit_question = "[redacted]"
+                        audit_draft = redacted[:500]
+                await finish(
+                    "protect",
+                    int((time.perf_counter() - mark) * 1000),
+                    protect_res.credits,
+                    {"entities": len(entities), "types": sorted(counts)},
+                )
+            except ClockedError as exc:
+                audit_question = "[redaction unavailable]"
+                audit_draft = "[redaction unavailable]"
+                protect_payload = {
+                    "entity_count": 0,
+                    "counts": {},
+                    "redacted": False,
+                    "error": exc.message,
+                }
+                for entry in reversed(stages):
+                    if entry["stage"] == "protect":
+                        entry.update(status="error", reason=exc.message)
+                        await send("stage", entry)
+                        break
 
         if "guard" in ablate:
             await skip("guard", "Ablation: Guard disabled for this simulation.")
@@ -1549,95 +1653,142 @@ async def run_check(
                 },
             )
 
-        # ---- Rerank ------------------------------------------------------
-        await begin("rerank")
-        mark = time.perf_counter()
-        try:
-            rerank_res = await client.rerank(
-                query=req.question,
-                documents=[
-                    {
-                        "id": clause.id,
-                        "title": f"{doc_map[clause.doc_id].title} — clause {clause.order + 1}",
-                        "text": clause.text,
-                    }
-                    for clause in candidates
-                ],
-                context={
-                    "country": req.country,
-                    "role": req.role,
-                    "plan": req.plan,
-                    "governing_document": governing.title,
-                    "superseded_documents": [doc.title for doc in authority.superseded],
-                },
-                instructions=RERANK_POLICY.format(
-                    governing=governing.title,
-                    superseded=", ".join(doc.title for doc in authority.superseded) or "none",
-                )
-                + (f" {profile_note}" if profile_note else ""),
-                idem_key=str(uuid.uuid4()),
-            )
-        except ClockedError as exc:
-            for entry in reversed(stages):
-                if entry["stage"] == "rerank":
-                    entry.update(status="error", reason=exc.message)
-                    await send("stage", entry)
-                    break
-            verdict = evaluate(
-                authority_error=None,
-                selected_count=0,
-                verify=None,
-                failed_stage="rerank",
-                failed_message=exc.message,
-            )
+        scope = _scope_determination(req, authority)
+        if scope and not (decide_payload and decide_payload.get("review_required")):
             return await complete(
-                verdict.decision,
-                verdict.reasons,
-                verdict.codes,
+                Decision.PUBLISH,
+                [
+                    scope["reason"],
+                    "The draft is a negative applicability statement, so there is no substantive policy claim left to verify.",
+                ],
+                ["supported"],
                 authority=authority_payload,
                 protect=protect_payload,
                 guard=guard_payload,
                 extract=extract_payload,
                 decide=decide_payload,
                 inspect=inspect_payload,
-                raw={"protect": protect_payload, "guard": guard_data},
+                scope=scope,
             )
 
-        credits += rerank_res.credits
-        rerank_rows = rerank_res.data.get("results") or []
+        # ---- Rerank ------------------------------------------------------
+        rerank_data = {}
         rerank_payload = []
-        for row in rerank_rows:
-            clause = clause_map.get(row.get("id"))
-            if not clause:
-                continue
-            rerank_payload.append(
+        selected = []
+        if "rerank" in ablate:
+            await skip("rerank", "Ablation: Rerank disabled. The governing document's clauses are the fallback evidence set.")
+            fallback_clauses = [clause for clause in candidates if clause.doc_id == governing.id]
+            if not fallback_clauses:
+                fallback_clauses = [clause for clause in all_clauses if clause.doc_id == governing.id]
+            rerank_payload = _fallback_rerank_rows(fallback_clauses, doc_map)
+            selected = list(rerank_payload)
+            rerank_data = {"results": [], "fallback": "all_governing_clauses"}
+        else:
+            await begin("rerank")
+            mark = time.perf_counter()
+            try:
+                rerank_res = await client.rerank(
+                    query=req.question,
+                    documents=[
+                        {
+                            "id": clause.id,
+                            "title": f"{doc_map[clause.doc_id].title} — clause {clause.order + 1}",
+                            "text": clause.text,
+                        }
+                        for clause in candidates
+                    ],
+                    context={
+                        "country": req.country,
+                        "role": req.role,
+                        "plan": req.plan,
+                        "governing_document": governing.title,
+                        "superseded_documents": [doc.title for doc in authority.superseded],
+                    },
+                    instructions=RERANK_POLICY.format(
+                        governing=governing.title,
+                        superseded=", ".join(doc.title for doc in authority.superseded) or "none",
+                    )
+                    + (f" {profile_note}" if profile_note else ""),
+                    idem_key=str(uuid.uuid4()),
+                )
+            except ClockedError as exc:
+                for entry in reversed(stages):
+                    if entry["stage"] == "rerank":
+                        entry.update(status="error", reason=exc.message)
+                        await send("stage", entry)
+                        break
+                verdict = evaluate(
+                    authority_error=None,
+                    selected_count=0,
+                    verify=None,
+                    failed_stage="rerank",
+                    failed_message=exc.message,
+                )
+                return await complete(
+                    verdict.decision,
+                    verdict.reasons,
+                    verdict.codes,
+                    authority=authority_payload,
+                    protect=protect_payload,
+                    guard=guard_payload,
+                    extract=extract_payload,
+                    decide=decide_payload,
+                    inspect=inspect_payload,
+                    raw={"protect": protect_payload, "guard": guard_data},
+                )
+
+            credits += rerank_res.credits
+            rerank_data = rerank_res.data
+            rerank_rows = rerank_data.get("results") or []
+            for row in rerank_rows:
+                clause = clause_map.get(row.get("id"))
+                if not clause:
+                    continue
+                rerank_payload.append(
+                    {
+                        "clause_id": clause.id,
+                        "doc_id": clause.doc_id,
+                        "doc_title": doc_map[clause.doc_id].title,
+                        "text": clause.text,
+                        "action": row.get("action"),
+                        "reason": row.get("reason"),
+                        "relevance": row.get("relevance_score"),
+                        "document_score": row.get("document_score"),
+                    }
+                )
+            selected = [
+                row
+                for row in rerank_payload
+                if row["doc_id"] == governing.id and row["action"] in {"use", "expand"}
+            ]
+            selected.sort(key=lambda row: row["relevance"] or 0, reverse=True)
+            await finish(
+                "rerank",
+                int((time.perf_counter() - mark) * 1000),
+                rerank_res.credits,
                 {
-                    "clause_id": clause.id,
-                    "doc_id": clause.doc_id,
-                    "doc_title": doc_map[clause.doc_id].title,
-                    "text": clause.text,
-                    "action": row.get("action"),
-                    "reason": row.get("reason"),
-                    "relevance": row.get("relevance_score"),
-                    "document_score": row.get("document_score"),
-                }
+                    "selected": len(selected),
+                    "skipped": len(rerank_payload) - len(selected),
+                    "model": rerank_data.get("model"),
+                },
             )
-        selected = [
-            row
-            for row in rerank_payload
-            if row["doc_id"] == governing.id and row["action"] in {"use", "expand"}
-        ]
-        selected.sort(key=lambda row: row["relevance"] or 0, reverse=True)
-        await finish(
-            "rerank",
-            int((time.perf_counter() - mark) * 1000),
-            rerank_res.credits,
-            {
-                "selected": len(selected),
-                "skipped": len(rerank_payload) - len(selected),
-                "model": rerank_res.data.get("model"),
-            },
-        )
+
+            if not selected:
+                fallback_clauses = [clause for clause in candidates if clause.doc_id == governing.id]
+                if not fallback_clauses:
+                    fallback_clauses = [clause for clause in all_clauses if clause.doc_id == governing.id]
+                if fallback_clauses:
+                    rerank_payload = _fallback_rerank_rows(fallback_clauses, doc_map)
+                    selected = list(rerank_payload)
+                    rerank_data = {**rerank_data, "fallback": "lexical"}
+                    for entry in reversed(stages):
+                        if entry["stage"] == "rerank":
+                            entry["summary"] = {
+                                **(entry.get("summary") or {}),
+                                "selected": len(selected),
+                                "fallback": "lexical",
+                            }
+                            break
 
         if not selected:
             verdict = evaluate(authority_error=None, selected_count=0, verify=None)
@@ -1652,7 +1803,7 @@ async def run_check(
                 decide=decide_payload,
                 inspect=inspect_payload,
                 rerank={"rows": rerank_payload, "selected": [], "skipped": rerank_payload},
-                raw={"protect": protect_payload, "guard": guard_data, "rerank": rerank_res.data},
+                raw={"protect": protect_payload, "guard": guard_data, "rerank": rerank_data},
             )
 
         # ---- Compare (clause level, only when a superseded source exists)
@@ -1727,7 +1878,7 @@ async def run_check(
                         decide=decide_payload,
                         inspect=inspect_payload,
                         rerank={"rows": rerank_payload, "selected": selected, "skipped": []},
-                        raw={"rerank": rerank_res.data},
+                        raw={"rerank": rerank_data},
                     )
 
                 credits += compare_res.credits
@@ -1805,7 +1956,7 @@ async def run_check(
                     inspect=inspect_payload,
                     rerank={"rows": rerank_payload, "selected": selected, "skipped": []},
                     compare=compare_payload,
-                    raw={"protect": protect_payload, "guard": guard_data, "rerank": rerank_res.data, "compare": compare_raw},
+                    raw={"protect": protect_payload, "guard": guard_data, "rerank": rerank_data, "compare": compare_raw},
                 )
 
             credits += fill_res.credits
@@ -1862,7 +2013,7 @@ async def run_check(
                 raw={
                     "protect": protect_payload,
                     "guard": guard_data,
-                    "rerank": rerank_res.data,
+                    "rerank": rerank_data,
                     "compare": compare_raw,
                     "coverage": coverage_payload,
                 },
@@ -1913,7 +2064,7 @@ async def run_check(
                 coverage=coverage_payload,
                 rerank={"rows": rerank_payload, "selected": selected, "skipped": []},
                 compare=compare_payload,
-                raw={"protect": protect_payload, "guard": guard_data, "rerank": rerank_res.data, "compare": compare_raw, "coverage": coverage_payload},
+                raw={"protect": protect_payload, "guard": guard_data, "rerank": rerank_data, "compare": compare_raw, "coverage": coverage_payload},
             )
 
         credits += verify_res.credits
@@ -1977,7 +2128,7 @@ async def run_check(
             raw={
                 "protect": protect_payload,
                 "guard": guard_data,
-                "rerank": rerank_res.data,
+                "rerank": rerank_data,
                 "compare": compare_raw,
                 "coverage": coverage_payload,
                 "verify": verify_res.data,
@@ -2040,14 +2191,17 @@ def _proof_signal(payload: dict, endpoint: str) -> dict:
         }.get(verdict, f"Claims {verdict}")
         return {"value": verdict, "label": label}
     if endpoint == "protect":
-        protect = payload.get("protect") or {}
+        protect = payload.get("protect")
+        if not protect:
+            return {"value": None, "label": "No redaction"}
         count = int(protect.get("entity_count") or 0)
         return {"value": count, "label": f"{count} PII entit" + ("y" if count == 1 else "ies") + " redacted"}
     if endpoint == "rerank":
         rerank = payload.get("rerank") or {}
         selected = len(rerank.get("selected") or [])
         rows = len(rerank.get("rows") or [])
-        return {"value": [selected, rows], "label": f"{selected} of {rows} clauses used"}
+        suffix = " · fallback" if rerank.get("fallback") else ""
+        return {"value": [selected, rows], "label": f"{selected} of {rows} clauses used{suffix}"}
     return {"value": None, "label": "No signal"}
 
 
@@ -2228,25 +2382,12 @@ async def prove(req: ProveRequest, request: Request) -> JSONResponse:
     """
     _require_check_auth(request)
     endpoint = req.endpoint
-    if endpoint not in ABLATABLE_ENDPOINTS and endpoint not in {"protect", "rerank"}:
+    if endpoint not in ABLATABLE_ENDPOINTS:
         raise HTTPException(status_code=400, detail="That endpoint cannot be proved.")
-    mode = "ablate" if endpoint in ABLATABLE_ENDPOINTS else "measure"
-    headers = _enforce_check_rate(request, cost=2 if mode == "ablate" else 1)
+    headers = _enforce_check_rate(request, cost=2)
     base = req.model_dump()
     endpoint = base.pop("endpoint")
     check_req = CheckRequest(**base)
-    if mode == "measure":
-        payload = await run_check(check_req, record=False)
-        return JSONResponse(
-            {
-                "endpoint": endpoint,
-                "mode": mode,
-                "baseline": _proof_summary(payload, endpoint),
-                "ablated": None,
-                "note": "One live check. No audit record was written.",
-            },
-            headers=headers,
-        )
     baseline, ablated = await asyncio.gather(
         run_check(check_req, record=False),
         run_check(check_req, ablate={endpoint}, record=False),
@@ -2254,7 +2395,7 @@ async def prove(req: ProveRequest, request: Request) -> JSONResponse:
     return JSONResponse(
         {
             "endpoint": endpoint,
-            "mode": mode,
+            "mode": "ablate",
             "baseline": _proof_summary(baseline, endpoint),
             "ablated": _proof_summary(ablated, endpoint),
             "note": "Two live checks. No audit record was written.",
@@ -2343,8 +2484,12 @@ async def review_list(request: Request, status: str = "", limit: int = 50) -> di
         records = await reviews.list_records(status=status.strip() or None, limit=limit)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    public_records = [
+        {key: value for key, value in record.items() if key != "capability"}
+        for record in records
+    ]
     return {
-        "reviews": records,
+        "reviews": public_records,
         "counts": await reviews.counts(),
         "filter": status.strip() or "all",
     }
@@ -2352,7 +2497,10 @@ async def review_list(request: Request, status: str = "", limit: int = 50) -> di
 
 @app.post("/api/reviews/{review_id}/assign")
 async def review_assign(review_id: str, req: AssignReviewRequest, request: Request) -> dict:
-    _require_admin(request)
+    existing = await reviews.get(review_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Review not found.")
+    _review_access(request, existing)
     try:
         record = await reviews.assign(review_id, req.assignee)
     except LookupError as exc:
@@ -2364,10 +2512,10 @@ async def review_assign(review_id: str, req: AssignReviewRequest, request: Reque
 
 @app.post("/api/reviews/{review_id}/resolve")
 async def review_resolve(review_id: str, req: ResolveReviewRequest, request: Request) -> dict:
-    _require_admin(request)
     existing = await reviews.get(review_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Review not found.")
+    _review_access(request, existing)
     if existing.get("status") == "resolved":
         raise HTTPException(status_code=400, detail="This review is already resolved.")
     action = req.action.strip().lower()

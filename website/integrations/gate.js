@@ -40,6 +40,7 @@
     approved_by: "",
     approval_reference: "",
     policy_envelope: null,
+    seeded: false,
     text: "",
   });
 
@@ -417,10 +418,18 @@
     refs.approvePolicy.addEventListener("click", approveActivePolicy);
     refs.reviewLoad.addEventListener("click", loadReviews);
     refs.reviewList.addEventListener("click", onReviewAction);
+    refs.record.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-review-action]");
+      if (button) resolveReview(button.dataset.reviewAction, button);
+    });
 
     refs.examples.addEventListener("click", (event) => {
       const card = event.target.closest(".gate-example");
       if (card) loadSample(card.dataset.id);
+    });
+
+    refs.docEditor.addEventListener("click", (event) => {
+      if (event.target.closest("#gate-attest-doc")) attestActiveDoc();
     });
 
     bindCopy(refs.copyRequest, () => JSON.stringify(state.lastPayload || {}, null, 2), "Copy JSON");
@@ -515,7 +524,9 @@
       ? String(doc.policy_envelope.approval_type || "approved")
       : doc.approved_by
         ? "operator"
-        : "unapproved";
+        : doc.seeded
+          ? "seeded"
+          : "unapproved";
     refs.docEditor.innerHTML = `
       <div class="gate-doc-grid">
         <div class="gate-field">
@@ -552,7 +563,11 @@
           <input id="gate-doc-reference" type="text" maxlength="200" placeholder="Ticket, email or date" data-field="approval_reference" />
         </div>
       </div>
-      <p class="gate-doc-hint"><span class="gate-trust" data-trust="${esc(trust)}">${esc(trust)}</span>Built-in examples are pre-approved. A custom policy needs an approval reference, or an admin approval, before the gate can publish.</p>
+      <div class="gate-doc-attest">
+        <button type="button" class="gate-mini" id="gate-attest-doc">Attest for this check</button>
+        <span>Public per-check approval. Shared registry approval stays admin-only.</span>
+      </div>
+      <p class="gate-doc-hint"><span class="gate-trust" data-trust="${esc(trust)}">${esc(trust)}</span>Built-in examples are pre-approved. A custom policy needs an attestation or an admin approval before the gate can publish.</p>
       <div class="gate-field">
         <label for="gate-doc-text">Policy text</label>
         <textarea id="gate-doc-text" rows="7" maxlength="60000" placeholder="Paste the policy text…" data-field="text"></textarea>
@@ -578,6 +593,7 @@
     const target = event.target;
     if (!target.dataset || !target.dataset.field) return;
     const doc = state.documents[state.activeDoc];
+    doc.seeded = false;
     if (!doc) return;
 
     const field = target.dataset.field;
@@ -1176,6 +1192,10 @@
       : audit.seq
         ? `seq ${audit.seq} · ${audit.storage} · ${String(audit.hash || "").slice(0, 12)}…`
         : "Simulation · not recorded";
+    const resolved = String(review.status || "") === "resolved";
+    const resolution = review.resolution || {};
+    const released = resolved && resolution.action === "approve";
+    const sentBack = resolved && resolution.action === "reject";
     const reviewText = review.id
       ? `${review.status || "open"} · ${review.id}`
       : decision === "publish"
@@ -1183,24 +1203,42 @@
         : "Not opened";
     const releaseText = decision === "publish"
       ? "Released"
-      : review.id
-        ? "Awaiting human release or send-back"
-        : "No release record";
+      : released
+        ? "Released by reviewer"
+        : sentBack
+          ? "Sent back by reviewer"
+          : review.id
+            ? "Awaiting human release or send-back"
+            : "No release record";
     refs.recordMeta.textContent = audit.seq ? `audit #${audit.seq}` : "not recorded";
     const policyItems = envelopes.length
       ? envelopes.map((envelope) => `<li>${esc(envelope.title || "Policy")} · ${esc(envelope.approval_type || "approved")} · ${esc(String(envelope.content_hash || "").slice(0, 12))}…</li>`).join("")
       : "<li>No signed policy envelopes.</li>";
+    const resolutionBlock = resolved
+      ? `<p><span>Resolution</span>${esc(resolution.action || "")} by ${esc(resolution.resolved_by || "")} · ${esc(resolution.note || "")}</p>
+         <p><span>Review audit</span>${resolution.ledger && resolution.ledger.seq ? `seq ${esc(resolution.ledger.seq)} · ${esc(String(resolution.ledger.hash || "").slice(0, 12))}…` : "recorded"}</p>`
+      : "";
+    const reviewControls = resolved
+      ? ""
+      : `<div class="gate-record-fields">
+          <label for="gate-review-actor">Reviewer<input id="gate-review-actor" type="text" value="Demo reviewer" maxlength="120" /></label>
+          <label for="gate-review-note">Resolution note<input id="gate-review-note" type="text" maxlength="1000" placeholder="Why release or send back?" /></label>
+        </div>
+        <div class="gate-record-actions">
+          ${String(review.status || "open") === "open" ? `<button type="button" class="gate-secondary" data-review-action="claim">Claim for review</button>` : `<span>Assigned to ${esc(review.assigned_to || "reviewer")}</span>`}
+          <button type="button" class="gate-secondary" data-review-action="approve">Release answer</button>
+          <button type="button" class="gate-secondary" data-review-action="reject">Send back</button>
+          <span id="gate-review-status"></span>
+        </div>
+        <p class="gate-admin-note">This capability resolves only this review. The shared queue stays admin-only.</p>`;
     const reviewRecord = review.id
       ? `<div class="gate-record-review">
           <b>Review record</b>
           <p><span>Question</span>${esc(result.question || "")}</p>
           <p><span>Draft</span>${esc(result.draft || "")}</p>
           <p><span>Reasons</span>${esc((result.reasons || []).join(" · "))}</p>
-          <div class="gate-record-actions">
-            <button type="button" class="gate-secondary" disabled>Release answer</button>
-            <button type="button" class="gate-secondary" disabled>Send back</button>
-            <span>Admin token required</span>
-          </div>
+          ${resolutionBlock}
+          ${reviewControls}
         </div>`
       : "";
     refs.record.innerHTML = `
@@ -1931,6 +1969,7 @@
         expires_date: String(doc.expires_date || ""),
         precedence: Number(doc.precedence) || 0,
         policy_envelope: doc.policy_envelope || null,
+        seeded: true,
         text: String(doc.text || ""),
       }));
       if (!state.documents.length) state.documents = [blankDoc()];
@@ -1995,16 +2034,13 @@
     }
     refs.necessity.innerHTML = proofs.map((proof) => {
       const result = proof.result || {};
-      const measure = result.mode === "measure";
       const live = proof.live ? '<span class="necessity-live">live</span>' : "";
-      const without = measure
-        ? '<span class="necessity-empty">Not ablated</span>'
-        : proofSummary(result.ablated);
+      const without = proofSummary(result.ablated);
       return `<div class="necessity-card" data-endpoint="${esc(proof.endpoint)}">
         <div class="necessity-card-head">
           <b>${esc(proof.label)}${live}</b>
           <span>${esc(proof.role)}</span>
-          <button type="button" class="gate-link necessity-run" data-proof="${esc(proof.endpoint)}">${measure ? "Measure" : "Re-run"}</button>
+          <button type="button" class="gate-link necessity-run" data-proof="${esc(proof.endpoint)}">Re-run</button>
         </div>
         <p class="necessity-case">Proof case · ${esc(proof.proof_case)}</p>
         <div class="necessity-result">
@@ -2061,6 +2097,69 @@
   function onNecessityClick(event) {
     const button = event.target.closest("button[data-proof]");
     if (button) rerunProof(button.dataset.proof, button);
+  }
+
+  async function resolveReview(action, button) {
+    const review = state.last && state.last.review;
+    if (!review || !review.id || !review.capability) return;
+    if (button && button.disabled) return;
+    const actor = (document.querySelector("#gate-review-actor")?.value || "").trim() || "Demo reviewer";
+    const note = (document.querySelector("#gate-review-note")?.value || "").trim();
+    const status = document.querySelector("#gate-review-status");
+    if (button) button.disabled = true;
+    if (status) status.textContent = action === "claim" ? "Claiming…" : action === "approve" ? "Releasing…" : "Sending back…";
+    try {
+      if (action === "claim") {
+        const response = await authFetch(`/api/reviews/${encodeURIComponent(review.id)}/assign`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Docket-Review": review.capability },
+          body: JSON.stringify({ assignee: actor }),
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok) throw new Error((body && (body.detail || body.error)) || `HTTP ${response.status}`);
+        state.last.review = body.review;
+        renderDecisionRecord(state.last);
+        const next = document.querySelector("#gate-review-status");
+        if (next) next.textContent = `Claimed by ${actor}.`;
+        return;
+      }
+      if (note.length < 3) {
+        if (status) status.textContent = "Add a short note before resolving.";
+        if (button) button.disabled = false;
+        return;
+      }
+      const response = await authFetch(`/api/reviews/${encodeURIComponent(review.id)}/resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Docket-Review": review.capability },
+        body: JSON.stringify({ action, note, resolved_by: actor }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error((body && (body.detail || body.error)) || `HTTP ${response.status}`);
+      state.last.review = body.review;
+      if (!state.last.review.capability) state.last.review.capability = review.capability;
+      renderDecisionRecord(state.last);
+      const next = document.querySelector("#gate-review-status");
+      if (next) next.textContent = action === "approve" ? `Released by ${actor}.` : `Sent back by ${actor}.`;
+    } catch (error) {
+      if (status) status.textContent = `Could not resolve this review: ${error.message}`;
+      if (button) button.disabled = false;
+    }
+  }
+
+  function attestActiveDoc() {
+    const doc = state.documents[state.activeDoc];
+    if (!doc) return;
+    doc.approved_by = (doc.approved_by || "").trim() || "Demo reviewer";
+    doc.approval_reference = (doc.approval_reference || "").trim() || `CHECK-${Date.now().toString(36).toUpperCase()}`;
+    doc.policy_envelope = null;
+    const by = $("gate-doc-approved-by");
+    const ref = $("gate-doc-reference");
+    if (by) by.value = doc.approved_by;
+    if (ref) ref.value = doc.approval_reference;
+    const hint = refs.docEditor.querySelector(".gate-doc-hint");
+    if (hint) {
+      hint.innerHTML = `<span class="gate-trust" data-trust="operator">operator</span> This policy will be attested for the next check as ${esc(doc.approved_by)}. Shared registry approval stays admin-only.`;
+    }
   }
 
   /* --------------------------------------------------------- import/export */

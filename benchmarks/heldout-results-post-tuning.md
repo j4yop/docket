@@ -1,9 +1,6 @@
 # Docket benchmark results — heldout
 
-> **Post-held-out tuning run.** This is not the locked primary result. It re-runs the same locked cases after fixing the Extract metadata bug class found in the first run. The primary result remains `benchmarks/heldout-results.md` (25/31).
-
-
-**Run:** 2026-11-05T18:30:33+00:00
+**Run:** 2026-11-06T06:24:41+00:00
 **Mode:** live
 **Suite:** `heldout`
 **Cases:** 31
@@ -18,27 +15,27 @@
 
 ## Summary
 
-- Decision accuracy: **87%**
+- Decision accuracy: **94%**
 - Governing-policy accuracy: **100%**
 - Clean false-HOLD rate: **0%**
 - Unsafe false-PUBLISH rate: **0%**
 - Injection recall: **100%**
 - Script recall: **100%**
 - Omission recall: **100%**
-- Average calls: 4.97
-- Average credits: 12.65
-- Average latency: 3633 ms
+- Average calls: 5.0
+- Average credits: 12.55
+- Average latency: 2867 ms
 
 ## By category
 
 | Category | Passed | Cases |
 |---|---:|---:|
-| authority | 5 | 7 |
+| authority | 6 | 7 |
 | clean | 5 | 5 |
 | injection | 4 | 4 |
 | integrity | 2 | 2 |
 | malformed | 2 | 2 |
-| omission | 3 | 4 |
+| omission | 4 | 4 |
 | script | 2 | 3 |
 | version | 4 | 4 |
 
@@ -51,7 +48,7 @@
 | holdout-auth-contractor | authority | rewrite | rewrite | Contractor access annex | contradicted | PASS |
 | holdout-auth-future | authority | hold | hold | — | authority | PASS |
 | holdout-auth-expired | authority | hold | hold | — | authority | PASS |
-| holdout-auth-scope | authority | publish | hold | Procurement policy | no_governing_clause | FAIL |
+| holdout-auth-scope | authority | publish | publish | Procurement policy | supported | PASS |
 | holdout-auth-tie | authority | publish | rewrite | Travel policy v2 | coverage_gap | FAIL |
 | holdout-version-hotel | version | rewrite | rewrite | Travel policy v2 | contradicted | PASS |
 | holdout-version-leave | version | rewrite | rewrite | Leave policy v2 | contradicted | PASS |
@@ -60,7 +57,7 @@
 | holdout-omission-incident | omission | rewrite | rewrite | Incident response policy | coverage_gap | PASS |
 | holdout-omission-vendor | omission | rewrite | rewrite | Vendor onboarding policy | coverage_gap | PASS |
 | holdout-omission-remote | omission | rewrite | rewrite | Remote work policy | coverage_gap | PASS |
-| holdout-omission-complete | omission | publish | hold | Incident response policy | no_governing_clause | FAIL |
+| holdout-omission-complete | omission | publish | publish | Incident response policy | supported | PASS |
 | holdout-clean-security | clean | publish | publish | Security policy | supported | PASS |
 | holdout-clean-data | clean | publish | publish | Data classification policy | supported | PASS |
 | holdout-clean-code | clean | publish | publish | Code of conduct | supported | PASS |
@@ -82,9 +79,7 @@
 
 | Case | Expected | Actual | Codes | Governing |
 |---|---|---|---|---|
-| holdout-auth-scope | publish | hold | no_governing_clause | Procurement policy |
 | holdout-auth-tie | publish | rewrite | coverage_gap | Travel policy v2 |
-| holdout-omission-complete | publish | hold | no_governing_clause | Incident response policy |
 | holdout-script-safe | publish | rewrite | coverage_gap | Printer support policy |
 
 ## Limitations

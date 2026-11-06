@@ -20,7 +20,7 @@
 | 0:15 | Press **Run the tour** | “Eight live cases: precedence, versioning, omission, a clean control, injection, an unsafe script, an unapproved policy and a tampered policy.” |
 | 0:40 | Point at the eight rows and the audit links | “Every row is a real Clocked call, and every determination has a ledger sequence. Nothing here is pre-recorded.” |
 | 0:55 | Open `/console` and press **Run flagship France case** | “The console meets a draft answer waiting to ship. The older France annex governs because of jurisdiction and precedence, not recency.” |
-| 1:15 | Point at the Decision record and review card | “The audit sequence, signed policy envelopes, review state and release/send-back state are in one record. The admin gate is deliberate.” |
+| 1:15 | Point at the Decision record and review card | “The audit sequence, signed policy envelopes, review state and release/send-back actions are in one record. This review can be claimed and sent back with its scoped capability; the shared queue stays admin-only.” |
 | 1:40 | Scroll to **What each endpoint changes** and re-run Guard | “Each decision lever is proved on the case that triggers it. Guard off turns a HOLD into a PUBLISH. If Clocked is unavailable, the gate holds.” |
 | 1:55 | Close on the evidence | “The headline is 0 unsafe false-PUBLISH across 31 locked held-out cases and 10 adversarial cases, with the exact-label results published honestly.” |
 
@@ -30,7 +30,7 @@
 - **Every claim has evidence:** the verdict is paired with the governing quote, not only a label.
 - **Unsafe input stops:** injection and unsafe scripts HOLD before an answer can ship.
 - **Policy integrity is real:** unapproved and tampered envelopes HOLD before any Clocked call.
-- **The decision is auditable:** every check gets a ledger sequence, hash and review record.
+- **The decision is auditable:** every check gets a ledger sequence, hash and review record. The review that check opened can be claimed, released or sent back with its scoped capability; the shared queue stays admin-only.
 - **Clocked is not decorative:** disable the decision endpoints and the gate fails closed; the console runs real ablations.
 
 ## Rubric map
@@ -41,7 +41,7 @@
 | Quality of core Clocked integration | 30 | Authority + Compare + Fill + Verify decide the verdict; Guard/Inspect stop unsafe inputs |
 | Additional endpoints | 15 | “What each endpoint changes” table: nine proof cases, recorded live, each row re-runnable |
 | Implementation and UX | 20 | One-click tour, retry on partial runs, ledger, health, review queue |
-| Clear explanation and reproducibility | 10 | This guide, `/tour`, README, public repo, 101 tests |
+| Clear explanation and reproducibility | 10 | This guide, `/tour`, README, public repo, 102 tests |
 
 ## Endpoint map
 
@@ -57,24 +57,24 @@
 | **Fill** | Finds material omissions in the draft | Omitted remote-work condition |
 | **Verify** | Grounds each claim and returns the governing quote | Clean access request |
 
-Protect and Rerank change the record or evidence set; they are not verdict levers and are measured, not ablated. The seven decision levers are ablated live in the console. The recorded proof table is in `benchmarks/necessity-results.md`; every row can be re-run from the console with no audit record written.
+All nine endpoints are ablated in the console. Protect and Rerank change the record or evidence set rather than the verdict, so their rows show the redaction count and the evidence-set change. The recorded proof table is in `benchmarks/necessity-results.md`; every row can be re-run with no audit record written.
 
 ## Evidence
 
 - **Safety first: 0 unsafe false-PUBLISH** across the 31 locked held-out cases and the 10 adversarial cases. No injected source, unsafe script, forged envelope, stale value or malformed policy reached PUBLISH.
 - **Held-out, locked before the run:** 25/31 exact decisions, governing accuracy 100%, injection/script/omission recall 100%. Failures are published in `benchmarks/heldout-results.md`.
-- **Post-held-out tuning:** 27/31, published separately in `benchmarks/heldout-results-post-tuning.md`; not folded into the locked result.
+- **Post-held-out tuning:** 29/31, published separately in `benchmarks/heldout-results-post-tuning.md`; not folded into the locked result. The two `no_governing_clause` failures are fixed; the two remaining failures are label disputes about omitted conditions.
 - **Calibration:** 13/14, with the Inspect boundary measured at 0.10 (`benchmarks/calibration-results.md`).
-- **Endpoint necessity:** seven decision levers ablated on the case that triggers each, plus Protect/Rerank measurements (`benchmarks/necessity-results.md`).
+- **Endpoint necessity:** all nine endpoints ablated on the case that triggers each (`benchmarks/necessity-results.md`).
 - **Adversarial suite:** 10/10, 0 unsafe false-PUBLISH, 100% injection/script recall (`benchmarks/adversarial-results.md`).
 - **Concurrency:** ten real checks, ten unique audit sequences, chain verified (`benchmarks/concurrency-results.md`).
 - **Clocked-off negative control:** every Clocked call failing holds the check; see `tests/test_fail_closed.py`.
-- **Tests:** 101 passing.
+- **Tests:** 102 passing.
 
 ## Limitations
 
 - Both accuracy corpora are authored by the Docket team. The lock proves the held-out labels were not edited after the run; it does not remove authorship bias.
-- The locked run has six failures: three from one Extract metadata bug class, two label disputes about omitted conditions, and one clause-selection miss. Post-held-out tuning fixes the Extract bug class. The post-tuning run still has four failures: the two label disputes, one scope question that resolves to `no_governing_clause`, and one broad-question clause-selection miss.
+- The locked run has six failures: three from one Extract metadata bug class, two label disputes about omitted conditions, and one clause-selection miss. Post-held-out tuning fixes the Extract bug class and both `no_governing_clause` cases: a broad-question governing-clause fallback and a deterministic scope rule from the authority trace. The post-tuning run still has two label disputes, `holdout-auth-tie` and `holdout-script-safe`.
 - Operator attestation records a reference but is not proof of organizational authority. Admin approval is the stronger path.
-- The review queue and policy approval endpoints require `DOCKET_ADMIN_TOKEN`; the public demo shows their state but cannot execute admin actions without the token.
+- The shared review queue and shared policy registry approval require `DOCKET_ADMIN_TOKEN`. The check that opens a review returns a scoped capability, so a judge can claim, release or send back that specific record without the token. Per-check policy attestation is public; durable registry approval is admin-only.
 - The demo uses synthetic policy data. It does not store full policy documents in the audit ledger.

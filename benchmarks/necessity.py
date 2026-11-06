@@ -1,8 +1,7 @@
 """Run the endpoint necessity proofs against a live Docket server.
 
 The output is evidence, not a benchmark score. It records one baseline and one
-counterfactual per decision lever, plus a measurement for Protect and Rerank.
-No audit records are written by /api/prove.
+counterfactual for every endpoint. No audit records are written by /api/prove.
 
 Usage:
     python benchmarks/necessity.py --base-url http://127.0.0.1:8000
@@ -66,7 +65,7 @@ def _markdown(payload: dict) -> str:
         f"**Mode:** {payload['mode']}  ",
         f"**Base URL:** `{payload['base_url']}`",
         "",
-        "Each row is one live baseline and one live counterfactual. The seven decision levers are ablated; Protect and Rerank are measured because they change the record or evidence set, not the verdict. `/api/prove` writes no audit record.",
+        "Each row is one live baseline and one live counterfactual. All nine endpoints are ablated; Protect and Rerank change the record or evidence set, not the verdict. `/api/prove` writes no audit record.",
         "",
         "| Endpoint | What it changes | Proof case | With endpoint | Without endpoint | Change |",
         "|---|---|---|---|---|---|",
@@ -91,7 +90,7 @@ def _markdown(payload: dict) -> str:
         "",
         "- The clean access-request proof publishes with Verify and holds without it. The gate fails closed when verification is missing.",
         "- Compare and Decide keep the same decision on the precedence case but lose their evidence and review routing when ablated. Their contribution is the conflict table and the review route, not a different label.",
-        "- Protect and Rerank are not verdict levers. Their rows measure the redaction count and the number of clauses selected.",
+        "- Protect and Rerank are not verdict levers. Their rows show what changes when they are disabled: the redaction count and the evidence set.",
         "- This is a targeted proof of endpoint contribution, not an accuracy benchmark. The held-out and adversarial results are separate.",
     ]
     return "\n".join(lines) + "\n"

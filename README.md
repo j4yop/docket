@@ -6,7 +6,7 @@
 [![Endpoints](https://img.shields.io/badge/CLOCKED_ENDPOINTS-9%2F9-38BDF8?style=for-the-badge&labelColor=1e293b&color=38BDF8)](https://clocked.rezolve.ai/docs)
 [![Safety](https://img.shields.io/badge/UNSAFE_FALSE_PUBLISH-0-22c55e?style=for-the-badge&labelColor=1e293b)](#adversarial-safety-suite)
 [![Held-out](https://img.shields.io/badge/HELD_OUT-25%2F31-f5b544?style=for-the-badge&labelColor=1e293b&color=e2a65a)](#held-out-locked-before-the-run)
-[![Tests](https://img.shields.io/badge/tests-101_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
+[![Tests](https://img.shields.io/badge/tests-102_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
 [![Python](https://img.shields.io/badge/python-3.11_%7C_3.12_%7C_3.13-3775A9?style=for-the-badge&logo=python&logoColor=white&labelColor=1e293b)](https://www.python.org/)
 [![Judge Tour](https://img.shields.io/badge/JUDGE_TOUR-docket--clocked.vercel.app%2Ftour-6366F1?style=for-the-badge&logo=vercel&logoColor=white&labelColor=1e293b)](https://docket-clocked.vercel.app/tour)
 [![Console](https://img.shields.io/badge/Gate_Console-%2Fconsole-059669?style=for-the-badge&labelColor=1e293b)](https://docket-clocked.vercel.app/console)
@@ -147,10 +147,10 @@ Latest live proof run (`benchmarks/necessity-results.md`):
 | **Compare** | Precedence over recency | REWRITE · 2 conflict pairs | REWRITE · no conflict pairs | 2 conflicts → 0 |
 | **Fill** | Omitted remote-work condition | REWRITE · omission | PUBLISH | REWRITE → PUBLISH |
 | **Verify** | Clean access request | PUBLISH · claims grounded | HOLD | PUBLISH → HOLD |
-| **Protect** | PII in the question | REWRITE · 1 PII entity redacted | Not ablated | Record only |
-| **Rerank** | Precedence over recency | REWRITE · 1 of 8 clauses used | Not ablated | Evidence only |
+| **Protect** | PII in the question | REWRITE · 1 PII entity redacted | REWRITE · no redaction | 1 redacted → 0 |
+| **Rerank** | Precedence over recency | REWRITE · 1 of 8 clauses used | REWRITE · 3 of 3 clauses used | 1 clause → all governing clauses |
 
-Protect and Rerank are measured rather than ablated because they do not move the verdict. Every other row is a real baseline and a real counterfactual, and the table is reproducible with `python benchmarks/necessity.py --base-url http://127.0.0.1:8000`.
+All nine endpoints are ablated. Protect and Rerank do not move the verdict, so their rows show the record and evidence-set delta instead. The table is reproducible with `python benchmarks/necessity.py --base-url http://127.0.0.1:8000`.
 
 ### Policy integrity in the UI
 
@@ -161,7 +161,7 @@ Every result shows:
 - the policy ID and content hash;
 - a red failure panel for an unapproved or tampered policy.
 
-Custom policies can be approved by an admin with a token, or attested for a single check with an approval reference in the policy editor. The console now has an **Approve active policy** action: it returns the signed envelope, shows the content hash and approval type, and sends that envelope with the next check. Seeded, admin-approved and operator-attested policies are visually distinct.
+Custom policies can be attested for a single check with the **Attest for this check** button, or approved into the shared registry by an admin with a token. The console's **Approve active policy** action returns the signed envelope, shows the content hash and approval type, and sends that envelope with the next check. Seeded, admin-approved and operator-attested policies are visually distinct.
 
 ### Human review, not auto-publish
 
@@ -177,7 +177,7 @@ POST /api/check          → HOLD
        └─ POST /api/reviews/{id}/resolve  → resolved + ledger event #42
 ```
 
-Review endpoints require `X-Docket-Admin`. Without `DOCKET_ADMIN_TOKEN` they return 404, not an empty queue.
+The check that opens a review returns a scoped `capability` for that record. The console can claim, release or send back that one review without an admin token. Listing the shared queue and acting on other records still requires `X-Docket-Admin`; a capability used on a different review returns 404.
 
 ### Live verification
 
@@ -212,7 +212,7 @@ Sequence allocation uses an atomic claim (`allow_overwrite=False` on Blob, `O_EX
 
 ## Measured accuracy
 
-**The headline is safety, not a perfect score: 0 unsafe false-PUBLISH across 31 locked held-out cases and 10 adversarial cases.** Exact decision labels are 25/31 on the locked held-out run and 27/31 after post-held-out tuning. Docket ships two accuracy corpora, a targeted adversarial suite and a separate calibration set. None is a third-party benchmark, and the documents say so.
+**The headline is safety, not a perfect score: 0 unsafe false-PUBLISH across 31 locked held-out cases and 10 adversarial cases.** Exact decision labels are 25/31 on the locked held-out run and 29/31 after post-held-out tuning. Docket ships two accuracy corpora, a targeted adversarial suite and a separate calibration set. None is a third-party benchmark, and the documents say so.
 
 ### Held-out: locked before the run
 
@@ -252,14 +252,14 @@ After the locked run, the Extract metadata bug class was fixed: a document title
 
 | Metric | Locked run | Post-tuning run |
 |---|---:|---:|
-| Cases passed | 25 / 31 | **27 / 31** |
-| Decision accuracy | 80.6% | **87.1%** |
+| Cases passed | 25 / 31 | **29 / 31** |
+| Decision accuracy | 80.6% | **93.5%** |
 | Clean false-HOLD | 20% | **0%** |
 | Unsafe false-PUBLISH | 0% | **0%** |
 | Governing accuracy | 100% | 100% |
-| Average calls / credits / latency | 4.61 / 14.65 / 3.25 s | 4.97 / 12.65 / 3.63 s |
+| Average calls / credits / latency | 4.61 / 14.65 / 3.25 s | 5.0 / 12.55 / 2.87 s |
 
-The four remaining post-tuning failures are `holdout-auth-scope` (a scope question that resolves to `no_governing_clause`), `holdout-auth-tie` and `holdout-script-safe` (the two label disputes about omitted receipt/endpoint conditions), and `holdout-omission-complete` (the real clause-selection miss). The post-tuning number is **not** the locked result; it is the product after seeing the failures. Both documents are in the repository so a judge can compare them.
+Post-held-out tuning now fixes both `no_governing_clause` failures: the broad-question case uses a deterministic governing-clause fallback, and the scope case resolves from the authority trace. Two failures remain, `holdout-auth-tie` and `holdout-script-safe`, both label disputes about whether the draft omitted a receipt or endpoint-protection condition. The post-tuning number is **not** the locked result; it is the product after seeing the failures. Both documents are in the repository so a judge can compare them.
 
 ### Adversarial safety suite
 
@@ -274,7 +274,7 @@ Latest live run (`benchmarks/adversarial-results.md`):
 | Injection recall | **100%** (5 cases) |
 | Script recall | **100%** |
 | Clean false-HOLD rate | **0%** (1 control) |
-| Average calls / credits / latency | **2.8 / 8.5 / 1.63 s** |
+| Average calls / credits / latency | **2.8 / 6.7 / 1.66 s** |
 
 ### Calibration: borderline cases and a measured Inspect boundary
 
@@ -307,7 +307,7 @@ python benchmarks/run.py --live --suite heldout            # refuses without a v
 python benchmarks/run.py --write-lock --suite heldout      # write the lock before the first run
 ```
 
-**What none of this proves:** both corpora were authored by the Docket team. The lock proves the held-out labels were fixed before the run; it does not remove authorship bias. A 25/31 locked held-out result, or the 27/31 post-tuning result, is evidence of behavior on 31 unseen authored cases, not a claim about all policy sprawl. A post-run fix is a new iteration and is labelled as such.
+**What none of this proves:** both corpora were authored by the Docket team. The lock proves the held-out labels were fixed before the run; it does not remove authorship bias. A 25/31 locked held-out result, or the 29/31 post-tuning result, is evidence of behavior on 31 unseen authored cases, not a claim about all policy sprawl. A post-run fix is a new iteration and is labelled as such.
 
 ---
 
@@ -371,7 +371,11 @@ Every result includes `audit` (`storage`, `seq`, `hash`, `prev_hash`), `policy_e
 
 ### `POST /api/ablate`
 
-Same body plus `"endpoint": "guard" | "inspect" | "extract" | "decide" | "compare" | "coverage" | "verify"`. Runs the same inputs with one endpoint disabled. Returns `simulation: true`, no ledger record, no publication.
+Same body plus `"endpoint": "protect" | "guard" | "inspect" | "extract" | "decide" | "compare" | "coverage" | "verify" | "rerank"`. Runs the same inputs with one endpoint disabled. Returns `simulation: true`, no ledger record, no publication.
+
+### `POST /api/prove`
+
+Runs a baseline and one counterfactual together and returns only the signal that proves the endpoint's contribution. Used by the console's **What each endpoint changes** table. Two checks are charged to the demo budget; no audit record is written.
 
 ### `POST /api/policies/approve`
 
@@ -394,14 +398,14 @@ curl -s https://docket-clocked.vercel.app/api/policies/approve \
 | `GET /api/checks` | Admin-only recent ledger records |
 | `GET /api/ledger` | Public chain verification and recent determinations |
 | `GET /api/reviews` | Admin-only durable review queue |
-| `POST /api/reviews/{id}/assign` | Assign a review owner |
-| `POST /api/reviews/{id}/resolve` | Approve or reject with a note; appends a ledger event |
+| `POST /api/reviews/{id}/assign` | Assign a review owner; admin token or the record's scoped capability |
+| `POST /api/reviews/{id}/resolve` | Approve or reject with a note; admin token or the record's scoped capability; appends a ledger event |
 | `GET /api/stats` | Per-instance index totals and audit backend |
 | `GET /api/health` | Verified chain, seeded corpus, audit backend and last-verified time |
 | `GET /ledger` | Human-readable ledger page |
 | `GET /tour` | Eight-case judge tour; `/` remains the marketing page |
 
-`POST /api/check`, `/api/check/stream` and `/api/ablate` require a session or bearer token. Check and ablation routes share the per-IP and daily demo budget.
+`POST /api/check`, `/api/check/stream`, `/api/ablate` and `/api/prove` require a session or bearer token. Check, ablation and proof routes share the per-IP and daily demo budget; a proof charges two checks.
 
 ---
 
@@ -417,7 +421,7 @@ curl -s https://docket-clocked.vercel.app/api/policies/approve \
 | Hot index | SQLite WAL (`/tmp` on Vercel, explicitly labeled per-instance) |
 | Frontend | Semantic HTML, CSS, vanilla JS, no build step |
 | Streaming | Server-Sent Events with real stage progress |
-| Tests | pytest — 101 tests |
+| Tests | pytest — 102 tests |
 | Deploy | Vercel FastAPI service; Docker/Render/Railway supported |
 
 ---
@@ -453,14 +457,14 @@ pip install -r requirements-dev.txt
 python -m pytest -v
 ```
 
-101 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, seeded-corpus verification, the hash-chained ledger, ten-way and two-loop concurrency, review-queue persistence and resolution, health verification, coverage/omission policy, Compare verdict rules, Decide triage, console feature coverage, ledger views and route authentication. The deterministic layers run without a Clocked key.
+102 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, seeded-corpus verification, the hash-chained ledger, ten-way and two-loop concurrency, review-queue persistence and resolution, health verification, coverage/omission policy, Compare verdict rules, Decide triage, console feature coverage, ledger views and route authentication. The deterministic layers run without a Clocked key.
 
 ---
 
 ## Limits and honest gaps
 
-- **Two self-authored accuracy corpora.** The 37-case regression suite and the 31-case held-out suite were both written by the Docket team. The lock proves the held-out labels were fixed before the run; it does not remove authorship bias. The honest headline is **0 unsafe false-PUBLISH**, with 25/31 exact decision labels on the locked held-out run and 27/31 after post-tuning. Neither is a claim of 100% accuracy.
-- **Six held-out failures are public.** Three are one Extract metadata bug class, two are label disputes where the gate's omission finding is defensible, and one is a real clause-selection miss. Fixes after the run are reported as post-held-out tuning in a separate run.
+- **Two self-authored accuracy corpora.** The 37-case regression suite and the 31-case held-out suite were both written by the Docket team. The lock proves the held-out labels were fixed before the run; it does not remove authorship bias. The honest headline is **0 unsafe false-PUBLISH**, with 25/31 exact decision labels on the locked held-out run and 29/31 after post-tuning. Neither is a claim of 100% accuracy.
+- **Six held-out failures are public in the locked run.** Three are one Extract metadata bug class, two are label disputes where the gate's omission finding is defensible, and one is a real clause-selection miss. Post-held-out tuning fixes the Extract class and both `no_governing_clause` cases. Two label disputes remain in the post-tuning run; the locked numbers are unchanged.
 - **Single model snapshot.** Clocked behavior can drift; both benchmark documents record the date and measured scores.
 - **Threshold calibration is corpus-bound.** Guard remains at 0.50 because the measured scores are flat. Inspect is 0.10 because the calibration corpus found a real gap between 0.008 and 0.188. That is a measured trade, not a universal optimum.
 - **Review approval does not auto-publish.** The queue records the human decision. The operator still edits and re-runs the check.

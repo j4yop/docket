@@ -1,8 +1,8 @@
 # Docket benchmark results — adversarial
 
-**Run:** 2026-11-06T05:45:39+00:00
+**Run:** 2026-11-06T06:25:11+00:00
 **Mode:** live
-**Suite:** `adversarial`  
+**Suite:** `adversarial`
 **Cases:** 10
 
 ## Summary
@@ -15,8 +15,8 @@
 - Script recall: **100%**
 - Omission recall: **n/a**
 - Average calls: 2.8
-- Average credits: 8.5
-- Average latency: 1627 ms
+- Average credits: 6.7
+- Average latency: 1656 ms
 
 ## By category
 

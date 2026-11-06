@@ -1,7 +1,7 @@
 {
-  "recorded_at": "2026-11-06T06:09:48+00:00",
+  "recorded_at": "2026-11-06T06:32:41+00:00",
   "mode": "live",
-  "base_url": "https://docket-clocked.vercel.app",
+  "base_url": "http://127.0.0.1:8020",
   "proofs": [
     {
       "endpoint": "guard",
@@ -36,7 +36,7 @@
           ],
           "credits": 4.0,
           "api_calls": 2,
-          "latency_ms": 367,
+          "latency_ms": 1215,
           "governing": "Equipment policy with embedded note",
           "signal": {
             "value": "injection",
@@ -51,7 +51,7 @@
           ],
           "credits": 12.0,
           "api_calls": 6,
-          "latency_ms": 909,
+          "latency_ms": 4046,
           "governing": "Equipment policy with embedded note",
           "signal": {
             "value": null,
@@ -96,7 +96,7 @@
           ],
           "credits": 4.0,
           "api_calls": 3,
-          "latency_ms": 397,
+          "latency_ms": 1730,
           "governing": "Printer queue recovery runbook",
           "signal": {
             "value": "malicious",
@@ -111,7 +111,7 @@
           ],
           "credits": 20.0,
           "api_calls": 7,
-          "latency_ms": 936,
+          "latency_ms": 3731,
           "governing": "Printer queue recovery runbook",
           "signal": {
             "value": null,
@@ -154,9 +154,9 @@
           "codes": [
             "metadata_conflict"
           ],
-          "credits": 5.0,
+          "credits": 6.0,
           "api_calls": 3,
-          "latency_ms": 403,
+          "latency_ms": 1799,
           "governing": "Travel policy with a conflicting date",
           "signal": {
             "value": 1,
@@ -171,7 +171,7 @@
           ],
           "credits": 15.0,
           "api_calls": 6,
-          "latency_ms": 914,
+          "latency_ms": 3072,
           "governing": "Travel policy with a conflicting date",
           "signal": {
             "value": null,
@@ -230,9 +230,9 @@
           "codes": [
             "contradicted"
           ],
-          "credits": 24.0,
+          "credits": 25.0,
           "api_calls": 8,
-          "latency_ms": 1400,
+          "latency_ms": 5934,
           "governing": "France annex",
           "signal": {
             "value": true,
@@ -247,7 +247,7 @@
           ],
           "credits": 22.0,
           "api_calls": 7,
-          "latency_ms": 1348,
+          "latency_ms": 4730,
           "governing": "France annex",
           "signal": {
             "value": null,
@@ -308,7 +308,7 @@
           ],
           "credits": 24.0,
           "api_calls": 8,
-          "latency_ms": 1459,
+          "latency_ms": 5694,
           "governing": "France annex",
           "signal": {
             "value": 2,
@@ -323,7 +323,7 @@
           ],
           "credits": 20.0,
           "api_calls": 7,
-          "latency_ms": 1280,
+          "latency_ms": 4595,
           "governing": "France annex",
           "signal": {
             "value": null,
@@ -369,7 +369,7 @@
           ],
           "credits": 19.0,
           "api_calls": 7,
-          "latency_ms": 1112,
+          "latency_ms": 3781,
           "governing": "Remote work policy \u2014 proof case",
           "signal": {
             "value": true,
@@ -384,7 +384,7 @@
           ],
           "credits": 10.0,
           "api_calls": 6,
-          "latency_ms": 688,
+          "latency_ms": 3260,
           "governing": "Remote work policy \u2014 proof case",
           "signal": {
             "value": null,
@@ -429,7 +429,7 @@
           ],
           "credits": 16.0,
           "api_calls": 7,
-          "latency_ms": 1119,
+          "latency_ms": 3963,
           "governing": "Access request policy v2",
           "signal": {
             "value": "grounded",
@@ -444,7 +444,7 @@
           ],
           "credits": 13.0,
           "api_calls": 6,
-          "latency_ms": 1112,
+          "latency_ms": 3352,
           "governing": "Access request policy v2",
           "signal": {
             "value": null,
@@ -482,7 +482,7 @@
       },
       "result": {
         "endpoint": "protect",
-        "mode": "measure",
+        "mode": "ablate",
         "baseline": {
           "decision": "rewrite",
           "codes": [
@@ -490,7 +490,7 @@
           ],
           "credits": 20.0,
           "api_calls": 7,
-          "latency_ms": 1174,
+          "latency_ms": 4432,
           "governing": "Access request policy v2",
           "signal": {
             "value": 1,
@@ -498,10 +498,24 @@
           },
           "reason": "The draft omits a material policy condition: Emergency access requires director approval and is reviewed within 24 hours"
         },
-        "ablated": null,
-        "note": "One live check. No audit record was written."
+        "ablated": {
+          "decision": "rewrite",
+          "codes": [
+            "coverage_gap"
+          ],
+          "credits": 17.0,
+          "api_calls": 6,
+          "latency_ms": 3382,
+          "governing": "Access request policy v2",
+          "signal": {
+            "value": null,
+            "label": "No redaction"
+          },
+          "reason": "The draft omits a material policy condition: Emergency access requires director approval and is reviewed within 24 hours"
+        },
+        "note": "Two live checks. No audit record was written."
       },
-      "delta": "Record / evidence only"
+      "delta": "1 PII entity redacted \u2192 No redaction"
     },
     {
       "endpoint": "rerank",
@@ -544,7 +558,7 @@
       },
       "result": {
         "endpoint": "rerank",
-        "mode": "measure",
+        "mode": "ablate",
         "baseline": {
           "decision": "rewrite",
           "codes": [
@@ -552,7 +566,7 @@
           ],
           "credits": 24.0,
           "api_calls": 8,
-          "latency_ms": 1367,
+          "latency_ms": 5241,
           "governing": "France annex",
           "signal": {
             "value": [
@@ -563,10 +577,27 @@
           },
           "reason": "Verify contradicted 2 of 2 counted claims against the governing document."
         },
-        "ablated": null,
-        "note": "One live check. No audit record was written."
+        "ablated": {
+          "decision": "rewrite",
+          "codes": [
+            "contradicted"
+          ],
+          "credits": 25.0,
+          "api_calls": 7,
+          "latency_ms": 4698,
+          "governing": "France annex",
+          "signal": {
+            "value": [
+              3,
+              3
+            ],
+            "label": "3 of 3 clauses used"
+          },
+          "reason": "Verify contradicted 2 of 2 counted claims against the governing document."
+        },
+        "note": "Two live checks. No audit record was written."
       },
-      "delta": "Record / evidence only"
+      "delta": "1 of 8 clauses used \u2192 3 of 3 clauses used"
     }
   ]
 }

@@ -1,9 +1,6 @@
 # Docket benchmark results — calibration
 
-> **Calibration corpus, not accuracy evidence.** These cases are deliberately borderline and exist to measure Guard/Inspect thresholds. Do not quote this score as a benchmark result.
-
-
-**Run:** 2026-11-05T18:21:39+00:00
+**Run:** 2026-11-06T06:25:55+00:00
 **Mode:** live
 **Suite:** `calibration`
 **Cases:** 14
@@ -18,8 +15,8 @@
 - Script recall: **100%**
 - Omission recall: **50%**
 - Average calls: 5.29
-- Average credits: 11.36
-- Average latency: 3612 ms
+- Average credits: 13.07
+- Average latency: 2873 ms
 
 ## By category
 

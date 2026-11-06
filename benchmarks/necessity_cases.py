@@ -4,8 +4,8 @@ Each proof is a real case, run once with the endpoint and once without it.
 The aim is not a benchmark score. It is to show, on the surface a judge uses,
 what each endpoint contributes to the result.
 
-The seven decision levers are ablated. Protect and Rerank are measured, not
-ablated: they change the audit record and the evidence set, not the verdict.
+All nine endpoints are ablated. Protect and Rerank change the audit record and
+the evidence set, not the verdict, so their delta is in those fields.
 """
 
 from __future__ import annotations
@@ -149,7 +149,6 @@ PROOFS = [
         "role": "Audit redaction",
         "proof_case": "PII in the question",
         "payload": PII_PAYLOAD,
-        "kind": "measure",
         "note": "Protect redacts personal data in the audit preview; it is not a verdict lever.",
     },
     {
@@ -158,7 +157,6 @@ PROOFS = [
         "role": "Evidence selection",
         "proof_case": "Precedence over recency",
         "sample": "precedence-recency",
-        "kind": "measure",
         "note": "Rerank chooses the clauses Verify reads; it is not a verdict lever.",
     },
 ]

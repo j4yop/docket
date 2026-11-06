@@ -184,7 +184,7 @@ def test_prove_runs_a_baseline_and_one_counterfactual(monkeypatch) -> None:
     assert body["ablated"]["signal"]["label"] == "No injection gate"
 
 
-def test_prove_measures_protect_without_ablating(monkeypatch) -> None:
+def test_prove_ablates_protect(monkeypatch) -> None:
     import importlib
 
     module = importlib.import_module("app")
@@ -201,7 +201,7 @@ def test_prove_measures_protect_without_ablating(monkeypatch) -> None:
             "latency_ms": 0,
             "headline": "",
             "authority": {"governing": {"title": "Policy"}},
-            "protect": {"entity_count": 2},
+            "protect": None if ablate else {"entity_count": 2},
         }
 
     monkeypatch.setattr(module, "run_check", fake_run_check)
@@ -211,11 +211,13 @@ def test_prove_measures_protect_without_ablating(monkeypatch) -> None:
         headers=_session_headers(),
     )
     assert response.status_code == 200
-    assert seen == [{"ablate": None, "record": False}]
+    assert len(seen) == 2
+    assert {item["record"] for item in seen} == {False}
+    assert {str(item["ablate"]) for item in seen} == {"None", "{'protect'}"}
     body = response.json()
-    assert body["mode"] == "measure"
-    assert body["ablated"] is None
+    assert body["mode"] == "ablate"
     assert body["baseline"]["signal"]["label"] == "2 PII entities redacted"
+    assert body["ablated"]["signal"]["label"] == "No redaction"
 
 
 def test_console_includes_the_necessity_proof_table() -> None:
@@ -437,6 +439,7 @@ def test_review_api_lists_assigns_and_resolves(monkeypatch, tmp_path) -> None:
     listing = client.get("/api/reviews?status=open", headers=headers)
     assert listing.status_code == 200
     assert listing.json()["reviews"][0]["id"] == review["id"]
+    assert "capability" not in listing.json()["reviews"][0]
     assert listing.json()["counts"]["open"] == 1
 
     assigned = client.post(
@@ -463,6 +466,74 @@ def test_review_api_lists_assigns_and_resolves(monkeypatch, tmp_path) -> None:
     assert body["audit"]["seq"] == 9
 
     assert client.get("/api/reviews", headers={"X-Docket-Admin": "wrong"}).status_code == 404
+
+
+def test_review_capability_resolves_only_its_own_review(monkeypatch, tmp_path) -> None:
+    import asyncio
+    import importlib
+
+    import reviews
+    import storage
+
+    module = importlib.import_module("app")
+    monkeypatch.setattr(storage, "LOCAL_DIR", tmp_path)
+    monkeypatch.delenv("DOCKET_ADMIN_TOKEN", raising=False)
+
+    def make_review(question: str):
+        return asyncio.run(
+            reviews.create(
+                {
+                    "decision": "rewrite",
+                    "codes": ["contradicted"],
+                    "question": question,
+                    "draft": "Draft.",
+                    "reasons": ["A claim is contradicted."],
+                    "checked_at": "2026-11-06T12:00:00+00:00",
+                    "audit": {"seq": 4, "hash": "e" * 64},
+                }
+            )
+        )
+
+    first = make_review("First review")
+    second = make_review("Second review")
+    assert first["capability"]
+
+    async def fake_event(event):
+        return {"seq": 11, "record_hash": "f" * 64, "prev_hash": "e" * 64}
+
+    monkeypatch.setattr(module.ledger, "append_event", fake_event)
+    headers = {"X-Docket-Review": first["capability"]}
+
+    assigned = client.post(
+        f"/api/reviews/{first['id']}/assign",
+        json={"assignee": "demo-reviewer"},
+        headers=headers,
+    )
+    assert assigned.status_code == 200
+    assert assigned.json()["review"]["status"] == "assigned"
+
+    resolved = client.post(
+        f"/api/reviews/{first['id']}/resolve",
+        json={
+            "action": "reject",
+            "note": "Send this back to the author.",
+            "resolved_by": "demo-reviewer",
+        },
+        headers=headers,
+    )
+    assert resolved.status_code == 200
+    assert resolved.json()["review"]["status"] == "resolved"
+
+    crossed = client.post(
+        f"/api/reviews/{second['id']}/resolve",
+        json={
+            "action": "reject",
+            "note": "This capability belongs to another review.",
+            "resolved_by": "demo-reviewer",
+        },
+        headers=headers,
+    )
+    assert crossed.status_code == 404
 
 
 def test_brand_nav_includes_the_judge_tour() -> None:
