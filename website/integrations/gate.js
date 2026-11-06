@@ -1989,7 +1989,7 @@
       resetResult();
       setMode("case", "Example loaded — edit any field.");
       setStatus("input", "Ready", "");
-      setStatus("verdict", "Idle", "");
+      setStatus("verdict", "Waiting", "");
       return true;
     } catch (error) {
       showError(`Could not load that example. ${error.message}`);
@@ -2245,7 +2245,7 @@
     resetResult();
     setMode("case", "Your own policies, question and draft.");
     setStatus("input", "Ready", "");
-    setStatus("verdict", "Idle", "");
+    setStatus("verdict", "Waiting", "");
   }
 
   function resetResult() {

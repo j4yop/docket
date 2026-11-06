@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Docket — Best Overall Council Verdict</title>
+<style>
+  :root { --bg:#070908; --panel:#0e1311; --line:#26302c; --text:#eef5f1; --muted:#a8b7b1; --red:#ff2948; --green:#38e0a0; --amber:#ffc45c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif; }
+  main { max-width:1120px; margin:0 auto; padding:64px 28px 100px; }
+  .kicker { color:var(--red); font:600 12px/1.2 ui-monospace,monospace; letter-spacing:.14em; text-transform:uppercase; }
+  h1 { margin:14px 0 12px; font-size:clamp(42px,7vw,78px); line-height:.94; letter-spacing:-.045em; }
+  h1 em { color:var(--green); font-style:normal; }
+  .lede { max-width:760px; color:var(--muted); font-size:20px; }
+  .verdict { margin:34px 0; padding:24px; border:1px solid var(--line); background:linear-gradient(135deg,#101b17,#0b0f0d); }
+  .verdict b { color:var(--green); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1px; margin:30px 0; background:var(--line); border:1px solid var(--line); }
+  .cell { background:var(--panel); padding:18px; }
+  .cell strong { display:block; color:var(--amber); font:600 11px/1.2 ui-monospace,monospace; letter-spacing:.08em; text-transform:uppercase; margin-bottom:7px; }
+  .cell span { color:var(--muted); font-size:14px; }
+  h2 { margin:54px 0 16px; font-size:28px; letter-spacing:-.02em; }
+  h3 { margin:28px 0 8px; font-size:18px; color:var(--green); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font:600 11px/1.2 ui-monospace,monospace; letter-spacing:.06em; text-transform:uppercase; }
+  td b { color:var(--text); }
+  .pill { display:inline-block; padding:2px 7px; border:1px solid currentColor; border-radius:999px; font:600 10px/1.3 ui-monospace,monospace; text-transform:uppercase; letter-spacing:.05em; }
+  .pill.hi { color:var(--green); } .pill.mid { color:var(--amber); } .pill.lo { color:var(--red); }
+  ol { padding-left:22px; } li { margin:8px 0; color:var(--muted); } li b { color:var(--text); }
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  .box { border:1px solid var(--line); background:var(--panel); padding:18px; }
+  .box h3 { margin-top:0; }
+  code { font-family:ui-monospace,monospace; font-size:.92em; color:var(--green); }
+  .footer { margin-top:60px; padding-top:18px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+  @media (max-width:760px) { .split { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+<p class="lede"><strong>Historical note:</strong> this report was written before the post-tuning fixes. Current evidence is 29/31 post-tuning, 0 unsafe false-PUBLISH. See README.md and JUDGES.md for the final results.</p>
+  <div class="kicker">Clocked Build Challenge · Council verdict · 2026-11-06</div>
+  <h1>Docket should win on <em>proof</em>, not on nine endpoints.</h1>
+  <p class="lede">The product is technically strong enough to win Best Overall. The gap is that a judge meets an API harness before meeting the product. This report ranks the fixes by the official rubric and gives a four-day plan.</p>
+
+  <div class="verdict">
+    <b>Verdict.</b> Reposition Docket as <strong>the release gate for AI answers that must be defensible</strong>: it proves which policy governs, blocks release when evidence does not hold, and leaves a replayable audit record. Use <code>/tour</code> as the submission demo, not the marketing page. Lead with <strong>zero unsafe false-PUBLISH</strong>, not 25/31 or 27/31.
+  </div>
+
+  <div class="grid">
+    <div class="cell"><strong>Practical usefulness · 25</strong><span>Real policy-sprawl pain, but no single buyer and no flagship first-run path. Fix with one buyer, one sentence and one France case.</span></div>
+    <div class="cell"><strong>Core integration · 30</strong><span>All nine endpoints decide. The proof is buried. Show each endpoint's effect and a Clocked-off fail-closed test.</span></div>
+    <div class="cell"><strong>Additional endpoints · 15</strong><span>All nine wired, but breadth looks like checkboxes unless each one has a visible consequence.</span></div>
+    <div class="cell"><strong>Implementation / UX · 20</strong><span>92 tests, ledger, health, review queue. The judge path must be one click and never lie about partial runs.</span></div>
+    <div class="cell"><strong>Clarity / reproducibility · 10</strong><span>Deep README, but judges need a one-page JUDGES.md, a 2-minute video and three commands.</span></div>
+  </div>
+
+  <h2>Competitive position</h2>
+  <table>
+    <thead><tr><th>Project</th><th>Domain</th><th>Endpoints</th><th>Threat</th></tr></thead>
+    <tbody>
+      <tr><td><b>Margin</b></td><td>Academic integrity</td><td>Protect, Compare, Verify, Rerank</td><td><span class="pill hi">High</span> sharp story, human review</td></tr>
+      <tr><td><b>Invoice Airlock</b></td><td>Supplier bank-change fraud</td><td>Guard, Protect, Extract, Decide, Compare</td><td><span class="pill hi">High</span> urgent, multilingual, uncertainty band</td></tr>
+      <tr><td><b>Inbox Shield</b></td><td>Email injection</td><td>Guard, Protect, Decide, Extract</td><td><span class="pill mid">Medium</span> clean separation of request and attack</td></tr>
+      <tr><td><b>Gatehouse</b></td><td>GitHub issue firewall</td><td>Guard, Inspect, Protect</td><td><span class="pill mid">Medium</span> direct developer workflow</td></tr>
+      <tr><td><b>AgentShield</b></td><td>Agent pre-flight</td><td>Guard, Protect, Inspect</td><td><span class="pill mid">Medium</span> clear security panel</td></tr>
+      <tr><td><b>ClientCheck PH</b></td><td>Contract review</td><td>Guard, Protect, Extract, Verify, Rerank</td><td><span class="pill mid">Medium</span> clause-level evidence</td></tr>
+      <tr><td><b>KitBrief</b></td><td>Workshop kits</td><td>Extract, Fill</td><td><span class="pill lo">Focused</span> narrow but useful</td></tr>
+      <tr><td><b>Curre</b></td><td>Android launcher</td><td>Decide, Extract</td><td><span class="pill lo">Different</span> consumer surface</td></tr>
+    </tbody>
+  </table>
+  <p class="lede"><strong>Docket is the only output-side policy gate with a durable audit record.</strong> Do not compete as another input firewall.</p>
+
+  <h2>The four-day plan</h2>
+  <div class="split">
+    <div class="box"><h3>Nov 6 · Judge path</h3><ul>
+      <li>Submit <code>/tour</code>, not <code>/</code>.</li>
+      <li>One click, 8 rows, 8/8, under 30s.</li>
+      <li>Partial runs say <b>Incomplete</b> and retry only failed cases.</li>
+      <li>60/hour demo budget; fallback video.</li>
+      <li>Prominent Judge tour button in console.</li>
+    </ul></div>
+    <div class="box"><h3>Nov 7 · Core loop</h3><ul>
+      <li>One-line buyer and value proposition.</li>
+      <li>Run the flagship France case in one click.</li>
+      <li>Verdict, governing quote, review state first.</li>
+      <li>Plain-language definitions for jargon.</li>
+      <li>Do not touch the marketing page.</li>
+    </ul></div>
+    <div class="box"><h3>Nov 8 · Proof + robustness</h3><ul>
+      <li>Endpoint necessity table and ablation proof.</li>
+      <li>Clocked-off negative control: HOLD, never PUBLISH.</li>
+      <li>10-case adversarial suite; publish zero unsafe PUBLISH.</li>
+      <li>Fix the two real <code>no_governing_clause</code> failures as post-tuning.</li>
+    </ul></div>
+    <div class="box"><h3>Nov 9 · Freeze</h3><ul>
+      <li>Write the entry form around the rubric.</li>
+      <li>Select Best Overall and all three group awards.</li>
+      <li>Record the 2-minute demo.</li>
+      <li>Tests, deploy, incognito smoke test.</li>
+      <li>No new features after Nov 9.</li>
+    </ul></div>
+  </div>
+
+  <h2>The 2-minute demo</h2>
+  <ol>
+    <li><b>Problem:</b> an AI answer is fluent, cited and wrong because it used a superseded policy.</li>
+    <li><b>Tour:</b> eight cases in one click — precedence, version, omission, clean, injection, runbook, unapproved, tampered.</li>
+    <li><b>Precedence:</b> France annex overrides newer global policy; show superseded value and governing quote.</li>
+    <li><b>Safety:</b> injection and unsafe runbook HOLD; nothing ships.</li>
+    <li><b>Audit:</b> review record plus hash-chained ledger; human release/send-back is recorded.</li>
+    <li><b>Why nine:</b> decision endpoints decide; safety endpoints protect; Extract/Decide preserve metadata and triage. Disable them and the gate fails closed.</li>
+    <li><b>Honest close:</b> 25/31 locked, 27/31 post-tuning, zero unsafe false-PUBLISH, failures published.</li>
+  </ol>
+
+  <h2>What not to do</h2>
+  <ul>
+    <li>No Slack/Zendesk/multi-tenant/replay product in four days.</li>
+    <li>No public admin bypass; keep the admin boundary and show the evidence.</li>
+    <li>No editing locked held-out cases or presenting post-tuning as locked.</li>
+    <li>No headline 25/31 or 27/31; headline zero unsafe false-PUBLISH.</li>
+    <li>No more endpoints or cases. The bottleneck is clarity and reliability.</li>
+  </ul>
+
+  <div class="footer">Full transcript: <code>docs/strategy/council-verdict-2026-11-06.md</code> · Docket · live at <code>docket-clocked.vercel.app</code></div>
+</main>
+</body>
+</html>
