@@ -558,7 +558,7 @@
       dot.setAttribute("aria-hidden", "true");
       const label = document.createElement("span");
       label.className = "gate-doc-label";
-      label.textContent = doc.title || `Policy ${index + 1}`;
+      label.textContent = doc.title || `Untitled policy ${index + 1}`;
       tab.append(dot, label);
       refs.docTabs.appendChild(tab);
     });
@@ -571,9 +571,18 @@
         : doc.seeded
           ? "seeded"
           : "unapproved";
+    const hintText =
+      trust === "seeded"
+        ? "This policy is signed at startup and can publish."
+        : trust === "operator"
+          ? "This policy is attested for this check."
+          : trust === "admin"
+            ? "This policy is approved in the shared registry."
+            : "A custom policy needs an attestation or admin approval before the gate can publish.";
+    const attestDisabled = Boolean(doc.seeded || doc.policy_envelope);
     refs.docEditor.innerHTML = `
-      <div class="gate-doc-grid">
-        <div class="gate-field">
+      <div class="gate-doc-grid gate-doc-grid-fields">
+        <div class="gate-field gate-field--title">
           <label for="gate-doc-title">Title</label>
           <input id="gate-doc-title" type="text" maxlength="120" placeholder="Policy title" data-field="title" />
         </div>
@@ -582,19 +591,19 @@
           <input id="gate-doc-jurisdiction" type="text" maxlength="20" placeholder="Global" data-field="jurisdiction" />
         </div>
         <div class="gate-field">
-          <label for="gate-doc-date">Effective</label>
-          <input id="gate-doc-date" type="date" data-field="effective_date" />
-        </div>
-        <div class="gate-field">
-          <label for="gate-doc-expires">Expires</label>
-          <input id="gate-doc-expires" type="date" data-field="expires_date" />
-        </div>
-        <div class="gate-field">
           <label for="gate-doc-precedence">Precedence</label>
           <select id="gate-doc-precedence" data-field="precedence">
             <option value="0">Normal</option>
             <option value="1">Overrides</option>
           </select>
+        </div>
+        <div class="gate-field gate-field--date">
+          <label for="gate-doc-date">Effective</label>
+          <input id="gate-doc-date" type="date" data-field="effective_date" />
+        </div>
+        <div class="gate-field gate-field--date">
+          <label for="gate-doc-expires">Expires</label>
+          <input id="gate-doc-expires" type="date" data-field="expires_date" />
         </div>
       </div>
       <div class="gate-doc-grid gate-doc-approval">
@@ -608,10 +617,10 @@
         </div>
       </div>
       <div class="gate-doc-attest">
-        <button type="button" class="gate-mini" id="gate-attest-doc">Attest for this check</button>
+        <button type="button" class="gate-mini" id="gate-attest-doc" ${attestDisabled ? "disabled" : ""}>Attest for this check</button>
         <span>One-check approval. Shared registry approval is admin-only.</span>
       </div>
-      <p class="gate-doc-hint"><span class="gate-trust" data-trust="${esc(trust)}">${esc(trust)}</span>A custom policy needs an attestation or admin approval before the gate can publish.</p>
+      <p class="gate-doc-hint"><span class="gate-trust" data-trust="${esc(trust)}">${esc(trust)}</span>${esc(hintText)}</p>
       <div class="gate-field">
         <label for="gate-doc-text">Policy text</label>
         <textarea id="gate-doc-text" rows="7" maxlength="60000" placeholder="Paste the policy text…" data-field="text"></textarea>
@@ -628,7 +637,7 @@
     $("gate-doc-reference").value = doc.approval_reference || "";
     $("gate-doc-text").value = doc.text;
 
-    refs.docCount.textContent = `${state.documents.length} of ${MAX_DOCS}`;
+    refs.docCount.textContent = `${state.documents.length} ${state.documents.length === 1 ? "policy" : "policies"} · max ${MAX_DOCS}`;
     refs.addDoc.disabled = state.documents.length >= MAX_DOCS;
     refs.removeDoc.disabled = state.documents.length <= 1;
   }
@@ -2165,9 +2174,9 @@
     if (hint) {
       const effective = doc.seeded ? "seeded" : "operator";
       const note = doc.seeded
-        ? "This built-in policy is already seeded; the check uses its startup envelope."
-        : `This policy will be attested for the next check as ${esc(doc.approved_by)}.`;
-      hint.innerHTML = `<span class="gate-trust" data-trust="${effective}">${effective}</span> ${note} Shared registry approval stays admin-only.`;
+        ? "Built-in policy; the check uses its startup envelope."
+        : `Attested for this check as ${esc(doc.approved_by)}.`;
+      hint.innerHTML = `<span class="gate-trust" data-trust="${effective}">${effective}</span> ${note} Shared registry approval is admin-only.`;
     }
   }
 

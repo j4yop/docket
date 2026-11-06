@@ -242,6 +242,8 @@ body.gate-mode::before { display: none !important; }
   transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
 }
 .gate-mini:hover { border-color: var(--gate-red); color: var(--gate-text); background: rgba(255, 0, 36, 0.06); }
+.gate-mini:disabled { opacity: 0.42; cursor: not-allowed; }
+.gate-mini:disabled:hover { border-color: var(--gate-line-strong); color: var(--gate-muted); background: rgba(10, 13, 12, 0.7); }
 
 .gate-primary {
   appearance: none;
@@ -328,6 +330,13 @@ body.gate-mode::before { display: none !important; }
 .gate-context .gate-field { margin-top: 0; }
 
 #docket-gate input[type="text"],
+#docket-gate input[type="date"] {
+  min-width: 0;
+}
+#docket-gate input[type="date"] {
+  color-scheme: dark;
+}
+#docket-gate input[type="text"],
 #docket-gate input[type="date"],
 #docket-gate textarea,
 #docket-gate select {
@@ -366,8 +375,6 @@ body.gate-mode::before { display: none !important; }
   background-repeat: no-repeat;
   padding-right: 28px;
 }
-#docket-gate input[type="date"] { color-scheme: dark; }
-
 .gate-counter {
   margin-top: 4px;
   text-align: right;
@@ -450,25 +457,26 @@ body.gate-mode::before { display: none !important; }
 .gate-doc-tab[data-outcome="out of scope"] .gate-doc-dot { background: var(--gate-line-strong); }
 
 .gate-doc-editor {
-  border-top: 1px solid var(--gate-line);
-  padding: 11px 12px 12px;
+  padding: 12px 12px 14px;
   background: var(--gate-input);
 }
 .gate-doc-grid {
   display: grid;
-  grid-template-columns: 1.4fr 0.7fr 0.9fr 0.9fr 0.7fr;
-  gap: 9px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 14px;
 }
+.gate-doc-grid-fields .gate-field--title,
+.gate-doc-grid-fields .gate-field--date { grid-column: span 2; }
 .gate-doc-editor .gate-field { margin-top: 0; }
-.gate-doc-editor .gate-field + .gate-field { margin-top: 9px; }
 .gate-doc-actions {
   display: flex;
   gap: 6px;
-  padding: 9px 12px 11px;
-  border-top: 1px solid var(--gate-line);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--gate-line);
+  background: rgba(4, 7, 6, 0.28);
 }
-.gate-doc-attest { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
-.gate-doc-attest span { font-size: 10px; line-height: 1.4; color: var(--gate-faint); }
+.gate-doc-attest { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 12px; }
+.gate-doc-attest span { max-width: 62ch; font-size: 11px; line-height: 1.45; color: var(--gate-faint); }
 .gate-run-row {
   display: flex;
   justify-content: flex-end;
@@ -945,8 +953,8 @@ body.gate-mode::before { display: none !important; }
 .gate-policy-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-family: var(--gate-mono); font-size: 11px; color: var(--gate-faint); white-space: nowrap; }
 .gate-policy-failed { border-left: 2px solid var(--gate-red); }
 .gate-policy-failed .gate-policy-main b { color: var(--gate-red); }
-.gate-doc-approval { grid-template-columns: 1fr 1fr; margin-top: 9px; }
-.gate-doc-hint { margin: 6px 0 10px; font-size: 12px; line-height: 1.4; color: var(--gate-muted); }
+.gate-doc-approval { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; margin-top: 14px; }
+.gate-doc-hint { margin: 8px 0 18px; font-size: 12px; line-height: 1.45; color: var(--gate-muted); }
 
 /* ---------------------------------------------------------- counterfactual */
 .gate-ablation-controls { display: flex; align-items: center; gap: 8px; padding-top: 10px; flex-wrap: wrap; }
@@ -2122,4 +2130,17 @@ body.gate-console [data-header-nav="true"] { display: none !important; }
   .gate-shell[data-has-result="true"] .gate-verdict { padding: 20px 16px 24px; }
   .gate-edit-draft { margin-left: 0; }
   .gate-record-fields { grid-template-columns: 1fr; }
+}
+
+
+/* Keep the policy fields on a stable four-column rhythm. */
+@media (max-width: 760px) {
+  .gate-doc-grid-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gate-doc-grid-fields .gate-field--title { grid-column: span 2; }
+  .gate-doc-grid-fields .gate-field--date { grid-column: span 1; }
+}
+
+@media (max-width: 480px) {
+  .gate-doc-grid-fields { grid-template-columns: 1fr; }
+  .gate-doc-grid-fields .gate-field { grid-column: auto; }
 }
