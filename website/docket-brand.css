@@ -69,3 +69,16 @@ header.dk-header-hidden {
     white-space: nowrap;
   }
 }
+
+/* The Judge Tour tab is shown on wide desktops, immediately left of GitHub.
+   Below 1280px it is replaced by the sixth text-nav item so nothing overlaps. */
+@media (min-width: 1280px) {
+  .dk-tour-nav {
+    display: none !important;
+  }
+}
+@media (max-width: 1279px) {
+  .dk-tour-tab {
+    display: none !important;
+  }
+}

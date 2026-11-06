@@ -189,7 +189,7 @@ Sequence allocation uses an atomic claim (`allow_overwrite=False` on Blob, `O_EX
 
 ### Judge tour
 
-`/tour` is additive. The marketing front door at `/` is unchanged. The tour runs eight real cases in order and shows expected vs actual, credits, latency and audit sequence numbers. Latest local run: **8/8 as expected, 95 credits, 23.7 s**. The main nav and console link to it; the tour source is [`website/tour.html`](website/tour.html). It is not deployed by this branch.
+`/tour` is additive. The marketing front door at `/` is unchanged. The tour runs eight real cases in order and shows expected vs actual, credits, latency and audit sequence numbers. Latest local run: **8/8 as expected, 95 credits, 23.7 s**. The header tab and console link to it; the tour source is [`website/tour.html`](website/tour.html). It is not deployed by this branch.
 
 ---
 

@@ -372,3 +372,5 @@ def test_brand_nav_includes_the_judge_tour() -> None:
     assert response.status_code == 200
     assert "Judge Tour" in response.text
     assert '"/tour"' in response.text
+    assert "makeTourTab" in response.text
+    assert "dk-tour-tab" in response.text

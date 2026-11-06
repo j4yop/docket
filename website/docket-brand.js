@@ -20,7 +20,7 @@
     { label: "How it Works", href: SECTION_HREFS["How it Works"] },
     { label: "Scenarios", href: SECTION_HREFS.Scenarios },
     { label: "API", href: SECTION_HREFS.API },
-    { label: "Judge Tour", href: SECTION_HREFS["Judge Tour"] },
+    { label: "Judge Tour", href: SECTION_HREFS["Judge Tour"], navClass: "dk-tour-nav" },
   ];
   var MOBILE_NAV_ITEMS = [
     { label: "Problem", href: SECTION_HREFS.Problem },
@@ -74,7 +74,9 @@
     }
     ul.innerHTML = NAV_ITEMS.map(function (item) {
       return (
-        '<li><a class="' +
+        "<li" +
+        (item.navClass ? ' class="' + item.navClass + '"' : "") +
+        '><a class="' +
         NAV_LINK_CLASS +
         '" href="' +
         item.href +
@@ -231,6 +233,33 @@
         var clean = link.cloneNode(true);
         link.replaceWith(clean);
       });
+  }
+
+  // Build the Judge Tour tab from the GitHub tab's exact shape, then place it
+  // immediately to the left. This keeps the dark notched-tab treatment 1:1.
+  function makeTourTab() {
+    var github = document.querySelector('a[data-docket-github-link="true"]');
+    if (!github || document.querySelector('a[data-docket-tour-tab="true"]')) return;
+    var tab = github.cloneNode(true);
+    tab.dataset.docketTourTab = "true";
+    tab.removeAttribute("data-docket-github-link");
+    tab.href = "/tour";
+    tab.removeAttribute("target");
+    tab.removeAttribute("rel");
+    tab.setAttribute("aria-label", "Take the Judge Tour");
+    tab.setAttribute("title", "Take the Judge Tour");
+    tab.classList.add("dk-tour-tab");
+    tab.style.right = "347px";
+    var overlay = tab.querySelector('[data-slot="header-button-overlay"]');
+    if (overlay) overlay.remove();
+    var label = tab.querySelector('[data-docket-cta="github"]');
+    if (label) {
+      label.removeAttribute("data-docket-cta");
+      label.innerHTML = "<span>Judge Tour</span>";
+      label.style.left = "108px";
+      label.style.gap = "0";
+    }
+    github.parentNode.insertBefore(tab, github);
   }
 
   // The header GitHub tab is rendered as a button. Turn it into a real link
@@ -832,6 +861,7 @@
     applyLogo();
     applyCtas();
     makeGithubLinks();
+    makeTourTab();
   }
 
   // The header demo button carries a React click handler. Capture the click
