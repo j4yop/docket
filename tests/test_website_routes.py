@@ -224,7 +224,7 @@ def test_console_includes_the_necessity_proof_table() -> None:
     response = client.get("/console")
     assert response.status_code == 200
     assert 'id="gate-necessity"' in response.text
-    assert "What each endpoint changes" in response.text
+    assert "Endpoint contribution" in response.text
 
 
 def test_check_holds_when_the_policy_registry_fails(monkeypatch) -> None:
@@ -260,8 +260,8 @@ def test_console_exposes_the_pipeline_features() -> None:
     response = client.get("/console")
     assert response.status_code == 200
     for fragment in (
-        'data-stage="extract"',
-        'data-stage="decide"',
+        'id="gate-trace"',
+        'id="gate-technical-details"',
         'id="gate-ablate-endpoint"',
         'id="gate-policies-block"',
         'id="gate-audit-note"',
@@ -323,7 +323,7 @@ def test_console_exposes_health_approval_and_review_queue() -> None:
         'id="gate-review-load"',
         'id="gate-review-list"',
         'id="gate-health-ledger"',
-        'href="/tour"',
+        'id="gate-operations"',
     ):
         assert fragment in response.text
 

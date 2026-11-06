@@ -9,7 +9,7 @@ SAMPLES = [
         "id": "precedence-recency",
         "label": "Precedence over recency",
         "tag": "authority",
-        "blurb": "A newer global policy is subordinate to an older country annex. Latest-wins publishes the wrong answer.",
+        "blurb": "A newer global policy is subordinate to an older country annex. The gate rewrites the draft before it ships.",
         "question": "Does an employee in France need prior manager approval to expense a monitor?",
         "draft": (
             "Monitor reimbursement requires prior manager approval. "
@@ -118,7 +118,7 @@ SAMPLES = [
         "id": "omitted-condition",
         "label": "Omitted condition",
         "tag": "coverage",
-        "blurb": "The draft answers the question but leaves out a customer-facing exception. Coverage catches the omission.",
+        "blurb": "The draft answers the question but leaves out a customer-facing exception. The gate catches the omission.",
         "question": "Can a customer-facing employee work remotely?",
         "draft": "Employees may work remotely two days per week.",
         "context": {"country": "Global", "role": "Employee", "plan": "Standard"},
@@ -140,7 +140,7 @@ SAMPLES = [
         "id": "unsafe-runbook",
         "label": "Unsafe runbook",
         "tag": "safety",
-        "blurb": "A printer fix includes a command that disables endpoint protection. Inspect holds the runbook before it can ship.",
+        "blurb": "A printer fix includes a command that disables endpoint protection. The gate holds the runbook before it can ship.",
         "question": "What commands should I run to fix the printer queue?",
         "draft": (
             "Run this in PowerShell to restore printing:\n\n"
@@ -171,7 +171,7 @@ SAMPLES = [
         "id": "metadata-conflict",
         "label": "Metadata conflict",
         "tag": "integrity",
-        "blurb": "The submitted effective date contradicts the policy text. Extract holds before the wrong version can govern.",
+        "blurb": "The submitted effective date contradicts the policy text. The gate holds before the wrong version can govern.",
         "question": "What is the hotel limit?",
         "draft": "Hotel stays are reimbursed up to EUR 180 per night.",
         "context": {"country": "Global", "role": "Employee", "plan": "Standard"},
@@ -192,7 +192,7 @@ SAMPLES = [
         "id": "injected-policy",
         "label": "Injected policy note",
         "tag": "safety",
-        "blurb": "A policy document contains instructions aimed at the assistant. Guard holds it before Rerank.",
+        "blurb": "A policy document contains instructions aimed at the assistant. The gate holds it before it can reach the answer.",
         "question": "Can a contractor expense a monitor?",
         "draft": "Contractors can expense a monitor with manager approval.",
         "context": {"country": "Global", "role": "Contractor", "plan": "Standard"},

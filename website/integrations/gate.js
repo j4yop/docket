@@ -54,6 +54,7 @@
 
   function init() {
     refs = {
+      shell: document.querySelector(".gate-shell"),
       live: $("gate-live"),
       inputStatus: $("gate-input-status"),
       verdictStatus: $("gate-verdict-status"),
@@ -80,8 +81,7 @@
       clearButton: $("gate-clear"),
       importFile: $("gate-import-file"),
       examples: $("gate-examples"),
-      openExamples: $("gate-open-examples"),
-      stages: $("gate-stages"),
+      tryFrance: $("gate-try-france"),
       empty: $("gate-empty"),
       checking: $("gate-checking"),
       result: $("gate-result"),
@@ -90,7 +90,6 @@
       controlCalls: $("gate-control-calls"),
       controlCredits: $("gate-control-credits"),
       controlTime: $("gate-control-time"),
-      decisions: $("gate-decisions"),
       verdictHead: $("gate-verdict-head"),
       stampWord: $("gate-stamp-word"),
       stampRef: $("gate-stamp-ref"),
@@ -126,7 +125,7 @@
       policies: $("gate-policies"),
       record: $("gate-record"),
       recordMeta: $("gate-record-meta"),
-      flagship: $("gate-flagship"),
+      editDraft: $("gate-edit-draft"),
       necessity: $("gate-necessity"),
       necessityMeta: $("gate-necessity-meta"),
       necessityStatus: $("gate-necessity-status"),
@@ -173,10 +172,55 @@
   }
 
   function bindDocketNav() {
+    const consoleCta = document.querySelector('a[data-docket-console="true"]');
+    if (consoleCta) {
+      const label = [...consoleCta.querySelectorAll("span")].find(
+        (span) => span.textContent.trim().toLowerCase() === "open console"
+      );
+      if (label) label.textContent = "Ledger";
+      consoleCta.setAttribute("href", "/ledger");
+      consoleCta.setAttribute("aria-label", "Open the audit ledger");
+      consoleCta.classList.add("gate-ledger-cta");
+      consoleCta.removeAttribute("data-docket-console");
+      document.addEventListener(
+        "click",
+        (event) => {
+          const cta = event.target.closest("a.gate-ledger-cta");
+          if (!cta) return;
+          event.preventDefault();
+          event.stopPropagation();
+          window.location.assign("/ledger");
+        },
+        true,
+      );
+    }
+    for (const link of document.querySelectorAll('a[href="#gate-stages"]')) {
+      link.setAttribute("href", "#docket-gate");
+    }
     const menuButton = [...document.querySelectorAll("header button")].find(
       (button) => button.textContent.trim().toLowerCase() === "menu"
     );
     const overlay = document.getElementById("docket-mobile-menu");
+    if (overlay) {
+      const cleanMenu = () => {
+        for (const duplicate of overlay.querySelectorAll("#docket-menu-main > li")) {
+          duplicate.remove();
+        }
+        for (const link of overlay.querySelectorAll("a")) {
+          const text = link.textContent.trim().toLowerCase();
+          if (["problem", "product", "how it works", "scenarios", "api"].includes(text)) {
+            link.closest("li")?.remove();
+          } else if (text === "open console") {
+            link.setAttribute("href", "/ledger");
+            link.textContent = "Ledger";
+          }
+        }
+      };
+      cleanMenu();
+      if (window.MutationObserver) {
+        new MutationObserver(cleanMenu).observe(overlay, { childList: true, subtree: true });
+      }
+    }
     let menuOpen = false;
 
     const isVisible = (element) => Boolean(element && !element.hidden && element.getClientRects().length);
@@ -380,7 +424,6 @@
 
     refs.tabCase.addEventListener("click", () => setMode("case"));
     refs.tabExamples.addEventListener("click", () => setMode("examples"));
-    refs.openExamples.addEventListener("click", () => setMode("examples"));
     const modeTabs = [refs.tabCase, refs.tabExamples];
     for (const tab of modeTabs) {
       tab.addEventListener("keydown", (event) => {
@@ -398,7 +441,8 @@
     }
 
     refs.run.addEventListener("click", run);
-    refs.flagship.addEventListener("click", runFlagship);
+    refs.tryFrance.addEventListener("click", runFlagship);
+    refs.editDraft.addEventListener("click", editDraft);
     refs.necessity.addEventListener("click", onNecessityClick);
     document.addEventListener("keydown", (event) => {
       if (!(event.metaKey || event.ctrlKey) || event.key !== "Enter") return;
@@ -565,9 +609,9 @@
       </div>
       <div class="gate-doc-attest">
         <button type="button" class="gate-mini" id="gate-attest-doc">Attest for this check</button>
-        <span>Public per-check approval. Shared registry approval stays admin-only.</span>
+        <span>One-check approval. Shared registry approval is admin-only.</span>
       </div>
-      <p class="gate-doc-hint"><span class="gate-trust" data-trust="${esc(trust)}">${esc(trust)}</span>Built-in examples are pre-approved. A custom policy needs an attestation or an admin approval before the gate can publish.</p>
+      <p class="gate-doc-hint"><span class="gate-trust" data-trust="${esc(trust)}">${esc(trust)}</span>A custom policy needs an attestation or admin approval before the gate can publish.</p>
       <div class="gate-field">
         <label for="gate-doc-text">Policy text</label>
         <textarea id="gate-doc-text" rows="7" maxlength="60000" placeholder="Paste the policy text…" data-field="text"></textarea>
@@ -671,25 +715,6 @@
   }
 
   /* ------------------------------------------------------------------ stream */
-  function updateStageEvent(entry) {
-    if (!entry || !entry.stage) return;
-    const element = refs.stages.querySelector(
-      '.gate-stage[data-stage="' + String(entry.stage).replace(/"/g, "") + '"]'
-    );
-    if (!element) return;
-    element.dataset.state = entry.status === "done" ? "done" : entry.status;
-    const meta = element.querySelector(".gate-stage-meta");
-    if (!meta) return;
-    if (entry.status === "skipped") meta.textContent = "skipped";
-    else if (entry.status === "done") {
-      meta.textContent = `${entry.ms || 0} ms · ${formatCredits(entry.credits)} cr`;
-    } else if (entry.status === "error") {
-      meta.textContent = entry.reason || "error";
-    } else {
-      meta.textContent = "";
-    }
-  }
-
   let sessionToken = null;
   let sessionExpires = 0;
   let ablateBusy = false;
@@ -768,8 +793,7 @@
         }
         if (data) {
           const parsed = JSON.parse(data);
-          if (event === "stage") updateStageEvent(parsed);
-          else if (event === "result") result = parsed;
+          if (event === "result") result = parsed;
           else if (event === "error") throw new Error(parsed.message || "The check stream failed.");
         }
         boundary = buffer.indexOf("\n\n");
@@ -808,7 +832,6 @@
     refs.checking.hidden = false;
     setStatus("input", "Checking", "busy");
     setStatus("verdict", "Checking", "busy");
-    setStageState("");
 
     try {
       const data = await readCheckStream(payload);
@@ -899,6 +922,7 @@
     const decision = String(result.decision || "hold").toLowerCase();
     const ref = makeRef(result);
 
+    if (refs.shell) refs.shell.dataset.hasResult = "true";
     state.lastPayload = payload || state.lastPayload;
     refs.ablationResult.hidden = true;
     refs.ablationResult.innerHTML = "";
@@ -911,10 +935,6 @@
     refs.controlCalls.textContent = `${result.api_calls || 0} CALLS`;
     refs.controlCredits.textContent = `${formatCredits(result.credits)} CREDITS`;
     refs.controlTime.textContent = formatSeconds(result.latency_ms);
-
-    refs.decisions.querySelectorAll("span").forEach((span) => {
-      span.dataset.active = String(span.dataset.decision === decision);
-    });
 
     refs.verdictHead.dataset.state = decision;
     refs.stampWord.textContent = decision;
@@ -950,7 +970,6 @@
       .map((reason) => `<li>${esc(reason)}</li>`)
       .join("") || "<li>No reasons returned.</li>";
 
-    renderStages(result);
     renderTrace(result);
     renderDelivery(result, payload);
     renderPolicies(result);
@@ -1050,7 +1069,21 @@
       if (stage.stage === "verify" && contradicted) return "rewrite";
       return "support";
     };
-    refs.trace.innerHTML = stages
+    const codes = Array.isArray(result.codes) ? result.codes : [];
+    const relevant = stages.filter((stage) => {
+      if (stage.status === "error") return true;
+      if (stage.stage === "authority" || stage.stage === "verify") return true;
+      if (stage.stage === "guard" && (codes.includes("prompt_injection") || Number(guard.injection) >= guardThreshold)) return true;
+      if (stage.stage === "inspect" && (codes.includes("unsafe_script") || inspect.malicious === true)) return true;
+      if (stage.stage === "extract" && codes.includes("metadata_conflict")) return true;
+      if (stage.stage === "decide" && codes.includes("triage_review")) return true;
+      if (stage.stage === "compare" && ((result.compare_unacknowledged || []).length || (result.compare && result.compare.conflict_count))) return true;
+      if (stage.stage === "coverage" && codes.includes("coverage_gap")) return true;
+      if (stage.stage === "protect" && protect.entity_count) return true;
+      return false;
+    });
+    const shown = relevant.length ? relevant : stages.slice(0, 2);
+    refs.trace.innerHTML = shown
       .map((stage) => {
         const name = stage.stage;
         const role = roles[name] || "Endpoint contribution.";
@@ -1103,32 +1136,6 @@
     const claims = countedClaims(result);
     const supported = claims.filter((claim) => claim.verdict === "supported").length;
     return `${supported}/${claims.length} supported`;
-  }
-
-  function renderStages(result) {
-    const stages = result.stages || [];
-    refs.stages.querySelectorAll(".gate-stage").forEach((element) => {
-      const stage = stages.find((item) => item.stage === element.dataset.stage);
-      const meta = element.querySelector(".gate-stage-meta");
-      if (!stage) {
-        delete element.dataset.state;
-        meta.textContent = "";
-        return;
-      }
-      element.dataset.state = stage.status === "done" ? "done" : stage.status;
-      meta.textContent =
-        stage.status === "skipped"
-          ? "skipped"
-          : `${stage.ms || 0} ms · ${formatCredits(stage.credits)} cr`;
-    });
-  }
-
-  function setStageState(stateName) {
-    refs.stages.querySelectorAll(".gate-stage").forEach((element) => {
-      if (stateName) element.dataset.state = stateName;
-      else delete element.dataset.state;
-      element.querySelector(".gate-stage-meta").textContent = "";
-    });
   }
 
   function renderDelivery(result, payload) {
@@ -1937,12 +1944,10 @@
   function renderExamples() {
     refs.examples.innerHTML = state.samples
       .map((sample) => {
-        const tag = String(sample.tag || "case").toLowerCase();
         return `<button type="button" class="gate-example" data-id="${esc(sample.id)}">
-          <span class="gate-example-tag" data-tag="${esc(tag)}">${esc(tag)}</span>
           <span class="gate-example-title">${esc(sample.label || sample.id)}</span>
           <span class="gate-example-copy">${esc(sample.blurb || "")}</span>
-          <span class="gate-example-load">Load case</span>
+          <span class="gate-example-load">Open</span>
         </button>`;
       })
       .join("");
@@ -2042,7 +2047,7 @@
           <span>${esc(proof.role)}</span>
           <button type="button" class="gate-link necessity-run" data-proof="${esc(proof.endpoint)}">Re-run</button>
         </div>
-        <p class="necessity-case">Proof case · ${esc(proof.proof_case)}</p>
+        <p class="necessity-case">Case · ${esc(proof.proof_case)}</p>
         <div class="necessity-result">
           <span class="necessity-side"><em>With</em>${proofSummary(result.baseline)}</span>
           <span class="necessity-arrow" aria-hidden="true">→</span>
@@ -2061,7 +2066,7 @@
       renderNecessity(state.necessity);
     } catch (error) {
       if (refs.necessity) {
-        refs.necessity.innerHTML = '<div class="gate-necessity-loading">Recorded evidence is unavailable. Use the advanced counterfactual below, or re-run a check.</div>';
+        refs.necessity.innerHTML = '<div class="gate-necessity-loading">The endpoint proof is unavailable. Re-run a check to refresh it.</div>';
       }
       if (refs.necessityStatus) refs.necessityStatus.textContent = "Recorded evidence could not load.";
     }
@@ -2207,7 +2212,7 @@
     resetResult();
     setMode("case", "Imported case — edit anything.");
     setStatus("input", "Ready", "");
-    setStatus("verdict", "Idle", "");
+    setStatus("verdict", "Waiting", "");
   }
 
   function exportCase() {
@@ -2244,12 +2249,22 @@
   }
 
   function resetResult() {
+    if (refs.shell) refs.shell.dataset.hasResult = "false";
     refs.result.hidden = true;
     refs.empty.hidden = false;
     refs.checking.hidden = true;
     refs.verdictHead.dataset.state = "hold";
-    setStageState(null);
     applyDocOutcomes();
+  }
+
+  function editDraft() {
+    if (refs.shell) refs.shell.dataset.hasResult = "false";
+    refs.result.hidden = true;
+    refs.empty.hidden = false;
+    setStatus("verdict", "Waiting", "");
+    const input = document.querySelector(".gate-input");
+    if (input) input.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (refs.question) refs.question.focus({ preventScroll: true });
   }
 
   /* ---------------------------------------------------------------- status */

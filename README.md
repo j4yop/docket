@@ -132,7 +132,7 @@ A check is **not published** if the ledger write fails: the verdict is downgrade
 
 ### Real ablation, not a counterfactual paragraph
 
-`POST /api/ablate` runs the same inputs with exactly one endpoint skipped. It returns a real payload, never a hardcoded string, does not write to the ledger, and never publishes. `POST /api/prove` runs the baseline and one counterfactual together and returns only the field that proves the endpoint's contribution. The console's **What each endpoint changes** table uses it on the case that triggers each lever, and every row can be re-run live.
+`POST /api/ablate` runs the same inputs with exactly one endpoint skipped. It returns a real payload, never a hardcoded string, does not write to the ledger, and never publishes. `POST /api/prove` runs the baseline and one counterfactual together and returns only the field that proves the endpoint's contribution. The console's **Endpoint contribution** proof, under **Technical details**, uses it on the case that triggers each lever; every row can be re-run live.
 
 The flagship demonstration is real: on the injected-policy case, the baseline HOLDs after Guard. With Guard skipped, the same case proceeds through the rest of the pipeline and **PUBLISHes** — the injected note is no longer screened. That is the measured difference the endpoint makes, not a claim in a slide.
 
@@ -375,7 +375,7 @@ Same body plus `"endpoint": "protect" | "guard" | "inspect" | "extract" | "decid
 
 ### `POST /api/prove`
 
-Runs a baseline and one counterfactual together and returns only the signal that proves the endpoint's contribution. Used by the console's **What each endpoint changes** table. Two checks are charged to the demo budget; no audit record is written.
+Runs a baseline and one counterfactual together and returns only the signal that proves the endpoint's contribution. Used by the console's **Endpoint contribution** proof under **Technical details**. Two checks are charged to the demo budget; no audit record is written.
 
 ### `POST /api/policies/approve`
 

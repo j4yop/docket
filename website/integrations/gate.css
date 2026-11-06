@@ -946,7 +946,7 @@ body.gate-mode::before { display: none !important; }
 .gate-policy-failed { border-left: 2px solid var(--gate-red); }
 .gate-policy-failed .gate-policy-main b { color: var(--gate-red); }
 .gate-doc-approval { grid-template-columns: 1fr 1fr; margin-top: 9px; }
-.gate-doc-hint { margin-top: 6px; font-size: 12px; line-height: 1.4; color: var(--gate-muted); }
+.gate-doc-hint { margin: 6px 0 10px; font-size: 12px; line-height: 1.4; color: var(--gate-muted); }
 
 /* ---------------------------------------------------------- counterfactual */
 .gate-ablation-controls { display: flex; align-items: center; gap: 8px; padding-top: 10px; flex-wrap: wrap; }
@@ -2005,29 +2005,6 @@ footer form button:active { transform: translateY(0) scale(0.99); }
   .gate-health { grid-template-columns: 1fr; }
 }
 
-/* ------------------------------------------------------- judge workflow */
-.gate-judge-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin: 12px 0 4px;
-  padding: 12px;
-  border: 1px solid var(--gate-line);
-  background: rgba(4, 7, 6, 0.52);
-}
-.gate-judge-banner p {
-  max-width: 62ch;
-  font-size: 12px;
-  line-height: 1.55;
-  color: var(--gate-muted);
-}
-.gate-judge-banner p strong { color: var(--gate-text); font-weight: 600; }
-.gate-judge-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: none; }
-.gate-judge-actions .gate-secondary { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
-.gate-flagship { border-color: var(--gate-red); color: var(--gate-text); }
-.gate-flagship:hover { border-color: var(--gate-red-bright); }
-
 .gate-record {
   display: grid;
   gap: 1px;
@@ -2061,7 +2038,7 @@ footer form button:active { transform: translateY(0) scale(0.99); }
 .gate-record-review > b { display: block; margin-bottom: 6px; font-family: var(--gate-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--gate-faint); }
 .gate-record-review p { margin: 5px 0 0; font-size: 11px; line-height: 1.45; color: var(--gate-dim); overflow-wrap: anywhere; }
 .gate-record-review p span { display: block; font-family: var(--gate-mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--gate-faint); }
-.gate-record-fields { display: grid; gap: 7px; margin-top: 9px; }
+.gate-record-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 7px; margin-top: 9px; }
 .gate-record-fields label { display: grid; gap: 3px; font-family: var(--gate-mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--gate-faint); }
 .gate-record-fields input { width: 100%; padding: 6px 8px; border: 1px solid var(--gate-line); background: var(--gate-input); color: var(--gate-text); font-family: var(--gate-mono); font-size: 11px; }
 .gate-record-fields input:focus { outline: 1px solid var(--gate-red); outline-offset: 1px; }
@@ -2104,10 +2081,45 @@ footer form button:active { transform: translateY(0) scale(0.99); }
   .gate-block-head { align-items: flex-start; }
   .gate-block-head h3 { font-size: 19px; line-height: 1; }
   .gate-block-head span { white-space: normal; text-align: right; }
-  .gate-judge-banner { align-items: stretch; flex-direction: column; }
-  .gate-judge-actions .gate-secondary { flex: 1 1 100%; }
   .gate-record-grid { grid-template-columns: 1fr 1fr; }
   .necessity-card-head { grid-template-columns: 1fr auto; }
   .necessity-card-head > span { grid-column: 1 / -1; grid-row: 2; }
   .gate-glossary > div { grid-template-columns: 1fr; gap: 2px; }
+}
+
+
+/* ------------------------------------------------------- console flow */
+body.gate-console [data-header-nav="true"] { display: none !important; }
+
+.gate-intro {
+  max-width: 58ch;
+  margin: 12px 0 2px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--gate-muted);
+}
+
+.gate-shell[data-has-result="true"] { grid-template-columns: 1fr; }
+.gate-shell[data-has-result="true"] .gate-input { display: none; }
+.gate-shell[data-has-result="true"] .gate-verdict { border-right: 0; padding: 28px 36px 32px; }
+.gate-shell[data-has-result="true"] .gate-result { max-width: 1080px; margin: 0 auto; }
+.gate-edit-draft { margin-left: auto; }
+
+.gate-tech-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--gate-dim);
+}
+.gate-tech-drawer,
+.gate-ops-drawer { margin-top: 18px; }
+.gate-tech-drawer[open],
+.gate-ops-drawer[open] { padding-bottom: 10px; }
+.gate-tech-drawer .gate-block:first-of-type,
+.gate-ops-drawer .gate-block:first-of-type { margin-top: 14px; }
+
+@media (max-width: 760px) {
+  .gate-shell[data-has-result="true"] .gate-verdict { padding: 20px 16px 24px; }
+  .gate-edit-draft { margin-left: 0; }
+  .gate-record-fields { grid-template-columns: 1fr; }
 }

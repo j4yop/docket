@@ -10,7 +10,7 @@
 1. Open `/tour` and press **Run the tour**.
 2. Watch eight live cases complete in about 6 seconds: precedence, version, omission, clean control, injection, unsafe runbook, unapproved policy, tampered policy.
 3. Open an **audit seq** link to verify the hash-chained record in `/ledger`.
-4. Open `/console`, press **Run flagship France case**, then inspect the verdict, the decision record, the review record and the “What each endpoint changes” table. Claim or send back the review with its scoped capability, and re-run any proof row to see the same result live.
+4. Open `/console`, press **Try the France example**, then inspect the decision, decision record and review record. Open **Technical details → Endpoint contribution** to see the nine proofs; claim or send back the review with its scoped capability, and re-run any proof row.
 
 ## Two-minute demo script
 
@@ -19,9 +19,9 @@
 | 0:00 | Open `/tour` | “This is the submission demo. It is the product, not a slide.” |
 | 0:15 | Press **Run the tour** | “Eight live cases: precedence, versioning, omission, a clean control, injection, an unsafe script, an unapproved policy and a tampered policy.” |
 | 0:40 | Point at the eight rows and the audit links | “Every row is a real Clocked call, and every determination has a ledger sequence. Nothing here is pre-recorded.” |
-| 0:55 | Open `/console` and press **Run flagship France case** | “The console meets a draft answer waiting to ship. The older France annex governs because of jurisdiction and precedence, not recency.” |
+| 0:55 | Open `/console` and press **Try the France example** | “The console meets a draft answer waiting to ship. The older France annex governs because of jurisdiction and precedence, not recency.” |
 | 1:15 | Point at the Decision record and review card | “The audit sequence, signed policy envelopes, review state and release/send-back actions are in one record. This review can be claimed and sent back with its scoped capability; the shared queue stays admin-only.” |
-| 1:40 | Scroll to **What each endpoint changes** and re-run Guard | “Each decision lever is proved on the case that triggers it. Guard off turns a HOLD into a PUBLISH. If Clocked is unavailable, the gate holds.” |
+| 1:40 | Open **Technical details → Endpoint contribution** and re-run Guard | “Each decision lever is proved on the case that triggers it. Guard off turns a HOLD into a PUBLISH. If Clocked is unavailable, the gate holds.” |
 | 1:55 | Close on the evidence | “The headline is 0 unsafe false-PUBLISH across 31 locked held-out cases and 10 adversarial cases, with the exact-label results published honestly.” |
 
 ## What to look for
@@ -39,7 +39,7 @@
 |---|---:|---|
 | Practical usefulness | 25 | The console’s flagship case, decision record and review state |
 | Quality of core Clocked integration | 30 | Authority + Compare + Fill + Verify decide the verdict; Guard/Inspect stop unsafe inputs |
-| Additional endpoints | 15 | “What each endpoint changes” table: nine proof cases, recorded live, each row re-runnable |
+| Additional endpoints | 15 | **Endpoint contribution** under Technical details: nine proof cases, recorded live, each row re-runnable |
 | Implementation and UX | 20 | One-click tour, retry on partial runs, ledger, health, review queue |
 | Clear explanation and reproducibility | 10 | This guide, `/tour`, README, public repo, 102 tests |
 

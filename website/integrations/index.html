@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Docket Console</title>
-  <meta name="description" content="Docket Console — the publish gate for AI answers. Resolve authority, compare clauses, verify claims, and return Publish, Rewrite, or Hold." />
+  <meta name="description" content="Docket Console — check a support draft against the policy that governs it and record the release decision." />
   <meta name="theme-color" content="#010401" />
   <script>
     document.documentElement.classList.add("dk-motion");
@@ -19,12 +19,12 @@
   </script>
   <link rel="stylesheet" href="/_next/static/chunks/903dbd2dea79002f.css" />
   <link rel="stylesheet" href="/_next/static/chunks/59b07a433639f987.css" />
-  <link rel="stylesheet" href="/integrations/gate.css?v=20261106d" />
+  <link rel="stylesheet" href="/integrations/gate.css?v=20261106h" />
   <link rel="stylesheet" href="/docket-footer.css?v=20261105g" />
   <link rel="stylesheet" href="/docket-brand.css?v=20261106c" />
   <link rel="icon" href="/docket-icon.svg" type="image/svg+xml" />
 </head>
-<body>
+<body class="gate-console">
   <div class="gate-page-bg" aria-hidden="true"></div>
   
 
@@ -33,408 +33,297 @@
 <button type="button" class="group/book fixed top-0 right-[131px] h-14 w-[216px] transform-gpu overflow-hidden max-lg:hidden font-misc cursor-pointer text-sm font-bold whitespace-nowrap text-white uppercase focus-visible:ring-ring outline-none focus-visible:ring-2 transition-[opacity,visibility] duration-200" aria-label="Docket on GitHub" title="Docket on GitHub" style="z-index: calc(var(--z-frame) - 1); visibility: inherit; opacity: 1; clip-path: path(&quot;M 0 0 C 6 0 9 5 13 10.14 L 34.7 38 C 39.5 44.16 42.5 46.666 51.5 46.666 H 216 V 0 H 0 Z&quot;); transform-origin: 0% 100%;"><svg class="pointer-events-none absolute inset-0 size-full" viewBox="0 0 216 56" fill="none" preserveAspectRatio="none" aria-hidden="true" style="color: oklch(0.219611 0.005931 179.279);"><path d="M0 0C6 0 9 5 13 10.14L34.7 38C39.5 44.16 42.5 46.666 51.5 46.666H216V0H0Z" fill="currentColor"></path><path d="M0 0C6 0 9 5 13 10.14L34.7 38C39.5 44.16 42.5 46.666 51.5 46.666H216V0H0Z" stroke="white" stroke-opacity="0.06"></path><path d="M0 0C6 0 9 5 13 10.14L34.7 38C39.5 44.16 42.5 46.666 51.5 46.666H216V0H0Z" stroke="white" stroke-width="4" class="opacity-0 group-focus-visible/book:opacity-100"></path></svg><svg data-slot="header-button-overlay" class="pointer-events-none absolute -translate-y-1/2 opacity-0 transition-opacity duration-300 will-change-[opacity] group-hover/book:opacity-100 group-hover/logo:opacity-100 group-hover/primary:opacity-100 group-focus-visible/book:opacity-100 group-focus-visible/logo:opacity-100 group-focus-visible/primary:opacity-100 motion-reduce:transition-none" viewBox="0 0 156.023 33" preserveAspectRatio="none" fill="none" aria-hidden="true" style="top: 26.1061px; width: 156.023px; height: 33px; left: 25.58px;"><image href="/images/header/secondary-overlay.svg" width="156.023" height="33"></image></svg><span class="absolute -translate-x-1/2 -translate-y-1/2" style="left: 104px; top: 24.6061px; display: inline-flex; align-items: center; gap: 8px;" data-docket-cta="github"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false" fill="currentColor" style="flex:none"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path></svg><span>GitHub</span></span></button>
   <div aria-label="Site menu" aria-modal="true" class="fixed inset-0 z-[var(--z-menu-overlay)] flex flex-col lg:hidden" hidden="" id="docket-mobile-menu" role="dialog"><div class="flex flex-col" style="translate: none; rotate: none; scale: none; transform: translate(0px, 0px); opacity: 0.95;"><div class="relative flex flex-col items-center bg-gradient-to-b from-black/95 to-[#4D0308] pt-24 pb-4" data-main-menu="true"><div class="pointer-events-none absolute top-16 left-6 z-10 w-8 transition-[opacity] duration-300"><div class="relative grid aspect-square grid-cols-2 grid-rows-2" data-crosshair="true" style="color: var(--color-primary); opacity: 1;"><div class="border-r border-b border-current"></div><div class="border-b border-l border-current"></div><div class="border-t border-r border-current"></div><div class="border-t border-l border-current"></div></div></div><div class="grid aspect-square grid-cols-2 grid-rows-2 pointer-events-none absolute top-16 right-6 z-10 w-8" data-crosshair="true" style="color: var(--color-primary); opacity: 1;"><div class="border-r border-b border-current"></div><div class="border-b border-l border-current"></div><div class="border-t border-r border-current"></div><div class="border-t border-l border-current"></div></div><div class="-my-5 w-full overflow-clip py-5"><div class="flex w-full items-start" id="docket-menu-carousel"><div class="flex w-full flex-col items-center justify-center" data-main-links="true" id="docket-menu-main"><ul class="font-misc flex flex-col items-center gap-5 text-4xl uppercase"><li class="relative px-3 py-1"><a class="transition-colors" href="#docket-gate">Problem</a><span class="pointer-events-none absolute opacity-0" data-corner="0" style="width: 12px; height: 12px; top: -5px; left: -5px; border-top: 1.5px solid; border-left: 1.5px solid; border-top-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="1" style="width: 12px; height: 12px; top: -5px; right: -5px; border-top: 1.5px solid; border-right: 1.5px solid; border-top-right-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="2" style="width: 12px; height: 12px; bottom: -5px; left: -5px; border-bottom: 1.5px solid; border-left: 1.5px solid; border-bottom-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="3" style="width: 12px; height: 12px; bottom: -5px; right: -5px; border-bottom: 1.5px solid; border-right: 1.5px solid; border-bottom-right-radius: 1.5px;"></span></li><li class="relative px-3 py-1"><a class="transition-colors" href="#docket-gate">Product</a><span class="pointer-events-none absolute opacity-0" data-corner="0" style="width: 12px; height: 12px; top: -5px; left: -5px; border-top: 1.5px solid; border-left: 1.5px solid; border-top-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="1" style="width: 12px; height: 12px; top: -5px; right: -5px; border-top: 1.5px solid; border-right: 1.5px solid; border-top-right-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="2" style="width: 12px; height: 12px; bottom: -5px; left: -5px; border-bottom: 1.5px solid; border-left: 1.5px solid; border-bottom-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="3" style="width: 12px; height: 12px; bottom: -5px; right: -5px; border-bottom: 1.5px solid; border-right: 1.5px solid; border-bottom-right-radius: 1.5px;"></span></li><li class="relative px-3 py-1"><a class="transition-colors" href="#gate-stages">How it Works</a><span class="pointer-events-none absolute opacity-0" data-corner="0" style="width: 12px; height: 12px; top: -5px; left: -5px; border-top: 1.5px solid; border-left: 1.5px solid; border-top-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="1" style="width: 12px; height: 12px; top: -5px; right: -5px; border-top: 1.5px solid; border-right: 1.5px solid; border-top-right-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="2" style="width: 12px; height: 12px; bottom: -5px; left: -5px; border-bottom: 1.5px solid; border-left: 1.5px solid; border-bottom-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="3" style="width: 12px; height: 12px; bottom: -5px; right: -5px; border-bottom: 1.5px solid; border-right: 1.5px solid; border-bottom-right-radius: 1.5px;"></span></li><li class="relative px-3 py-1"><a class="transition-colors" href="#gate-panel-examples">Scenarios</a><span class="pointer-events-none absolute opacity-0" data-corner="0" style="width: 12px; height: 12px; top: -5px; left: -5px; border-top: 1.5px solid; border-left: 1.5px solid; border-top-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="1" style="width: 12px; height: 12px; top: -5px; right: -5px; border-top: 1.5px solid; border-right: 1.5px solid; border-top-right-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="2" style="width: 12px; height: 12px; bottom: -5px; left: -5px; border-bottom: 1.5px solid; border-left: 1.5px solid; border-bottom-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="3" style="width: 12px; height: 12px; bottom: -5px; right: -5px; border-bottom: 1.5px solid; border-right: 1.5px solid; border-bottom-right-radius: 1.5px;"></span></li><li class="relative px-3 py-1"><a class="transition-colors" href="https://github.com/j4yop/docket#api" target="_blank" rel="noopener noreferrer">API</a><span class="pointer-events-none absolute opacity-0" data-corner="0" style="width: 12px; height: 12px; top: -5px; left: -5px; border-top: 1.5px solid; border-left: 1.5px solid; border-top-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="1" style="width: 12px; height: 12px; top: -5px; right: -5px; border-top: 1.5px solid; border-right: 1.5px solid; border-top-right-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="2" style="width: 12px; height: 12px; bottom: -5px; left: -5px; border-bottom: 1.5px solid; border-left: 1.5px solid; border-bottom-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="3" style="width: 12px; height: 12px; bottom: -5px; right: -5px; border-bottom: 1.5px solid; border-right: 1.5px solid; border-bottom-right-radius: 1.5px;"></span></li><li class="relative px-3 py-1 text-primary" style="text-shadow: currentcolor 0px 0px 0.02em, currentcolor 0px 0px 0.15em, currentcolor 0px 0px 0.5em;"><a class="transition-colors" href="https://github.com/j4yop/docket" target="_blank" rel="noopener noreferrer">GitHub</a><span class="pointer-events-none absolute opacity-0" data-corner="0" style="width: 12px; height: 12px; top: -5px; left: -5px; border-top: 1.5px solid; border-left: 1.5px solid; border-top-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="1" style="width: 12px; height: 12px; top: -5px; right: -5px; border-top: 1.5px solid; border-right: 1.5px solid; border-top-right-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="2" style="width: 12px; height: 12px; bottom: -5px; left: -5px; border-bottom: 1.5px solid; border-left: 1.5px solid; border-bottom-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="3" style="width: 12px; height: 12px; bottom: -5px; right: -5px; border-bottom: 1.5px solid; border-right: 1.5px solid; border-bottom-right-radius: 1.5px;"></span></li><li class="relative px-3 py-1 text-primary" style="text-shadow: currentcolor 0px 0px 0.02em, currentcolor 0px 0px 0.15em, currentcolor 0px 0px 0.5em;"><a class="transition-colors" href="/console">Open console</a><span class="pointer-events-none absolute opacity-0" data-corner="0" style="width: 12px; height: 12px; top: -5px; left: -5px; border-top: 1.5px solid; border-left: 1.5px solid; border-top-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="1" style="width: 12px; height: 12px; top: -5px; right: -5px; border-top: 1.5px solid; border-right: 1.5px solid; border-top-right-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="2" style="width: 12px; height: 12px; bottom: -5px; left: -5px; border-bottom: 1.5px solid; border-left: 1.5px solid; border-bottom-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="3" style="width: 12px; height: 12px; bottom: -5px; right: -5px; border-bottom: 1.5px solid; border-right: 1.5px solid; border-bottom-right-radius: 1.5px;"></span></li></ul></li><li class="relative px-3 py-1 text-primary" style="text-shadow: currentcolor 0px 0px 0.02em, currentcolor 0px 0px 0.15em, currentcolor 0px 0px 0.5em;"><a class="transition-colors" href="https://github.com/j4yop/docket" target="_blank" rel="noopener noreferrer">GitHub</a><span class="pointer-events-none absolute opacity-0" data-corner="0" style="width: 12px; height: 12px; top: -5px; left: -5px; border-top: 1.5px solid; border-left: 1.5px solid; border-top-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="1" style="width: 12px; height: 12px; top: -5px; right: -5px; border-top: 1.5px solid; border-right: 1.5px solid; border-top-right-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="2" style="width: 12px; height: 12px; bottom: -5px; left: -5px; border-bottom: 1.5px solid; border-left: 1.5px solid; border-bottom-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="3" style="width: 12px; height: 12px; bottom: -5px; right: -5px; border-bottom: 1.5px solid; border-right: 1.5px solid; border-bottom-right-radius: 1.5px;"></span></li><li class="relative px-3 py-1 text-primary" style="text-shadow: currentcolor 0px 0px 0.02em, currentcolor 0px 0px 0.15em, currentcolor 0px 0px 0.5em;"><a class="transition-colors" href="/console">Open console</a><span class="pointer-events-none absolute opacity-0" data-corner="0" style="width: 12px; height: 12px; top: -5px; left: -5px; border-top: 1.5px solid; border-left: 1.5px solid; border-top-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="1" style="width: 12px; height: 12px; top: -5px; right: -5px; border-top: 1.5px solid; border-right: 1.5px solid; border-top-right-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="2" style="width: 12px; height: 12px; bottom: -5px; left: -5px; border-bottom: 1.5px solid; border-left: 1.5px solid; border-bottom-left-radius: 1.5px;"></span><span class="pointer-events-none absolute opacity-0" data-corner="3" style="width: 12px; height: 12px; bottom: -5px; right: -5px; border-bottom: 1.5px solid; border-right: 1.5px solid; border-bottom-right-radius: 1.5px;"></span></li></ul></div></div></div><div class="text-primary font-misc pointer-events-none mt-10 flex w-full justify-between px-6 text-[12px] uppercase contain-layout"><div class="flex flex-col"><p class="" data-scramble="docket.corp®">docket.corp®</p><p class="" data-scramble="ai-native">policy control</p></div><div class="flex flex-col items-end"><p class="" data-scramble="all rights reserved">all rights reserved</p><p class="" data-scramble="2026">2026</p></div></div></div><div class="pointer-events-none -mt-px shrink-0"><svg fill="none" preserveAspectRatio="xMidYMax meet" viewBox="0 0 1978 322" width="100%" xmlns="http://www.w3.org/2000/svg"><path d="M1977.5 195.547C1977.5 210.847 1966.51 223.935 1951.43 226.574L1437.22 316.63C1423.6 319.014 1410.02 312.243 1403.73 299.933L1362.16 218.553C1356.6 207.681 1345.42 200.839 1333.21 200.839H646.33C634.122 200.839 622.943 207.681 617.389 218.553L575.808 299.943C569.521 312.249 555.949 319.021 542.337 316.644L26.5811 226.565C11.5032 223.932 0.500017 210.841 0.5 195.535V0.503906H1977.5V195.547Z" fill="url(#paint0_linear_729_362598)" stroke="url(#paint1_linear_729_362598)" stroke-width="4"></path><defs><linearGradient gradientUnits="userSpaceOnUse" id="paint0_linear_729_362598" x1="513.797" x2="513.797" y1="321.183" y2="-316.693"><stop stop-color="#4D0308"></stop><stop offset="1" stop-color="#4D0308"></stop></linearGradient><linearGradient gradientUnits="userSpaceOnUse" id="paint1_linear_729_362598" x1="989" x2="989" y1="321.183" y2="16.9003"><stop stop-color="#FF0027"></stop><stop offset="1" stop-color="#990017" stop-opacity="0"></stop></linearGradient></defs></svg></div></div><div class="from-background/80 w-full flex-1 bg-gradient-to-t to-transparent opacity-0" data-menu-glow="true" style="opacity: 0.8947;"></div></div>
 
-<section id="docket-gate" aria-label="Docket policy gate">
-  <h1 class="gate-sr-only">Docket Console — the publish gate for AI answers</h1>
-  <div class="gate-wrap">
-    <div class="gate-shell">
-      <!-- ------------------------------------------------------------ INPUT -->
-      <section class="gate-input dk-reveal" aria-labelledby="gate-input-title">
-        <div class="gate-section-head">
-          <h2 id="gate-input-title">The input</h2>
-          <span class="gate-status" id="gate-input-status" aria-live="polite">Ready</span>
-        </div>
+<section aria-label="Docket policy gate" id="docket-gate">
+<h1 class="gate-sr-only">Docket Console — the publish gate for AI answers</h1>
+<div class="gate-wrap">
+<div class="gate-shell">
+<!-- ------------------------------------------------------------ INPUT -->
+<section aria-labelledby="gate-input-title" class="gate-input dk-reveal">
+<div class="gate-section-head">
+<h2 id="gate-input-title">Check a draft</h2>
+<span aria-live="polite" class="gate-status" id="gate-input-status">Ready</span>
+</div><p class="gate-intro">Paste the draft your assistant wants to send. The gate names the governing policy and shows the claims it checked.</p>
 
-        <div class="gate-judge-banner">
-          <p><strong>For support teams shipping AI answers.</strong> Prove the governing policy, catch stale or unsafe claims, and record who released it.</p>
-          <div class="gate-judge-actions">
-            <button type="button" class="gate-secondary gate-flagship" id="gate-flagship">Run flagship France case</button>
-            <a class="gate-secondary" href="/tour">Judge tour</a>
-          </div>
-        </div>
+<div aria-label="Input mode" class="gate-tabs" role="tablist">
+<button aria-controls="gate-panel-case" aria-selected="true" id="gate-tab-case" role="tab" type="button">Your case</button>
+<button aria-controls="gate-panel-examples" aria-selected="false" id="gate-tab-examples" role="tab" type="button">Examples</button>
+</div>
+<div aria-labelledby="gate-tab-case" id="gate-panel-case" role="tabpanel">
+<div class="gate-case-bar">
+<span class="gate-case-note" id="gate-case-note">Paste a draft, or load a worked example.</span>
+<div class="gate-mini-actions">
+<button class="gate-mini" id="gate-import" type="button">Import</button>
+<button class="gate-mini" id="gate-export" type="button">Export</button>
+<button class="gate-mini" id="gate-clear" type="button">Clear</button>
+<input accept="application/json" hidden="" id="gate-import-file" type="file"/>
+</div>
+</div>
+<div class="gate-field">
+<label for="gate-question">Employee question</label>
+<input autocomplete="off" id="gate-question" maxlength="2000" placeholder="e.g. How long do I have to return a defective item?" type="text"/>
+</div>
+<div class="gate-context">
+<div class="gate-field">
+<label for="gate-country">Country</label>
+<input autocomplete="off" id="gate-country" maxlength="40" placeholder="e.g. DE" type="text"/>
+</div>
+<div class="gate-field">
+<label for="gate-role">Role</label>
+<input autocomplete="off" id="gate-role" maxlength="60" placeholder="e.g. Contractor" type="text"/>
+</div>
+<div class="gate-field">
+<label for="gate-plan">Plan</label>
+<input autocomplete="off" id="gate-plan" maxlength="60" placeholder="e.g. Standard" type="text"/>
+</div>
+</div>
+<div class="gate-policies">
+<div class="gate-policies-head">
+<span>Policies</span>
+<span id="gate-doc-count">1 of 6</span>
+</div>
+<div aria-label="Policies" class="gate-doc-tabs" id="gate-doc-tabs" role="tablist"></div>
+<div class="gate-doc-editor" id="gate-doc-editor" role="tabpanel"></div>
+<div class="gate-doc-actions">
+<button class="gate-mini" id="gate-add-doc" type="button">Add policy</button>
+<button class="gate-mini" id="gate-remove-doc" type="button">Remove policy</button>
+</div>
+<details class="gate-admin" id="gate-approval-block">
+<summary>Shared policy registry <span>admin only</span></summary>
+<div class="gate-admin-body">
+<p class="gate-admin-copy">Approve the active policy into the shared registry for every check. For a single check, use Attest for this check in the policy editor.</p>
+<div class="gate-admin-row">
+<div class="gate-field">
+<label for="gate-admin-token">Admin token</label>
+<input autocomplete="off" id="gate-admin-token" placeholder="DOCKET_ADMIN_TOKEN" type="password"/>
+</div>
+<button class="gate-secondary" id="gate-approve-policy" type="button">Approve active policy</button>
+</div>
+<p aria-live="polite" class="gate-admin-status" id="gate-approve-status"></p>
+<div class="gate-approval-envelope" hidden="" id="gate-approval-envelope"></div>
+<p class="gate-admin-note">Editing a signed field after approval produces a tamper HOLD.</p>
+</div>
+</details>
+</div>
+<div class="gate-field">
+<label for="gate-draft">Draft answer <span class="gate-label-note">what the assistant is about to send</span></label>
+<textarea id="gate-draft" maxlength="10000" placeholder="e.g. Defective items can be returned within 30 days." rows="4"></textarea>
+<div class="gate-counter" id="gate-draft-count">0 / 10,000</div>
+</div>
+<p class="gate-error" hidden="" id="gate-error" role="alert"></p>
+<div class="gate-run-row">
+<button class="gate-primary" id="gate-run" type="button">Run check <kbd>⌘↵</kbd></button>
+</div>
+</div>
+<div aria-labelledby="gate-tab-examples" hidden="" id="gate-panel-examples" role="tabpanel">
+<p class="gate-panel-copy">Load an example, then edit any field.</p>
+<div class="gate-examples" id="gate-examples"></div>
+</div>
+</section>
+<!-- ---------------------------------------------------------- VERDICT -->
+<section aria-labelledby="gate-verdict-title" class="gate-verdict dk-reveal">
+<div class="gate-section-head">
+<h2 id="gate-verdict-title">Decision</h2>
+<span aria-live="polite" class="gate-status" id="gate-verdict-status">Waiting</span>
+</div>
 
-        <div class="gate-tabs" role="tablist" aria-label="Input mode">
-          <button type="button" role="tab" id="gate-tab-case" aria-selected="true" aria-controls="gate-panel-case">Your case</button>
-          <button type="button" role="tab" id="gate-tab-examples" aria-selected="false" aria-controls="gate-panel-examples">Examples</button>
-        </div>
+<div class="gate-empty" id="gate-empty">
+<svg aria-hidden="true" class="gate-empty-mark" viewbox="0 0 40 40">
+<path d="M7 15V7h8M25 7h8v8M33 25v8h-8M15 33H7v-8" fill="none" stroke="currentColor" stroke-width="1.4"></path>
+<circle cx="20" cy="20" fill="currentColor" r="2.4"></circle>
+</svg>
+<h3>No draft checked.</h3>
+<p>Paste a draft, or start with the France example. The decision will name the governing policy and the passage that controls it.</p>
+<button class="gate-primary" id="gate-try-france" type="button">Try the France example</button>
+<div class="gate-legend">
+<div><b>Publish</b><span>Claims are supported by the governing policy.</span></div>
+<div><b>Rewrite</b><span>A claim is contradicted or unsupported.</span></div>
+<div><b>Hold</b><span>Authority is unresolved or a check did not finish.</span></div>
+</div>
+</div>
+<div class="gate-checking" hidden="" id="gate-checking">
+<span aria-hidden="true" class="gate-spinner"></span>
+<span>Checking authority, conflicts and claims…</span>
+</div>
+<div class="gate-result" hidden="" id="gate-result">
+<div class="gate-control-strip" id="gate-control-strip">
+<span class="gate-ref" id="gate-ref">DK-000000-0000</span>
+<span id="gate-control-policies">0 POLICIES</span>
+<span id="gate-control-calls">0 CALLS</span>
+<span id="gate-control-credits">0 CREDITS</span>
+<span id="gate-control-time">0.0s</span>
+<button class="gate-mini gate-edit-draft" id="gate-edit-draft" type="button">Edit draft</button></div>
 
-        <div id="gate-panel-case" role="tabpanel" aria-labelledby="gate-tab-case">
-          <div class="gate-case-bar">
-            <span class="gate-case-note" id="gate-case-note">Your own policies, question and draft.</span>
-            <div class="gate-mini-actions">
-              <button type="button" class="gate-mini" id="gate-import">Import</button>
-              <button type="button" class="gate-mini" id="gate-export">Export</button>
-              <button type="button" class="gate-mini" id="gate-clear">Clear</button>
-              <input type="file" id="gate-import-file" accept="application/json" hidden />
-            </div>
-          </div>
+<div class="gate-verdict-head" data-state="hold" id="gate-verdict-head">
+<div class="gate-stamp" id="gate-stamp">
+<span class="gate-stamp-word" id="gate-stamp-word">Hold</span>
+<span class="gate-stamp-ref" id="gate-stamp-ref">DK-000000-0000</span>
+</div>
+<div class="gate-verdict-copy">
+<p aria-live="polite" class="gate-headline" id="gate-headline"></p>
+<p class="gate-meta" id="gate-meta"></p>
+</div>
+</div>
+<div aria-hidden="true" class="gate-ruler">
+<span class="gate-ruler-line"></span>
+<span class="gate-ruler-tick"></span>
+<span class="gate-ruler-marker" id="gate-ruler-marker"></span>
+<span class="gate-ruler-edge gate-ruler-left">0</span>
+<span class="gate-ruler-edge gate-ruler-right">100</span>
+</div>
+<ol class="gate-reasons" id="gate-reasons"></ol>
+<section class="gate-block" id="gate-record-block">
+<div class="gate-block-head"><h3>Decision record</h3><span id="gate-record-meta">ledger / review</span></div>
+<div class="gate-record" id="gate-record"></div>
+</section>
+<section class="gate-block">
+<div class="gate-block-head"><h3>What would ship</h3><span>draft / gate</span></div>
+<div class="gate-delivery" id="gate-delivery"></div>
+</section>
+<section class="gate-block" hidden="" id="gate-trace-block">
+<div class="gate-block-head"><h3>Decision path</h3><span>what changed the outcome</span></div>
+<div class="gate-trace" id="gate-trace"></div>
+</section>
 
-          <div class="gate-field">
-            <label for="gate-question">Employee question</label>
-            <input id="gate-question" type="text" autocomplete="off" maxlength="2000" placeholder="e.g. How long do I have to return a defective item?" />
-          </div>
 
-          <div class="gate-context">
-            <div class="gate-field">
-              <label for="gate-country">Country</label>
-              <input id="gate-country" type="text" autocomplete="off" maxlength="40" placeholder="e.g. DE" />
-            </div>
-            <div class="gate-field">
-              <label for="gate-role">Role</label>
-              <input id="gate-role" type="text" autocomplete="off" maxlength="60" placeholder="e.g. Contractor" />
-            </div>
-            <div class="gate-field">
-              <label for="gate-plan">Plan</label>
-              <input id="gate-plan" type="text" autocomplete="off" maxlength="60" placeholder="e.g. Standard" />
-            </div>
-          </div>
 
-          <div class="gate-policies">
-            <div class="gate-policies-head">
-              <span>Policies</span>
-              <span id="gate-doc-count">1 of 6</span>
-            </div>
-            <div class="gate-doc-tabs" id="gate-doc-tabs" role="tablist" aria-label="Policies"></div>
-            <div class="gate-doc-editor" id="gate-doc-editor" role="tabpanel"></div>
-            <div class="gate-doc-actions">
-              <button type="button" class="gate-mini" id="gate-add-doc">Add policy</button>
-              <button type="button" class="gate-mini" id="gate-remove-doc">Remove policy</button>
-            </div>
-            <details class="gate-admin" id="gate-approval-block">
-              <summary>Shared policy registry <span>admin only</span></summary>
-              <div class="gate-admin-body">
-                <p class="gate-admin-copy">Approve the active policy into the shared registry and bind it to a signed envelope. For a single check, use <b>Attest for this check</b> above. Seeded, admin-approved and operator-attested policies are labelled separately.</p>
-                <div class="gate-admin-row">
-                  <div class="gate-field">
-                    <label for="gate-admin-token">Admin token</label>
-                    <input id="gate-admin-token" type="password" autocomplete="off" placeholder="DOCKET_ADMIN_TOKEN" />
-                  </div>
-                  <button type="button" class="gate-secondary" id="gate-approve-policy">Approve active policy</button>
-                </div>
-                <p class="gate-admin-status" id="gate-approve-status" aria-live="polite"></p>
-                <div class="gate-approval-envelope" id="gate-approval-envelope" hidden></div>
-                <p class="gate-admin-note">Editing any signed field after approval produces a tamper HOLD. That is the integrity check doing its job, not a cache error.</p>
-              </div>
-            </details>
-          </div>
+<section class="gate-block">
+<div class="gate-block-head"><h3>Authority</h3><span>which policy governs</span></div>
+<div class="gate-authority" id="gate-authority"></div>
+</section>
+<section class="gate-block">
+<div class="gate-block-head"><h3>Claims checked</h3><span id="gate-claims-meta">none yet</span></div>
+<div class="gate-claims" id="gate-claims"></div>
+</section>
 
-          <div class="gate-field">
-            <label for="gate-draft">Draft answer <span class="gate-label-note">what the assistant is about to send</span></label>
-            <textarea id="gate-draft" rows="4" maxlength="10000" placeholder="e.g. Defective items can be returned within 30 days."></textarea>
-            <div class="gate-counter" id="gate-draft-count">0 / 10,000</div>
-          </div>
 
-          <p class="gate-error" id="gate-error" role="alert" hidden></p>
 
-          <div class="gate-run-row">
-            <button type="button" class="gate-primary" id="gate-run">Run check <kbd>⌘↵</kbd></button>
-          </div>
-        </div>
 
-        <div id="gate-panel-examples" role="tabpanel" aria-labelledby="gate-tab-examples" hidden>
-          <p class="gate-panel-copy">Six worked cases. Load one, then edit any field.</p>
-          <div class="gate-examples" id="gate-examples"></div>
-        </div>
-      </section>
 
-      <!-- ---------------------------------------------------------- VERDICT -->
-      <section class="gate-verdict dk-reveal" aria-labelledby="gate-verdict-title">
-        <div class="gate-section-head">
-          <h2 id="gate-verdict-title">The verdict</h2>
-          <span class="gate-status" id="gate-verdict-status" aria-live="polite">Idle</span>
-        </div>
+<section class="gate-block" id="gate-conflicts-block">
+<div class="gate-block-head"><h3>Conflicts found</h3><span>governing vs superseded</span></div>
+<div class="gate-conflicts" id="gate-conflicts"></div>
+</section>
 
-        <div class="gate-stages" id="gate-stages" aria-label="Check stages">
-          <div class="gate-stage" data-stage="authority">
-            <span class="gate-stage-dot" aria-hidden="true"></span>
-            <span class="gate-stage-name">Authority</span>
-            <span class="gate-stage-sub">rule</span>
-            <span class="gate-stage-meta"></span>
-          </div>
-          <div class="gate-stage" data-stage="protect">
-            <span class="gate-stage-dot" aria-hidden="true"></span>
-            <span class="gate-stage-name">Protect</span>
-            <span class="gate-stage-sub">redact</span>
-            <span class="gate-stage-meta"></span>
-          </div>
-          <div class="gate-stage" data-stage="guard">
-            <span class="gate-stage-dot" aria-hidden="true"></span>
-            <span class="gate-stage-name">Guard</span>
-            <span class="gate-stage-sub">injection</span>
-            <span class="gate-stage-meta"></span>
-          </div>
-          <div class="gate-stage" data-stage="inspect">
-            <span class="gate-stage-dot" aria-hidden="true"></span>
-            <span class="gate-stage-name">Inspect</span>
-            <span class="gate-stage-sub">script</span>
-            <span class="gate-stage-meta"></span>
-          </div>
-          <div class="gate-stage" data-stage="extract">
-            <span class="gate-stage-dot" aria-hidden="true"></span>
-            <span class="gate-stage-name">Extract</span>
-            <span class="gate-stage-sub">policy facts</span>
-            <span class="gate-stage-meta"></span>
-          </div>
-          <div class="gate-stage" data-stage="decide">
-            <span class="gate-stage-dot" aria-hidden="true"></span>
-            <span class="gate-stage-name">Decide</span>
-            <span class="gate-stage-sub">triage</span>
-            <span class="gate-stage-meta"></span>
-          </div>
-          <div class="gate-stage" data-stage="rerank">
-            <span class="gate-stage-dot" aria-hidden="true"></span>
-            <span class="gate-stage-name">Rerank</span>
-            <span class="gate-stage-sub">relevance</span>
-            <span class="gate-stage-meta"></span>
-          </div>
-          <div class="gate-stage" data-stage="compare">
-            <span class="gate-stage-dot" aria-hidden="true"></span>
-            <span class="gate-stage-name">Compare</span>
-            <span class="gate-stage-sub">conflict</span>
-            <span class="gate-stage-meta"></span>
-          </div>
-          <div class="gate-stage" data-stage="coverage">
-            <span class="gate-stage-dot" aria-hidden="true"></span>
-            <span class="gate-stage-name">Coverage</span>
-            <span class="gate-stage-sub">omissions</span>
-            <span class="gate-stage-meta"></span>
-          </div>
-          <div class="gate-stage" data-stage="verify">
-            <span class="gate-stage-dot" aria-hidden="true"></span>
-            <span class="gate-stage-name">Verify</span>
-            <span class="gate-stage-sub">claims</span>
-            <span class="gate-stage-meta"></span>
-          </div>
-        </div>
+<details class="gate-drawer gate-tech-drawer" id="gate-technical-details"><summary>Technical details</summary><p class="gate-tech-note">Endpoint outputs, policy integrity and the live endpoint proof.</p><section class="gate-block" hidden="" id="gate-policies-block">
+<div class="gate-block-head"><h3>Policy integrity</h3><span id="gate-policies-meta">0 approved</span></div>
+<div class="gate-policies" id="gate-policies"></div>
+</section><section class="gate-block" hidden="" id="gate-guard-block">
+<div class="gate-block-head"><h3>Guard</h3><span id="gate-guard-meta">no injection</span></div>
+<div class="gate-guard" id="gate-guard"></div>
+</section><section class="gate-block" hidden="" id="gate-inspect-block">
+<div class="gate-block-head"><h3>Inspect</h3><span id="gate-inspect-meta">no script</span></div>
+<div class="gate-guard" id="gate-inspect"></div>
+</section><section class="gate-block" hidden="" id="gate-extract-block">
+<div class="gate-block-head"><h3>Extract</h3><span id="gate-extract-meta">0 facts</span></div>
+<div class="gate-extract" id="gate-extract"></div>
+</section><section class="gate-block" hidden="" id="gate-decide-block">
+<div class="gate-block-head"><h3>Decide</h3><span id="gate-decide-meta">triage</span></div>
+<div class="gate-decide" id="gate-decide"></div>
+</section><section class="gate-block" hidden="" id="gate-coverage-block">
+<div class="gate-block-head"><h3>Coverage</h3><span id="gate-coverage-meta">0 obligations</span></div>
+<div class="gate-coverage" id="gate-coverage"></div>
+</section><section class="gate-block">
+<div class="gate-block-head"><h3>Evidence used</h3><span>clauses read</span></div>
+<div class="gate-rerank" id="gate-rerank"></div>
+</section><section class="gate-block" id="gate-necessity-block">
+<div class="gate-block-head">
+<h3>Endpoint contribution</h3>
+<span id="gate-necessity-meta">live proof</span>
+</div>
+<p class="gate-necessity-lede">Each endpoint is disabled on the case that exercises it. The delta is what changes.</p>
+<div class="gate-necessity" id="gate-necessity">
+<div class="gate-necessity-loading">Loading recorded evidence…</div>
+</div>
+<div class="gate-necessity-actions">
+<span aria-live="polite" class="gate-admin-status" id="gate-necessity-status"></span>
+</div>
+<p class="gate-admin-note" id="gate-necessity-note">Re-run any row. No audit record is written. If Clocked is unavailable, the gate holds.</p>
+</section><section class="gate-block" id="gate-ablation-block">
+<div class="gate-block-head"><h3>Disable one endpoint</h3><span>same inputs</span></div>
+<div class="gate-ablation">
+<div class="gate-ablation-controls">
+<label class="gate-sr-only" for="gate-ablate-endpoint">Endpoint to disable</label>
+<select class="gate-select" id="gate-ablate-endpoint">
+<option value="guard">Guard</option>
+<option value="inspect">Inspect</option>
+<option value="extract">Extract</option>
+<option value="decide">Decide</option>
+<option selected="" value="compare">Compare</option>
+<option value="coverage">Fill / Coverage</option>
+<option value="verify">Verify</option>
+</select>
+<button class="gate-secondary" id="gate-ablate-run" type="button">Run without it</button>
+</div>
+<p class="gate-ablation-note">Same inputs, one endpoint skipped. No audit record is written.</p>
+<div class="gate-ablation-result" hidden="" id="gate-ablation-result"></div>
+</div>
+</section><details class="gate-drawer" id="gate-request-drawer">
+<summary>Request JSON</summary>
+<div class="gate-drawer-actions">
+<button class="gate-mini" id="gate-copy-request" type="button">Copy JSON</button>
+<button class="gate-mini" id="gate-copy-curl" type="button">Copy as cURL</button>
+</div>
+<pre id="gate-request-json"></pre>
+</details><details class="gate-drawer" id="gate-raw-drawer">
+<summary>Response JSON</summary>
+<div class="gate-drawer-actions">
+<button class="gate-mini" id="gate-copy-raw" type="button">Copy JSON</button>
+</div>
+<pre id="gate-raw-json"></pre>
+</details></details>
 
-        <div class="gate-empty" id="gate-empty">
-          <svg class="gate-empty-mark" viewBox="0 0 40 40" aria-hidden="true">
-            <path d="M7 15V7h8M25 7h8v8M33 25v8h-8M15 33H7v-8" fill="none" stroke="currentColor" stroke-width="1.4"/>
-            <circle cx="20" cy="20" r="2.4" fill="currentColor"/>
-          </svg>
-          <h3>No check yet.</h3>
-          <p>Fill in your case, or open Examples. The verdict appears here with the governing document, the claim table, and the conflicting clause.</p>
-          <button type="button" class="gate-secondary" id="gate-open-examples">Open examples</button>
-          <div class="gate-legend">
-            <div><b>Publish</b><span>Every counted claim is supported by the governing document.</span></div>
-            <div><b>Rewrite</b><span>A claim is contradicted or unsupported.</span></div>
-            <div><b>Hold</b><span>Authority is ambiguous or a check could not finish.</span></div>
-          </div>
-        </div>
+</div>
+</section>
+</div>
+<!-- ------------------------------------------------------------- AUDIT -->
+<p class="gate-audit-note" id="gate-audit-note"><strong>Audit:</strong> Every decision is written to the tamper-evident ledger. <a href="/ledger">Open the ledger</a>.</p><details class="gate-drawer gate-ops-drawer" id="gate-operations"><summary>Operations</summary><p class="gate-tech-note">System status and the shared review queue.</p><section aria-labelledby="gate-health-title" class="gate-block gate-ops-block" id="gate-health-block">
+<div class="gate-block-head"><h3 id="gate-health-title">System status</h3><span id="gate-health-meta">checking…</span></div>
+<div class="gate-health" id="gate-health">
+<div class="gate-health-cell"><b>Ledger</b><span id="gate-health-ledger">—</span></div>
+<div class="gate-health-cell"><b>Policy registry</b><span id="gate-health-policy">—</span></div>
+<div class="gate-health-cell"><b>Storage</b><span id="gate-health-storage">—</span></div>
+<div class="gate-health-cell"><b>Last verified</b><span id="gate-health-time">—</span></div>
+</div>
+</section><section aria-labelledby="gate-review-title" class="gate-block gate-ops-block" id="gate-review-block">
+<div class="gate-block-head"><h3 id="gate-review-title">Review queue</h3><span id="gate-review-meta">admin only</span></div>
+<p class="gate-admin-copy">HOLD and REWRITE checks open a durable record. This shared queue requires an admin token.</p>
+<div class="gate-review-controls">
+<div class="gate-field">
+<label for="gate-queue-token">Admin token</label>
+<input autocomplete="off" id="gate-queue-token" placeholder="DOCKET_ADMIN_TOKEN" type="password"/>
+</div>
+<div class="gate-field">
+<label for="gate-review-filter">Show</label>
+<select class="gate-select" id="gate-review-filter">
+<option value="open">Open</option>
+<option value="assigned">Assigned</option>
+<option value="resolved">Resolved</option>
+<option value="">All</option>
+</select>
+</div>
+<button class="gate-secondary" id="gate-review-load" type="button">Load queue</button>
+</div>
+<p aria-live="polite" class="gate-admin-status" id="gate-review-status"></p>
+<div class="gate-review-list" id="gate-review-list"></div>
+</section></details>
+<details class="gate-drawer" id="gate-glossary">
+<summary>Definitions</summary>
+<dl class="gate-glossary">
+<div><dt>Policy envelope</dt><dd>A signed record that binds the policy text, its metadata, its content hash and an approver.</dd></div>
+<div><dt>Operator-attested</dt><dd>A one-check approval by reference. It is recorded in the ledger, but it is not proof of organizational authority.</dd></div>
 
-        <div class="gate-checking" id="gate-checking" hidden>
-          <span class="gate-spinner" aria-hidden="true"></span>
-          <span>Checking authority, conflicts and claims…</span>
-        </div>
 
-        <div class="gate-result" id="gate-result" hidden>
-          <div class="gate-control-strip" id="gate-control-strip">
-            <span class="gate-ref" id="gate-ref">DK-000000-0000</span>
-            <span id="gate-control-policies">0 POLICIES</span>
-            <span id="gate-control-calls">0 CALLS</span>
-            <span id="gate-control-credits">0 CREDITS</span>
-            <span id="gate-control-time">0.0s</span>
-          </div>
 
-          <div class="gate-decisions" id="gate-decisions" role="group" aria-label="Decision">
-            <span data-decision="publish">Publish</span>
-            <span data-decision="rewrite">Rewrite</span>
-            <span data-decision="hold">Hold</span>
-          </div>
+<div><dt>Governing policy</dt><dd>The policy that controls the question after jurisdiction, precedence and effective date are applied.</dd></div><div><dt>Review</dt><dd>A HOLD or REWRITE record that a person must resolve before the answer can ship.</dd></div></dl>
+</details>
 
-          <div class="gate-verdict-head" id="gate-verdict-head" data-state="hold">
-            <div class="gate-stamp" id="gate-stamp">
-              <span class="gate-stamp-word" id="gate-stamp-word">Hold</span>
-              <span class="gate-stamp-ref" id="gate-stamp-ref">DK-000000-0000</span>
-            </div>
-            <div class="gate-verdict-copy">
-              <p class="gate-headline" id="gate-headline" aria-live="polite"></p>
-              <p class="gate-meta" id="gate-meta"></p>
-            </div>
-          </div>
 
-          <div class="gate-ruler" aria-hidden="true">
-            <span class="gate-ruler-line"></span>
-            <span class="gate-ruler-tick"></span>
-            <span class="gate-ruler-marker" id="gate-ruler-marker"></span>
-            <span class="gate-ruler-edge gate-ruler-left">0</span>
-            <span class="gate-ruler-edge gate-ruler-right">100</span>
-          </div>
-
-          <ol class="gate-reasons" id="gate-reasons"></ol>
-
-          <section class="gate-block" id="gate-record-block">
-            <div class="gate-block-head"><h3>Decision record</h3><span id="gate-record-meta">ledger / review</span></div>
-            <div class="gate-record" id="gate-record"></div>
-          </section>
-
-          <section class="gate-block">
-            <div class="gate-block-head"><h3>What would ship</h3><span>draft / gate</span></div>
-            <div class="gate-delivery" id="gate-delivery"></div>
-          </section>
-
-          <section class="gate-block" id="gate-trace-block" hidden>
-            <div class="gate-block-head"><h3>Why this verdict</h3><span>endpoint → decision</span></div>
-            <div class="gate-trace" id="gate-trace"></div>
-          </section>
-
-          <section class="gate-block" id="gate-necessity-block">
-            <div class="gate-block-head">
-              <h3>What each endpoint changes</h3>
-              <span id="gate-necessity-meta">recorded evidence</span>
-            </div>
-            <p class="gate-necessity-lede">All nine endpoints are ablated on the case that proves them. Protect and Rerank change the record and the evidence set, not the verdict.</p>
-            <div class="gate-necessity" id="gate-necessity">
-              <div class="gate-necessity-loading">Loading recorded evidence…</div>
-            </div>
-            <div class="gate-necessity-actions">
-              <span class="gate-admin-status" id="gate-necessity-status" aria-live="polite"></span>
-            </div>
-            <p class="gate-admin-note" id="gate-necessity-note">Recorded from live checks. Re-run any row; no audit record is written. If Clocked is unavailable, the gate holds rather than publishes.</p>
-          </section>
-
-          <section class="gate-block" id="gate-ablation-block">
-            <div class="gate-block-head"><h3>Advanced: ablate this case</h3><span>same inputs · one endpoint disabled</span></div>
-            <div class="gate-ablation">
-              <div class="gate-ablation-controls">
-                <label class="gate-sr-only" for="gate-ablate-endpoint">Endpoint to disable</label>
-                <select id="gate-ablate-endpoint" class="gate-select">
-                  <option value="guard">Guard</option>
-                  <option value="inspect">Inspect</option>
-                  <option value="extract">Extract</option>
-                  <option value="decide">Decide</option>
-                  <option value="compare" selected>Compare</option>
-                  <option value="coverage">Fill / Coverage</option>
-                  <option value="verify">Verify</option>
-                </select>
-                <button type="button" class="gate-secondary" id="gate-ablate-run">Run without it</button>
-              </div>
-              <p class="gate-ablation-note">Runs this case again with one endpoint skipped. This is a simulation: no audit record and no publication.</p>
-              <div id="gate-ablation-result" class="gate-ablation-result" hidden></div>
-            </div>
-          </section>
-
-          <section class="gate-block" id="gate-policies-block" hidden>
-            <div class="gate-block-head"><h3>Policy integrity</h3><span id="gate-policies-meta">0 approved</span></div>
-            <div class="gate-policies" id="gate-policies"></div>
-          </section>
-
-          <section class="gate-block">
-            <div class="gate-block-head"><h3>Authority</h3><span>jurisdiction / precedence / date</span></div>
-            <div class="gate-authority" id="gate-authority"></div>
-          </section>
-
-          <section class="gate-block">
-            <div class="gate-block-head"><h3>Claims</h3><span id="gate-claims-meta">0 in draft</span></div>
-            <div class="gate-claims" id="gate-claims"></div>
-          </section>
-
-          <section class="gate-block" id="gate-guard-block" hidden>
-            <div class="gate-block-head"><h3>Guard</h3><span id="gate-guard-meta">no injection</span></div>
-            <div class="gate-guard" id="gate-guard"></div>
-          </section>
-
-          <section class="gate-block" id="gate-inspect-block" hidden>
-            <div class="gate-block-head"><h3>Inspect</h3><span id="gate-inspect-meta">no script</span></div>
-            <div class="gate-guard" id="gate-inspect"></div>
-          </section>
-
-          <section class="gate-block" id="gate-extract-block" hidden>
-            <div class="gate-block-head"><h3>Extract</h3><span id="gate-extract-meta">0 facts</span></div>
-            <div class="gate-extract" id="gate-extract"></div>
-          </section>
-
-          <section class="gate-block" id="gate-decide-block" hidden>
-            <div class="gate-block-head"><h3>Decide</h3><span id="gate-decide-meta">triage</span></div>
-            <div class="gate-decide" id="gate-decide"></div>
-          </section>
-
-          <section class="gate-block" id="gate-coverage-block" hidden>
-            <div class="gate-block-head"><h3>Coverage</h3><span id="gate-coverage-meta">0 obligations</span></div>
-            <div class="gate-coverage" id="gate-coverage"></div>
-          </section>
-
-          <section class="gate-block" id="gate-conflicts-block">
-            <div class="gate-block-head"><h3>Conflicts</h3><span>governing / superseded</span></div>
-            <div class="gate-conflicts" id="gate-conflicts"></div>
-          </section>
-
-          <section class="gate-block">
-            <div class="gate-block-head"><h3>Source selection</h3><span>rerank</span></div>
-            <div class="gate-rerank" id="gate-rerank"></div>
-          </section>
-
-          <details class="gate-drawer" id="gate-request-drawer">
-            <summary>Request sent</summary>
-            <div class="gate-drawer-actions">
-              <button type="button" class="gate-mini" id="gate-copy-request">Copy JSON</button>
-              <button type="button" class="gate-mini" id="gate-copy-curl">Copy as cURL</button>
-            </div>
-            <pre id="gate-request-json"></pre>
-          </details>
-
-          <details class="gate-drawer" id="gate-raw-drawer">
-            <summary>Raw Clocked responses</summary>
-            <div class="gate-drawer-actions">
-              <button type="button" class="gate-mini" id="gate-copy-raw">Copy JSON</button>
-            </div>
-            <pre id="gate-raw-json"></pre>
-          </details>
-        </div>
-      </section>
-    </div>
-
-    <!-- ------------------------------------------------------------- AUDIT -->
-    <p class="gate-audit-note" id="gate-audit-note"><strong>Audit:</strong> every determination is written to a tamper-evident ledger. <a href="/ledger">Open the ledger</a> · <a href="/tour">Take the judge tour</a>.</p>
-
-    <details class="gate-drawer" id="gate-glossary">
-      <summary>What these terms mean</summary>
-      <dl class="gate-glossary">
-        <div><dt>Policy envelope</dt><dd>A signed record that binds the policy text, its metadata, its content hash and an approver.</dd></div>
-        <div><dt>Operator-attested</dt><dd>A one-check approval by reference. It is recorded in the ledger, but it is not proof of organizational authority.</dd></div>
-        <div><dt>Held-out</dt><dd>Cases whose labels were fixed before the run and were not used to tune the product.</dd></div>
-        <div><dt>Lock</dt><dd>A hash of the held-out cases and labels. If a locked case is edited, the benchmark runner refuses to run.</dd></div>
-        <div><dt>Ablation</dt><dd>A counterfactual run with one endpoint skipped. It is a simulation: no audit record is written and nothing publishes.</dd></div>
-      </dl>
-    </details>
-
-    <section class="gate-block gate-ops-block" id="gate-health-block" aria-labelledby="gate-health-title">
-      <div class="gate-block-head"><h3 id="gate-health-title">Live verification</h3><span id="gate-health-meta">checking…</span></div>
-      <div class="gate-health" id="gate-health">
-        <div class="gate-health-cell"><b>Ledger</b><span id="gate-health-ledger">—</span></div>
-        <div class="gate-health-cell"><b>Seeded policies</b><span id="gate-health-policy">—</span></div>
-        <div class="gate-health-cell"><b>Audit backend</b><span id="gate-health-storage">—</span></div>
-        <div class="gate-health-cell"><b>Last verified</b><span id="gate-health-time">—</span></div>
-      </div>
-    </section>
-
-    <section class="gate-block gate-ops-block" id="gate-review-block" aria-labelledby="gate-review-title">
-      <div class="gate-block-head"><h3 id="gate-review-title">Review queue</h3><span id="gate-review-meta">admin only</span></div>
-      <p class="gate-admin-copy">Every HOLD or REWRITE opens a durable record. The record from your check can be claimed and resolved from its Decision record with a scoped capability. This shared queue lists every record and requires an admin token. The resolution is appended to the audit ledger.</p>
-      <div class="gate-review-controls">
-        <div class="gate-field">
-          <label for="gate-queue-token">Admin token</label>
-          <input id="gate-queue-token" type="password" autocomplete="off" placeholder="DOCKET_ADMIN_TOKEN" />
-        </div>
-        <div class="gate-field">
-          <label for="gate-review-filter">Show</label>
-          <select id="gate-review-filter" class="gate-select">
-            <option value="open">Open</option>
-            <option value="assigned">Assigned</option>
-            <option value="resolved">Resolved</option>
-            <option value="">All</option>
-          </select>
-        </div>
-        <button type="button" class="gate-secondary" id="gate-review-load">Load queue</button>
-      </div>
-      <p class="gate-admin-status" id="gate-review-status" aria-live="polite"></p>
-      <div class="gate-review-list" id="gate-review-list"></div>
-    </section>
 </div>
 </section>
 
 <div class="bg-background"><footer class="relative flex w-full flex-col justify-end overflow-hidden pb-4 md:pb-10 bg-linear-to-t from-[#7D000E] to-transparent dk-console-footer" data-page-find-surface="red" style="--scale:calc(100vw / 1840px)"><section class="dk-console-city-band" aria-hidden="true"><div class="pointer-events-none absolute inset-0" style="mask-image: linear-gradient(white 70%, transparent 100%);"><img alt="" class="h-full w-full object-cover object-top opacity-25 select-none" loading="eager" decoding="async" width="4096" height="2160" src="/_next/static/media/city-outline.abe9c9cc.png" style="color:transparent"></div></section><div class="relative"><div class="px-sides absolute bottom-0 left-0 z-10 mt-auto w-full mix-blend-overlay dk-footer-mark md:px-12"><img alt="" class="mx-auto block w-full max-w-lg select-none md:hidden" data-nimg="1" decoding="async" height="600" loading="lazy" src="/images/footer/docket-mark.svg" style="color:transparent" width="682"/><img alt="" class="hidden w-full select-none md:block" data-nimg="1" decoding="async" height="20" loading="lazy" src="/images/footer/docket-wordmark.svg" style="color:transparent" width="119"/></div><div class="px-sides relative z-20 flex flex-col-reverse gap-x-8 gap-y-12 pb-[max(calc(--spacing(320)*var(--scale)),40px)] sm:pb-[40vw] md:flex-col md:px-12 md:py-[calc(--spacing(20)*var(--scale))] lg:pt-0 lg:pb-[calc(--spacing(42)*var(--scale))] xl:flex-row xl:justify-between dk-footer-no-newsletter"><div class="flex flex-col items-start gap-8 xl:items-end"><div class="grid grid-cols-2 gap-6 min-[900px]:flex min-[900px]:flex-row min-[900px]:justify-end md:gap-10 lg:mx-0 lg:grid-cols-3 lg:gap-20 lg:pr-[calc(--spacing(12)*var(--scale))] max-sm:[&amp;&gt;*:nth-child(n+3)]:col-span-2"><div class="relative h-fit w-max max-w-full dk-footer-col" data-dk-col><span class="dk-footer-col-highlight" aria-hidden="true"></span><span class="dk-footer-col-rail" aria-hidden="true"></span><span class="dk-footer-col-label font-misc">Product</span><div class="dk-footer-col-links"><a href="#docket-gate">Live Gate</a><a href="#gate-stages">How it Works</a><a href="#gate-panel-examples">Scenarios</a><a href="https://github.com/j4yop/docket#api" target="_blank" rel="noopener noreferrer">API</a></div></div><div class="relative h-fit w-max max-w-full dk-footer-col" data-dk-col><span class="dk-footer-col-highlight" aria-hidden="true"></span><span class="dk-footer-col-rail" aria-hidden="true"></span><span class="dk-footer-col-label font-misc">Build</span><div class="dk-footer-col-links"><a href="https://github.com/j4yop/docket" target="_blank" rel="noopener noreferrer">GitHub</a><a href="https://github.com/j4yop/docket#readme" target="_blank" rel="noopener noreferrer">README</a><a href="https://github.com/j4yop/docket/blob/main/ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">Architecture</a><a href="https://clocked.rezolve.ai/" target="_blank" rel="noopener noreferrer">Clocked</a></div></div><div class="relative h-fit w-max max-w-full dk-footer-col" data-dk-col><span class="dk-footer-col-highlight" aria-hidden="true"></span><span class="dk-footer-col-rail" aria-hidden="true"></span><span class="dk-footer-col-label font-misc">Social</span><div class="dk-footer-col-links"><a href="https://www.linkedin.com/in/jaygopaltripathy/" target="_blank" rel="noopener noreferrer">LinkedIn</a><a href="https://x.com/j4y_op" target="_blank" rel="noopener noreferrer">X</a><a href="https://github.com/j4yop/docket" target="_blank" rel="noopener noreferrer">GitHub</a></div></div></div></div></div></div><div class="px-sides relative bottom-0 left-0 z-20 flex w-full justify-center gap-4 dk-reveal dk-footer-legal pt-6 pb-2 md:absolute md:justify-between md:px-12 md:pt-10 xl:pb-[max(calc(--spacing(10)*var(--scale)),8px)] 2xl:pb-[calc(--spacing(6)*var(--scale))]"><div class="hidden w-full items-center gap-2 lg:flex xl:ml-[24.12%]"><svg aria-hidden="true" class="text-primary h-4 w-auto" fill="none" focusable="false" viewbox="0 0 484 16" xmlns="http://www.w3.org/2000/svg"><path d="M479.784 0.956299C481.369 0.956299 482.654 2.24149 482.654 3.82642V11.4797C482.654 13.0648 481.369 14.3499 479.784 14.3499H8.29785C7.2771 14.3499 6.33268 13.8077 5.81836 12.926L1.35449 5.27271C0.238432 3.35945 1.61805 0.956349 3.83301 0.956299H479.784Z" stroke="currentColor" stroke-width="1.9133"></path><path d="M7.42773 4.30591H392.25C393.042 4.30591 393.685 4.94806 393.686 5.74048V9.56763C393.685 10.36 393.042 11.0022 392.25 11.0022H9.34766C8.80477 11.0022 8.30784 10.6955 8.06445 10.2102L6.14551 6.38403C5.66699 5.42995 6.36049 4.30624 7.42773 4.30591Z" fill="currentColor" stroke="currentColor" stroke-width="0.956652"></path><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="321.939" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="333.42" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="344.898" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="356.377" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="367.857" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="379.336" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="390.818" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="402.299" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="413.779" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="425.26" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="436.738" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="448.217" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="459.697" y="3.82739"></rect><rect fill="currentColor" height="7.65321" rx="0.956652" width="7.65321" x="471.178" y="3.82739"></rect></svg><span class="font-misc text-primary text-sm whitespace-nowrap uppercase">Publish With Proof</span></div></div></footer></div>
   <script src="/docket-brand.js?v=20261106k" defer></script>
   <script src="/docket-footer.js?v=20261105i" defer></script>
-  <script src="/integrations/gate.js?v=20261106d" defer></script>
+  <script src="/integrations/gate.js?v=20261106m" defer></script>
 </body>
 </html>
