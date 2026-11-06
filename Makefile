@@ -2,6 +2,7 @@
 
 PYTHON ?= python3
 BASE_URL ?= https://docket-clocked.vercel.app
+LOCAL_URL ?= http://127.0.0.1:8000
 
 test:
 	$(PYTHON) -m pytest -q
@@ -10,7 +11,7 @@ preflight:
 	$(PYTHON) scripts/preflight.py --base-url $(BASE_URL)
 
 preflight-local:
-	$(PYTHON) scripts/preflight.py --base-url http://127.0.0.1:8020
+	$(PYTHON) scripts/preflight.py --base-url $(LOCAL_URL)
 
 # Deterministic replay: no Clocked key or credits required.
 evidence:
