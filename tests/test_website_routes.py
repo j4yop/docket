@@ -554,3 +554,128 @@ def test_tour_page_has_no_fixture_or_benchmark_copy() -> None:
     assert "fixture" not in text
     assert "benchmark" not in text
     assert 'class="tour-actions"' in response.text
+
+
+def _reset_demo_budgets(module) -> None:
+    module._CHECK_RATE.clear()
+    module._CHECK_DAILY.clear()
+    module._CHECK_SESSION.clear()
+
+
+def _fake_check(module, monkeypatch) -> None:
+    async def fake_run_check(req, emit=None, ablate=None, record=True):
+        return {
+            "decision": "publish",
+            "reasons": [],
+            "codes": [],
+            "credits": 0,
+            "api_calls": 0,
+            "latency_ms": 0,
+            "headline": "",
+            "recorded": record,
+        }
+
+    monkeypatch.setattr(module, "run_check", fake_run_check)
+
+
+def test_session_check_budget_is_enforced(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+    _reset_demo_budgets(module)
+    _fake_check(module, monkeypatch)
+    monkeypatch.setenv("DOCKET_SESSION_CHECK_LIMIT", "2")
+    monkeypatch.setenv("DOCKET_RATE_LIMIT_PER_HOUR", "600")
+    monkeypatch.setenv("DOCKET_DAILY_CHECK_CAP", "1000")
+
+    headers = _session_headers()
+    for _ in range(2):
+        response = client.post("/api/check", json=_check_payload(), headers=headers)
+        assert response.status_code == 200
+        assert response.headers["X-Session-Limit"] == "2"
+
+    response = client.post("/api/check", json=_check_payload(), headers=headers)
+    assert response.status_code == 429
+    assert "Session demo budget" in response.json()["detail"]
+    _reset_demo_budgets(module)
+
+
+def test_shared_network_can_use_more_than_one_session_budget(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+    _reset_demo_budgets(module)
+    _fake_check(module, monkeypatch)
+    monkeypatch.setenv("DOCKET_SESSION_CHECK_LIMIT", "60")
+    monkeypatch.setenv("DOCKET_RATE_LIMIT_PER_HOUR", "4")
+    monkeypatch.setenv("DOCKET_DAILY_CHECK_CAP", "1000")
+
+    first = _session_headers()
+    second = _session_headers()
+    assert client.post("/api/check", json=_check_payload(), headers=first).status_code == 200
+    assert client.post("/api/check", json=_check_payload(), headers=first).status_code == 200
+    assert client.post("/api/check", json=_check_payload(), headers=second).status_code == 200
+    assert client.post("/api/check", json=_check_payload(), headers=second).status_code == 200
+
+    response = client.post("/api/check", json=_check_payload(), headers=second)
+    assert response.status_code == 429
+    assert "this network" in response.json()["detail"]
+    _reset_demo_budgets(module)
+
+
+def test_daily_check_cap_is_enforced(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+    _reset_demo_budgets(module)
+    _fake_check(module, monkeypatch)
+    monkeypatch.setenv("DOCKET_SESSION_CHECK_LIMIT", "60")
+    monkeypatch.setenv("DOCKET_RATE_LIMIT_PER_HOUR", "600")
+    monkeypatch.setenv("DOCKET_DAILY_CHECK_CAP", "100")
+
+    headers = _session_headers()
+    assert client.post("/api/check", json=_check_payload(), headers=headers).status_code == 200
+    module._CHECK_DAILY.clear()
+    module._CHECK_DAILY[module.datetime.now(module.timezone.utc).date().isoformat()] = 100
+
+    response = client.post("/api/check", json=_check_payload(), headers=headers)
+    assert response.status_code == 429
+    assert "Daily demo budget" in response.json()["detail"]
+    _reset_demo_budgets(module)
+
+
+def test_scope_and_attestation_samples_are_public() -> None:
+    listing = client.get("/api/samples")
+    assert listing.status_code == 200
+    samples = {sample["id"]: sample for sample in listing.json()}
+    assert "scope-applicability" in samples
+    assert "unapproved-policy" in samples
+
+    scope = client.get("/api/samples/scope-applicability")
+    assert scope.status_code == 200
+    assert scope.json()["documents"][1]["jurisdiction"] == "DE"
+
+    unapproved = client.get("/api/samples/unapproved-policy")
+    assert unapproved.status_code == 200
+    body = unapproved.json()
+    assert body["seed"] is False
+    assert all("policy_envelope" not in document for document in body["documents"])
+
+
+def test_tour_page_has_a_featured_live_case_and_evidence_strip() -> None:
+    response = client.get("/tour")
+    assert response.status_code == 200
+    assert 'id="tour-feature-question"' in response.text
+    assert "Two policies disagree" in response.text
+    assert 'class="tour-evidence-grid"' in response.text
+    assert "/demo/docket-fallback.mp4" in response.text
+
+
+def test_console_review_copy_does_not_claim_approval_publishes() -> None:
+    response = client.get("/integrations/gate.js")
+    assert response.status_code == 200
+    text = response.text
+    assert "Approve review" in text
+    assert "Approved — re-run required to publish" in text
+    assert "Release answer" not in text
+    assert "Released by" not in text

@@ -97,6 +97,8 @@
       meta: $("gate-meta"),
       rulerMarker: $("gate-ruler-marker"),
       reasons: $("gate-reasons"),
+      scopeBlock: $("gate-scope-block"),
+      scope: $("gate-scope"),
       delivery: $("gate-delivery"),
       authority: $("gate-authority"),
       claims: $("gate-claims"),
@@ -979,6 +981,7 @@
       .map((reason) => `<li>${esc(reason)}</li>`)
       .join("") || "<li>No reasons returned.</li>";
 
+    renderScope(result);
     renderTrace(result);
     renderDelivery(result, payload);
     renderPolicies(result);
@@ -1197,6 +1200,25 @@
       </div>`;
   }
 
+  function renderScope(result) {
+    const scope = result && result.scope;
+    if (!refs.scopeBlock) return;
+    if (!scope) {
+      refs.scopeBlock.hidden = true;
+      refs.scope.innerHTML = "";
+      return;
+    }
+    refs.scopeBlock.hidden = false;
+    refs.scope.innerHTML = `
+      <div class="gate-scope-grid">
+        <div><b>Named policy</b><span>${esc(scope.document || "—")}</span></div>
+        <div><b>Context</b><span>${esc(scope.country || "—")} · policy jurisdiction ${esc(scope.jurisdiction || "—")}</span></div>
+        <div><b>Determination</b><span>Out of scope — the named policy does not apply here.</span></div>
+      </div>
+      <p class="gate-scope-reason">${esc(scope.reason || "")}</p>
+      <p class="gate-scope-note"><b>Why Verify did not run:</b> the draft is a negative applicability statement, so there is no substantive policy claim left to check. Scope comes from the authority trace, not from a model score. Add a substantive claim and the gate runs the normal Verify path. <a href="#gate-authority">See the authority trace</a>.</p>`;
+  }
+
   function renderDecisionRecord(result) {
     if (!refs.record) return;
     const audit = result.audit || {};
@@ -1210,48 +1232,60 @@
         : "Simulation · not recorded";
     const resolved = String(review.status || "") === "resolved";
     const resolution = review.resolution || {};
-    const released = resolved && resolution.action === "approve";
+    const approved = resolved && resolution.action === "approve";
     const sentBack = resolved && resolution.action === "reject";
     const reviewText = review.id
       ? `${review.status || "open"} · ${review.id}`
       : decision === "publish"
-        ? "Released"
+        ? "Not needed"
         : "Not opened";
-    const releaseText = decision === "publish"
-      ? "Released"
-      : released
-        ? "Released by reviewer"
+    const publishText = decision === "publish"
+      ? "Cleared to publish"
+      : approved
+        ? "Approved — re-run required to publish"
         : sentBack
-          ? "Sent back by reviewer"
+          ? "Sent back — edit and re-run"
           : review.id
-            ? "Awaiting human release or send-back"
-            : "No release record";
+            ? "Not publishable — awaiting review"
+            : "Not publishable";
+    const contradictedClaims = (((result.verify && result.verify.claims) || [])).filter(
+      (claim) => claim.verdict === "contradicted" && claim.counted !== false
+    );
+    const leadClaim = contradictedClaims[0];
+    const reviewEvidence = leadClaim
+      ? `<div class="gate-review-evidence">
+          <p><span>Deciding claim</span>${esc(leadClaim.claim || "")}</p>
+          <p><span>Governing quote${leadClaim.governing_doc ? ` · ${esc(leadClaim.governing_doc)}` : ""}</span>${esc(leadClaim.governing_quote || "No governing quote returned.")}</p>
+        </div>`
+      : "";
     refs.recordMeta.textContent = audit.seq ? `audit #${audit.seq}` : "not recorded";
     const policyItems = envelopes.length
       ? envelopes.map((envelope) => `<li>${esc(envelope.title || "Policy")} · ${esc(envelope.approval_type || "approved")} · ${esc(String(envelope.content_hash || "").slice(0, 12))}…</li>`).join("")
       : "<li>No signed policy envelopes.</li>";
     const resolutionBlock = resolved
-      ? `<p><span>Resolution</span>${esc(resolution.action || "")} by ${esc(resolution.resolved_by || "")} · ${esc(resolution.note || "")}</p>
+      ? `<p><span>Review decision</span>${approved ? "Approved" : "Sent back"} by ${esc(resolution.resolved_by || "")} · ${esc(resolution.note || "")}</p>
+         <p><span>Publish state</span>${approved ? "Approved — re-run required to publish" : "Sent back — edit and re-run"}</p>
          <p><span>Review audit</span>${resolution.ledger && resolution.ledger.seq ? `seq ${esc(resolution.ledger.seq)} · ${esc(String(resolution.ledger.hash || "").slice(0, 12))}…` : "recorded"}</p>`
       : "";
     const reviewControls = resolved
       ? ""
       : `<div class="gate-record-fields">
           <label for="gate-review-actor">Reviewer<input id="gate-review-actor" type="text" value="Demo reviewer" maxlength="120" /></label>
-          <label for="gate-review-note">Resolution note<input id="gate-review-note" type="text" maxlength="1000" placeholder="Why release or send back?" /></label>
+          <label for="gate-review-note">Resolution note<input id="gate-review-note" type="text" maxlength="1000" placeholder="Why approve or send back?" /></label>
         </div>
         <div class="gate-record-actions">
           ${String(review.status || "open") === "open" ? `<button type="button" class="gate-secondary" data-review-action="claim">Claim for review</button>` : `<span>Assigned to ${esc(review.assigned_to || "reviewer")}</span>`}
-          <button type="button" class="gate-secondary" data-review-action="approve">Release answer</button>
+          <button type="button" class="gate-secondary" data-review-action="approve">Approve review</button>
           <button type="button" class="gate-secondary" data-review-action="reject">Send back</button>
           <span id="gate-review-status"></span>
         </div>
-        <p class="gate-admin-note">This capability resolves only this review. The shared queue stays admin-only.</p>`;
+        <p class="gate-admin-note gate-review-warning">Approving records the review decision. It does not publish the answer — edit the draft and re-run the check to publish. This capability resolves only this review; the shared queue stays admin-only.</p>`;
     const reviewRecord = review.id
       ? `<div class="gate-record-review">
           <b>Review record</b>
           <p><span>Question</span>${esc(result.question || "")}</p>
           <p><span>Draft</span>${esc(result.draft || "")}</p>
+          ${reviewEvidence}
           <p><span>Reasons</span>${esc((result.reasons || []).join(" · "))}</p>
           ${resolutionBlock}
           ${reviewControls}
@@ -1261,7 +1295,7 @@
       <div class="gate-record-grid">
         <div class="gate-record-cell"><b>Audit</b><span>${esc(auditText)}</span></div>
         <div class="gate-record-cell"><b>Review</b><span>${esc(reviewText)}</span></div>
-        <div class="gate-record-cell"><b>Release state</b><span>${esc(releaseText)}</span></div>
+        <div class="gate-record-cell"><b>Publish state</b><span>${esc(publishText)}</span></div>
         <div class="gate-record-cell"><b>Links</b><span><a href="/ledger">Ledger</a> · <a href="#gate-review-block">Queue</a></span></div>
       </div>
       <div class="gate-record-policies"><b>Signed policies</b><ul>${policyItems}</ul></div>
@@ -1806,7 +1840,7 @@
         const resolution = review.resolution || null;
         const codes = (review.codes || []).join(", ") || "no codes";
         const resolvedCopy = resolution
-          ? `<p class="gate-review-meta">Resolved: ${esc(resolution.action)} by ${esc(resolution.resolved_by || "")} — ${esc(resolution.note || "")}${resolution.ledger ? ` · ledger #${esc(resolution.ledger.seq)}` : ""}</p>`
+          ? `<p class="gate-review-meta">${resolution.action === "approve" ? "Review approved — re-run required to publish" : "Sent back — edit and re-run"} by ${esc(resolution.resolved_by || "")} — ${esc(resolution.note || "")}${resolution.ledger ? ` · ledger #${esc(resolution.ledger.seq)}` : ""}</p>`
           : "";
         const actions =
           status === "resolved"
@@ -1815,8 +1849,8 @@
                 <input data-assignee placeholder="Assignee" value="${esc(review.assigned_to || "")}" aria-label="Assignee for ${esc(id)}" />
                 <button type="button" data-review-action="assign">Assign</button>
                 <input data-note placeholder="Resolution note" aria-label="Resolution note for ${esc(id)}" />
-                <button type="button" data-review-action="approve">Approve</button>
-                <button type="button" data-review-action="reject">Reject</button>
+                <button type="button" data-review-action="approve">Approve review</button>
+                <button type="button" data-review-action="reject">Send back</button>
               </div>`;
         return `<article class="gate-review-card" data-review-id="${esc(id)}">
           <div class="gate-review-head"><b>${esc(id)}</b><span>${esc(status)}</span></div>
@@ -1871,7 +1905,12 @@
       }
       const audit = body.audit ? ` Ledger event #${body.audit.seq}.` : "";
       await loadReviews();
-      showAdminOk(refs.reviewStatus, `Review ${id} ${action === "assign" ? "assigned" : action + "d"}.${audit}`);
+      const outcome = action === "assign"
+        ? "assigned"
+        : action === "approve"
+          ? "approved — re-run required to publish"
+          : "sent back";
+      showAdminOk(refs.reviewStatus, `Review ${id} ${outcome}.${audit}`);
     } catch (error) {
       showAdminError(refs.reviewStatus, `Action failed. ${error.message}`);
     } finally {
@@ -1983,7 +2022,7 @@
         expires_date: String(doc.expires_date || ""),
         precedence: Number(doc.precedence) || 0,
         policy_envelope: doc.policy_envelope || null,
-        seeded: true,
+        seeded: sample.seed !== false,
         text: String(doc.text || ""),
       }));
       if (!state.documents.length) state.documents = [blankDoc()];
@@ -2121,7 +2160,7 @@
     const note = (document.querySelector("#gate-review-note")?.value || "").trim();
     const status = document.querySelector("#gate-review-status");
     if (button) button.disabled = true;
-    if (status) status.textContent = action === "claim" ? "Claiming…" : action === "approve" ? "Releasing…" : "Sending back…";
+    if (status) status.textContent = action === "claim" ? "Claiming…" : action === "approve" ? "Approving…" : "Sending back…";
     try {
       if (action === "claim") {
         const response = await authFetch(`/api/reviews/${encodeURIComponent(review.id)}/assign`, {
@@ -2153,7 +2192,7 @@
       if (!state.last.review.capability) state.last.review.capability = review.capability;
       renderDecisionRecord(state.last);
       const next = document.querySelector("#gate-review-status");
-      if (next) next.textContent = action === "approve" ? `Released by ${actor}.` : `Sent back by ${actor}.`;
+      if (next) next.textContent = action === "approve" ? `Approved by ${actor} — re-run required to publish.` : `Sent back by ${actor}.`;
     } catch (error) {
       if (status) status.textContent = `Could not resolve this review: ${error.message}`;
       if (button) button.disabled = false;
@@ -2262,6 +2301,10 @@
     refs.result.hidden = true;
     refs.empty.hidden = false;
     refs.checking.hidden = true;
+    if (refs.scopeBlock) {
+      refs.scopeBlock.hidden = true;
+      refs.scope.innerHTML = "";
+    }
     refs.verdictHead.dataset.state = "hold";
     applyDocOutcomes();
   }

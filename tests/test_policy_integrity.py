@@ -245,3 +245,50 @@ def test_stale_seed_marker_does_not_fail_a_valid_corpus(monkeypatch, tmp_path):
     repaired = asyncio.run(policy_registry.seed_status(samples))
     assert repaired["ok"] is True
     assert repaired["seed_current"] is True
+
+
+def test_non_seeded_samples_are_excluded_from_the_seed_corpus(monkeypatch, tmp_path):
+    import asyncio
+    import json
+
+    import policy_registry
+    import storage
+
+    monkeypatch.setattr(storage, "LOCAL_DIR", tmp_path)
+    monkeypatch.setattr(policy_registry, "_CACHE", {})
+    s = [
+        {
+            "id": "seeded",
+            "documents": [
+                {
+                    "title": "Seeded policy",
+                    "text": "Seeded policy — effective 1 January 2026.\n\nExpenses need a receipt.",
+                    "jurisdiction": "Global",
+                    "effective_date": "2026-01-01",
+                    "precedence": 0,
+                }
+            ],
+        },
+        {
+            "id": "custom",
+            "seed": False,
+            "documents": [
+                {
+                    "title": "Unapproved policy",
+                    "text": "Unapproved policy — effective 1 January 2026.\n\nExpenses need a receipt.",
+                    "jurisdiction": "Global",
+                    "effective_date": "2026-01-01",
+                    "precedence": 0,
+                }
+            ],
+        },
+    ]
+    asyncio.run(policy_registry.seed_samples(s))
+    status = asyncio.run(policy_registry.seed_status(s))
+
+    assert status["ok"] is True
+    assert status["count"] == 1
+    assert status["registered"] == 1
+    digest = policy_registry.content_hash(s[1]["documents"][0]["text"])
+    assert not (tmp_path / "policies" / f"{digest}.json").exists()
+    assert json.loads((tmp_path / "policies" / "_seed.json").read_text())["count"] == 1

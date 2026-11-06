@@ -76,9 +76,13 @@ WEBSITE_FLAGS = WEBSITE_FLAGS_FILE.read_bytes() if WEBSITE_FLAGS_FILE.exists() e
 
 # The demo is public, so protect the paid Clocked calls from casual abuse.
 # These limits are per server instance; a durable edge rate limit is the next step.
+# Budgets are deliberately generous enough for a shared judging network:
+# one session gets a full demo (60 checks), one IP gets shared headroom (600/hour),
+# and the daily cap leaves room for public traffic (1000/day).
 _CHECK_WINDOW_SECONDS = 3600
 _CHECK_RATE: dict[str, list[float]] = {}
 _CHECK_DAILY: dict[str, int] = {}
+_CHECK_SESSION: dict[str, tuple[int, int]] = {}
 _SESSION_RATE: dict[str, list[float]] = {}
 _SESSION_FALLBACK_SECRET = secrets.token_hex(32)
 _HEALTH_CACHE: dict = {"at": 0.0, "payload": None}
@@ -152,36 +156,80 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _session_identity(token: str) -> tuple[str, int] | None:
+    """Return the nonce and expiry for a validated session token."""
+    try:
+        expires_raw, nonce, _ = token.split(".", 2)
+        expires = int(expires_raw)
+    except (ValueError, AttributeError):
+        return None
+    return nonce, expires
+
+
+def _prune_check_sessions(now: float) -> None:
+    if len(_CHECK_SESSION) < 5000:
+        return
+    for key, (expires, _) in list(_CHECK_SESSION.items()):
+        if expires < now:
+            _CHECK_SESSION.pop(key, None)
+
+
 def _enforce_check_rate(request: Request, cost: int = 1) -> dict[str, str]:
     cost = max(1, int(cost))
     now = time.time()
     ip = _client_ip(request)
-    limit = max(1, int(os.environ.get("DOCKET_RATE_LIMIT_PER_HOUR", "60")))
+
+    ip_limit = max(1, int(os.environ.get("DOCKET_RATE_LIMIT_PER_HOUR", "600")))
+    session_limit = max(1, int(os.environ.get("DOCKET_SESSION_CHECK_LIMIT", "60")))
+    day = datetime.now(timezone.utc).date().isoformat()
+    daily_cap = max(1, int(os.environ.get("DOCKET_DAILY_CHECK_CAP", "1000")))
+
+    # A session budget means one judge can complete several full tours even when
+    # everyone shares a conference or corporate NAT.
+    session = request.headers.get("x-docket-session", "")
+    identity = _session_identity(session) if session else None
+    session_used = 0
+    if identity:
+        nonce, expires = identity
+        _prune_check_sessions(now)
+        _, session_used = _CHECK_SESSION.get(nonce, (expires, 0))
+        if session_used + cost > session_limit:
+            raise HTTPException(
+                status_code=429,
+                detail="Session demo budget reached. Reload the page to start a new session.",
+                headers={"Retry-After": "60"},
+            )
+
     bucket = _CHECK_RATE.setdefault(ip, [])
     bucket[:] = [stamp for stamp in bucket if now - stamp < _CHECK_WINDOW_SECONDS]
-    if len(bucket) + cost > limit:
+    if len(bucket) + cost > ip_limit:
         retry = max(1, int(_CHECK_WINDOW_SECONDS - (now - bucket[0]))) if bucket else 1
         raise HTTPException(
             status_code=429,
-            detail="Rate limit reached. Try again later.",
+            detail="Rate limit reached for this network. Try again later.",
             headers={"Retry-After": str(retry)},
         )
-    bucket.extend([now] * cost)
 
-    day = datetime.now(timezone.utc).date().isoformat()
-    cap = max(1, int(os.environ.get("DOCKET_DAILY_CHECK_CAP", "200")))
     count = _CHECK_DAILY.get(day, 0) + cost
-    if count > cap:
+    if count > daily_cap:
         raise HTTPException(
             status_code=429,
             detail="Daily demo budget reached. Try again tomorrow.",
             headers={"Retry-After": "3600"},
         )
+
+    bucket.extend([now] * cost)
     _CHECK_DAILY.clear()
     _CHECK_DAILY[day] = count
+    if identity:
+        nonce, expires = identity
+        _CHECK_SESSION[nonce] = (expires, session_used + cost)
+
     return {
-        "X-RateLimit-Limit": str(limit),
-        "X-RateLimit-Remaining": str(max(0, limit - len(bucket))),
+        "X-RateLimit-Limit": str(ip_limit),
+        "X-RateLimit-Remaining": str(max(0, ip_limit - len(bucket))),
+        "X-Session-Limit": str(session_limit),
+        "X-Session-Remaining": str(max(0, session_limit - (session_used + cost))),
     }
 
 

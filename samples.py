@@ -211,4 +211,57 @@ SAMPLES = [
             },
         ],
     },
+    {
+        "id": "unapproved-policy",
+        "label": "Unapproved policy",
+        "tag": "authority",
+        "seed": False,
+        "blurb": "A policy with no approval cannot release an answer. Attest it for this check, then re-run to publish.",
+        "question": "How long do I have to submit an expense?",
+        "draft": "Expenses must be submitted within 30 days of the purchase date.",
+        "context": {"country": "Global", "role": "Employee", "plan": "Standard"},
+        "documents": [
+            {
+                "title": "Unapproved expense policy",
+                "jurisdiction": "Global",
+                "effective_date": "2026-01-01",
+                "precedence": 0,
+                "text": (
+                    "Expense policy — effective 1 January 2026.\n\n"
+                    "Expenses must be submitted within 30 days of the purchase date."
+                ),
+            }
+        ],
+    },
+    {
+        "id": "scope-applicability",
+        "label": "Scope applicability",
+        "tag": "authority",
+        "blurb": "An employee asks whether a Germany annex applies in France. The authority trace decides scope before any substantive claim is checked.",
+        "question": "Does the Germany travel annex apply to an employee in France?",
+        "draft": "The Germany travel annex does not apply to employees in France.",
+        "context": {"country": "FR", "role": "Employee", "plan": "Standard"},
+        "documents": [
+            {
+                "title": "France travel policy",
+                "jurisdiction": "FR",
+                "effective_date": "2026-01-01",
+                "precedence": 0,
+                "text": (
+                    "France travel policy — effective 1 January 2026.\n\n"
+                    "Travel within France is reimbursed at the standard rate."
+                ),
+            },
+            {
+                "title": "Germany travel annex",
+                "jurisdiction": "DE",
+                "effective_date": "2026-01-01",
+                "precedence": 0,
+                "text": (
+                    "Germany travel annex — applies to employees in Germany.\n\n"
+                    "Travel requires pre-approval."
+                ),
+            },
+        ],
+    },
 ]

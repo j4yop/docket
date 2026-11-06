@@ -6,7 +6,7 @@
 [![Endpoints](https://img.shields.io/badge/CLOCKED_ENDPOINTS-9%2F9-38BDF8?style=for-the-badge&labelColor=1e293b&color=38BDF8)](https://clocked.rezolve.ai/docs)
 [![Safety](https://img.shields.io/badge/UNSAFE_FALSE_PUBLISH-0-22c55e?style=for-the-badge&labelColor=1e293b)](#adversarial-safety-suite)
 [![Held-out](https://img.shields.io/badge/HELD_OUT-25%2F31-f5b544?style=for-the-badge&labelColor=1e293b&color=e2a65a)](#held-out-locked-before-the-run)
-[![Tests](https://img.shields.io/badge/tests-102_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
+[![Tests](https://img.shields.io/badge/tests-114_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
 [![Python](https://img.shields.io/badge/python-3.11_%7C_3.12_%7C_3.13-3775A9?style=for-the-badge&logo=python&logoColor=white&labelColor=1e293b)](https://www.python.org/)
 [![Judge Tour](https://img.shields.io/badge/JUDGE_TOUR-docket--clocked.vercel.app%2Ftour-6366F1?style=for-the-badge&logo=vercel&logoColor=white&labelColor=1e293b)](https://docket-clocked.vercel.app/tour)
 [![Console](https://img.shields.io/badge/Gate_Console-%2Fconsole-059669?style=for-the-badge&labelColor=1e293b)](https://docket-clocked.vercel.app/console)
@@ -177,7 +177,7 @@ POST /api/check          → HOLD
        └─ POST /api/reviews/{id}/resolve  → resolved + ledger event #42
 ```
 
-The check that opens a review returns a scoped `capability` for that record. The console can claim, release or send back that one review without an admin token. Listing the shared queue and acting on other records still requires `X-Docket-Admin`; a capability used on a different review returns 404.
+The check that opens a review returns a scoped `capability` for that record. The console can claim, approve or send back that one review without an admin token. Approving records the human decision; it does not publish the answer. Listing the shared queue and acting on other records still requires `X-Docket-Admin`; a capability used on a different review returns 404.
 
 ### Live verification
 
@@ -206,7 +206,7 @@ Sequence allocation uses an atomic claim (`allow_overwrite=False` on Blob, `O_EX
 
 ### Judge tour
 
-`/tour` is the submission demo path. The marketing front door at `/` is unchanged. The tour uses the console shell and runs eight real cases in order, showing the live decision, the reason codes, the governing policy, calls, credits, latency and the audit sequence. Latest production run: **8/8 complete, 103 credits, 6.1 s**. The shared header tab links to it; the tour source is [`website/tour.html`](website/tour.html).
+`/tour` is the submission demo path. The marketing front door at `/` is unchanged. The tour opens with a live featured France case — the newest global policy would publish, the older France annex governs, and the draft must be rewritten — then runs eight real cases in order, showing the human-readable decision, the governing policy, calls, credits, latency and the audit sequence. The progress counter moves only when a case finishes; failed cases can be retried without rerunning the suite. An evidence strip closes the page with the safety headline, the locked and post-tuning results reported separately, the adversarial run, the test count and the endpoint count. A [two-minute recording](website/demo/docket-fallback.mp4) of the live production demo is linked from the page as a fallback. The shared header tab links to it; the tour source is [`website/tour.html`](website/tour.html).
 
 The council verdict that shaped the final pass is preserved in [`docs/strategy/council-verdict-2026-11-06.md`](docs/strategy/council-verdict-2026-11-06.md), with a historical note pointing at the final results.
 
@@ -301,12 +301,21 @@ The Guard corpus still cannot distinguish a threshold: injection cases score ≥
 Reproduce:
 
 ```bash
-python benchmarks/run.py --offline                       # deterministic, no API key
+make evidence                                             # deterministic replay, no API key
+make evidence-live                                        # all live corpora, spends Clocked credits
+python benchmarks/run.py --offline                        # deterministic, no API key
 python benchmarks/run.py --live --sweep                   # tuned regression suite
 python benchmarks/run.py --live --suite calibration --sweep
 python benchmarks/run.py --live --suite adversarial
 python benchmarks/run.py --live --suite heldout            # refuses without a valid lock
 python benchmarks/run.py --write-lock --suite heldout      # write the lock before the first run
+```
+
+Before a demo or submission, run the public-surface preflight:
+
+```bash
+make preflight                                             # production: tour, console, ledger, session, health, chain, registry
+make preflight-local                                       # the local server on :8020
 ```
 
 **What none of this proves:** both corpora were authored by the Docket team. The lock proves the held-out labels were fixed before the run; it does not remove authorship bias. A 25/31 locked held-out result, or the 29/31 post-tuning result, is evidence of behavior on 31 unseen authored cases, not a claim about all policy sprawl. A post-run fix is a new iteration and is labelled as such.
@@ -407,7 +416,7 @@ curl -s https://docket-clocked.vercel.app/api/policies/approve \
 | `GET /ledger` | Human-readable ledger page |
 | `GET /tour` | Eight-case judge tour; `/` remains the marketing page |
 
-`POST /api/check`, `/api/check/stream`, `/api/ablate` and `/api/prove` require a session or bearer token. Check, ablation and proof routes share the per-IP and daily demo budget; a proof charges two checks.
+`POST /api/check`, `/api/check/stream`, `/api/ablate` and `/api/prove` require a session or bearer token. Check, ablation and proof routes share three demo budgets: **60 checks per session**, **600 per IP per hour**, and **1000 per day**. The session budget gives each judge a full demo; the higher IP ceiling leaves room for shared judging networks. A proof charges two checks.
 
 ---
 
@@ -423,7 +432,7 @@ curl -s https://docket-clocked.vercel.app/api/policies/approve \
 | Hot index | SQLite WAL (`/tmp` on Vercel, explicitly labeled per-instance) |
 | Frontend | Semantic HTML, CSS, vanilla JS, no build step |
 | Streaming | Server-Sent Events with real stage progress |
-| Tests | pytest — 102 tests |
+| Tests | pytest — 114 tests |
 | Deploy | Vercel FastAPI service; Docker/Render/Railway supported |
 
 ---
@@ -459,7 +468,7 @@ pip install -r requirements-dev.txt
 python -m pytest -v
 ```
 
-102 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, seeded-corpus verification, the hash-chained ledger, ten-way and two-loop concurrency, review-queue persistence and resolution, health verification, coverage/omission policy, Compare verdict rules, Decide triage, console feature coverage, ledger views and route authentication. The deterministic layers run without a Clocked key.
+114 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, seeded-corpus verification, the hash-chained ledger, ten-way and two-loop concurrency, review-queue persistence and resolution, health verification, coverage/omission policy, Compare verdict rules, Decide triage, console feature coverage, ledger views and route authentication. The deterministic layers run without a Clocked key.
 
 ---
 

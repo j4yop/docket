@@ -62,6 +62,35 @@
     },
   ];
 
+  const CODE_LABELS = {
+    approval_required: "Approval required",
+    check_failed: "Check could not complete",
+    contradicted: "Draft contradicts policy",
+    coverage_gap: "Material condition missing",
+    coverage_missing: "Material condition missing",
+    expired: "Policy expired",
+    internal_conflict: "Conflicting policy",
+    low_support: "Weak claim support",
+    metadata_conflict: "Policy metadata conflict",
+    missing_conditions: "Missing conditions",
+    no_claims: "No checkable claims",
+    no_governing_clause: "No governing clause",
+    not_a_claim: "Not a policy claim",
+    not_claim: "Not a policy claim",
+    out_of_scope: "Out of scope",
+    policy_tampered: "Policy signature broken",
+    policy_unapproved: "Policy not approved",
+    prompt_injection: "Instruction in source",
+    redacted: "Personal data removed",
+    stale: "Policy out of date",
+    superseded_value: "Superseded value",
+    supported: "Claims grounded",
+    triage_review: "Review routed",
+    unsafe_script: "Unsafe command",
+    unsupported: "Claim not grounded",
+    verification_missing: "Verification unavailable",
+  };
+
   const state = {
     sessionToken: null,
     sessionExpires: 0,
@@ -70,6 +99,26 @@
     running: false,
     retryIds: new Set(),
   };
+
+  function codeLabel(code) {
+    const key = String(code || "").trim();
+    if (!key) return "";
+    if (CODE_LABELS[key]) return CODE_LABELS[key];
+    return key.replace(/_/g, " ").replace(/^./, (character) => character.toUpperCase());
+  }
+
+  function completedCount() {
+    return document.querySelectorAll('#tour-rows tr[data-state="done"]').length;
+  }
+
+  function renderProgress(credits, latency) {
+    const completed = completedCount();
+    const total = TOUR.length;
+    $("tour-count").textContent = `${completed} / ${total}`;
+    $("tour-meta").textContent = credits == null
+      ? (state.running ? `${completed} of ${total} complete · waiting for the first check` : "No cases run yet.")
+      : `${completed} of ${total} ran · ${formatCredits(credits)} credits · ${(latency / 1000).toFixed(1)}s total`;
+  }
 
   function decisionLabel(value) {
     const normalized = String(value || "").toLowerCase();
@@ -272,7 +321,9 @@
     const codes = Array.isArray(body.codes) ? body.codes : [];
     row.dataset.state = "done";
     row.querySelector(".decision").innerHTML = badge(decision);
-    row.querySelector(".why").textContent = codes.length ? codes.join(" · ") : "—";
+    const why = row.querySelector(".why");
+    why.textContent = codes.length ? codes.map(codeLabel).join(" · ") : "—";
+    why.title = codes.join(" · ");
     const governing = body.authority && body.authority.governing ? body.authority.governing.title : "—";
     row.querySelector(".governing").textContent = governing;
     row.querySelector(".calls").textContent = String(body.api_calls || 0);
@@ -312,8 +363,7 @@
     $("tour-note").textContent = retrying
       ? `Retrying ${queue.length} failed case${queue.length === 1 ? "" : "s"}.`
       : "Running the eight cases in order. This takes about half a minute.";
-    $("tour-count").textContent = `${TOUR.length - state.retryIds.size} / 8`;
-    $("tour-meta").textContent = "Starting…";
+    renderProgress(null);
 
     let credits = 0;
     let latency = 0;
@@ -352,17 +402,16 @@
             break;
           }
         }
-        $("tour-count").textContent = `${TOUR.length - state.retryIds.size} / 8`;
+        renderProgress(credits, latency);
       }
 
       const remaining = state.retryIds.size;
-      const completed = TOUR.length - remaining;
       if (fatal) {
         const wait = fatal.retryAfter ? ` Retry in about ${Math.max(1, Math.ceil(fatal.retryAfter / 60))} minute(s).` : "";
-        $("tour-status").textContent = "Stopped";
+        $("tour-status").textContent = "Incomplete";
         $("tour-status").dataset.state = "held";
         $("tour-note").dataset.state = "error";
-        $("tour-note").textContent = `The tour stopped: ${fatal.message}${wait}`;
+        $("tour-note").textContent = `The tour is incomplete: ${fatal.message}${wait}`;
       } else if (remaining) {
         $("tour-status").textContent = "Incomplete";
         $("tour-status").dataset.state = "held";
@@ -373,18 +422,42 @@
         $("tour-status").dataset.state = "determined";
         $("tour-note").textContent = "All eight cases ran. Open the ledger to verify the records.";
       }
-      $("tour-count").textContent = `${completed} / 8`;
-      $("tour-meta").textContent = `${completed} of 8 ran · ${formatCredits(credits)} credits · ${(latency / 1000).toFixed(1)}s total`;
+      renderProgress(credits, latency);
       button.textContent = remaining ? "Retry failed cases" : "Run again";
     } catch (error) {
-      $("tour-status").textContent = "Stopped";
+      $("tour-status").textContent = "Incomplete";
       $("tour-status").dataset.state = "held";
       $("tour-note").dataset.state = "error";
-      $("tour-note").textContent = `The tour could not start: ${error.message}`;
+      $("tour-note").textContent = `The tour is incomplete: ${error.message}`;
+      renderProgress(credits, latency);
       button.textContent = state.retryIds.size ? "Retry failed cases" : "Retry the tour";
     } finally {
       state.running = false;
       button.disabled = false;
+    }
+  }
+
+  async function loadFeature() {
+    const question = $("tour-feature-question");
+    const draft = $("tour-feature-draft");
+    const policies = $("tour-feature-policies");
+    if (!question || !draft || !policies) return;
+    try {
+      const sample = await getSample("precedence-recency");
+      question.textContent = sample.question || "—";
+      draft.textContent = sample.draft || "—";
+      policies.innerHTML = (sample.documents || [])
+        .map((document) => {
+          const jurisdiction = document.jurisdiction || "Global";
+          const effective = document.effective_date || "undated";
+          const precedence = Number(document.precedence) || 0;
+          return `${esc(document.title)} — ${esc(jurisdiction)}, effective ${esc(effective)}, precedence ${precedence}`;
+        })
+        .join("<br>");
+    } catch (error) {
+      question.textContent = "—";
+      draft.textContent = "—";
+      policies.textContent = "The live case could not load. Run the tour to retry it.";
     }
   }
 
@@ -417,6 +490,7 @@
     cleanChrome();
     renderRows();
     $("run-tour").addEventListener("click", runTour);
+    loadFeature();
   }
 
   init();

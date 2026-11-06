@@ -163,6 +163,8 @@ async def seed_samples(samples) -> int:
     """Sign the built-in sample corpus once. Idempotent across cold starts."""
     pairs = []
     for sample in samples:
+        if sample.get("seed") is False:
+            continue
         for document in sample.get("documents") or []:
             pairs.append(document)
     seed_id = hashlib.sha256(
@@ -247,6 +249,8 @@ async def seed_status(samples) -> dict:
     documents = []
     seen: set[str] = set()
     for sample in samples:
+        if sample.get("seed") is False:
+            continue
         for document in sample.get("documents") or []:
             digest = content_hash(document.get("text") or "")
             if digest in seen:
