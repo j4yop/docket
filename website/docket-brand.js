@@ -263,6 +263,13 @@
         pathNode.setAttribute("d", shapePath);
       });
     }
+    var overlay = tab.querySelector('[data-slot="header-button-overlay"]');
+    if (overlay) {
+      // GitHub centers its inset hover frame at 104px on a 216px tab. The
+      // Judge Tour parallelogram adds 51.5px on the bottom-right, so the
+      // visual center is 134px; shift the same inset frame to stay centered.
+      overlay.style.left = "56px";
+    }
     var label = tab.querySelector('[data-docket-cta="github"]');
     if (label) {
       label.removeAttribute("data-docket-cta");
