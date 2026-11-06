@@ -174,6 +174,14 @@ async def seed_samples(samples) -> int:
 
     count = 0
     for document in pairs:
+        digest = content_hash(document.get("text") or "")
+        stored = _CACHE.get(digest)
+        if not isinstance(stored, dict):
+            candidate = await storage.get_json(f"policies/{digest}.json")
+            stored = candidate if isinstance(candidate, dict) else None
+        if isinstance(stored, dict) and verify(stored, stored.get("signature")):
+            _CACHE[digest] = stored
+            continue
         envelope = build_envelope(
             text=document.get("text") or "",
             title=document.get("title") or "Untitled policy",
@@ -262,12 +270,8 @@ async def seed_status(samples) -> dict:
             invalid.append(document.get("title") or digest[:12])
     marker_id = marker.get("seed_id") if isinstance(marker, dict) else None
     return {
-        "ok": bool(
-            isinstance(marker, dict)
-            and marker_id == expected_id
-            and not missing
-            and not invalid
-        ),
+        "ok": bool(isinstance(marker, dict) and not missing and not invalid),
+        "seed_current": marker_id == expected_id,
         "count": len(documents),
         "registered": len(documents) - len(missing) - len(invalid),
         "seed_id": marker_id,

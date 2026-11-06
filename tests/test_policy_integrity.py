@@ -205,3 +205,43 @@ def test_seed_status_verifies_every_signed_policy(monkeypatch, tmp_path):
     status = asyncio.run(policy_registry.seed_status(samples))
     assert status["ok"] is False
     assert status["invalid"] == ["Travel policy"]
+
+
+def test_stale_seed_marker_does_not_fail_a_valid_corpus(monkeypatch, tmp_path):
+    import asyncio
+    import json
+
+    import policy_registry
+    import storage
+
+    monkeypatch.setattr(storage, "LOCAL_DIR", tmp_path)
+    monkeypatch.setattr(policy_registry, "_CACHE", {})
+    samples = [
+        {
+            "documents": [
+                {
+                    "title": "Travel policy",
+                    "text": "Travel policy — effective 1 January 2026.\n\nHotel stays are reimbursed up to EUR 180 per night.",
+                    "jurisdiction": "Global",
+                    "effective_date": "2026-01-01",
+                    "precedence": 0,
+                }
+            ]
+        }
+    ]
+    asyncio.run(policy_registry.seed_samples(samples))
+    marker = asyncio.run(storage.get_json(policy_registry.SEED_PATH))
+    marker["seed_id"] = "stale-marker"
+    asyncio.run(storage.put_json(policy_registry.SEED_PATH, marker, allow_overwrite=True))
+    monkeypatch.setattr(policy_registry, "_CACHE", {})
+
+    status = asyncio.run(policy_registry.seed_status(samples))
+    assert status["ok"] is True
+    assert status["seed_current"] is False
+    assert status["registered"] == 1
+
+    written = asyncio.run(policy_registry.seed_samples(samples))
+    assert written == 0
+    repaired = asyncio.run(policy_registry.seed_status(samples))
+    assert repaired["ok"] is True
+    assert repaired["seed_current"] is True

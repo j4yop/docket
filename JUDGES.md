@@ -29,7 +29,7 @@
 | Quality of core Clocked integration | 30 | Authority + Compare + Fill + Verify decide the verdict; Guard/Inspect stop unsafe inputs |
 | Additional endpoints | 15 | “What each endpoint changes” table: nine proof cases, recorded live, each row re-runnable |
 | Implementation and UX | 20 | One-click tour, retry on partial runs, ledger, health, review queue |
-| Clear explanation and reproducibility | 10 | This guide, `/tour`, README, public repo, 100 tests |
+| Clear explanation and reproducibility | 10 | This guide, `/tour`, README, public repo, 101 tests |
 
 ## Endpoint map
 
@@ -57,7 +57,7 @@ Protect and Rerank change the record or evidence set; they are not verdict lever
 - **Adversarial suite:** 10/10, 0 unsafe false-PUBLISH, 100% injection/script recall (`benchmarks/adversarial-results.md`).
 - **Concurrency:** ten real checks, ten unique audit sequences, chain verified (`benchmarks/concurrency-results.md`).
 - **Clocked-off negative control:** every Clocked call failing holds the check; see `tests/test_fail_closed.py`.
-- **Tests:** 100 passing.
+- **Tests:** 101 passing.
 
 ## Limitations
 

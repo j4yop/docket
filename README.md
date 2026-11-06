@@ -6,7 +6,7 @@
 [![Endpoints](https://img.shields.io/badge/CLOCKED_ENDPOINTS-9%2F9-38BDF8?style=for-the-badge&labelColor=1e293b&color=38BDF8)](https://clocked.rezolve.ai/docs)
 [![Safety](https://img.shields.io/badge/UNSAFE_FALSE_PUBLISH-0-22c55e?style=for-the-badge&labelColor=1e293b)](#adversarial-safety-suite)
 [![Held-out](https://img.shields.io/badge/HELD_OUT-25%2F31-f5b544?style=for-the-badge&labelColor=1e293b&color=e2a65a)](#held-out-locked-before-the-run)
-[![Tests](https://img.shields.io/badge/tests-100_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
+[![Tests](https://img.shields.io/badge/tests-101_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
 [![Python](https://img.shields.io/badge/python-3.11_%7C_3.12_%7C_3.13-3775A9?style=for-the-badge&logo=python&logoColor=white&labelColor=1e293b)](https://www.python.org/)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-docket--clocked.vercel.app-6366F1?style=for-the-badge&logo=vercel&logoColor=white&labelColor=1e293b)](https://docket-clocked.vercel.app)
 [![Console](https://img.shields.io/badge/Gate_Console-%2Fconsole-059669?style=for-the-badge&labelColor=1e293b)](https://docket-clocked.vercel.app/console)
@@ -417,7 +417,7 @@ curl -s https://docket-clocked.vercel.app/api/policies/approve \
 | Hot index | SQLite WAL (`/tmp` on Vercel, explicitly labeled per-instance) |
 | Frontend | Semantic HTML, CSS, vanilla JS, no build step |
 | Streaming | Server-Sent Events with real stage progress |
-| Tests | pytest — 100 tests |
+| Tests | pytest — 101 tests |
 | Deploy | Vercel FastAPI service; Docker/Render/Railway supported |
 
 ---
@@ -453,7 +453,7 @@ pip install -r requirements-dev.txt
 python -m pytest -v
 ```
 
-100 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, seeded-corpus verification, the hash-chained ledger, ten-way and two-loop concurrency, review-queue persistence and resolution, health verification, coverage/omission policy, Compare verdict rules, Decide triage, console feature coverage, ledger views and route authentication. The deterministic layers run without a Clocked key.
+101 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, seeded-corpus verification, the hash-chained ledger, ten-way and two-loop concurrency, review-queue persistence and resolution, health verification, coverage/omission policy, Compare verdict rules, Decide triage, console feature coverage, ledger views and route authentication. The deterministic layers run without a Clocked key.
 
 ---
 
