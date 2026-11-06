@@ -270,10 +270,10 @@
       // visual center is 134px; shift the same inset frame to stay centered.
       // Scale the inset frame with the wider parallelogram, and center it on
       // the label so the hover graphic does not sit off to one side.
-      overlay.style.left = "25.58px";
-      overlay.style.top = "26.1061px";
-      overlay.style.width = "156.023px";
-      overlay.style.height = "33px";
+      overlay.style.left = "44px";
+      overlay.style.top = "22px";
+      overlay.style.width = "180px";
+      overlay.style.height = "38px";
     }
     var label = tab.querySelector('[data-docket-cta="github"]');
     if (label) {
@@ -282,7 +282,7 @@
         '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false" fill="currentColor" style="flex:none">' +
         '<path d="M4.75 2.9c0-.77.84-1.25 1.5-.86l8 5.1c.62.4.62 1.32 0 1.72l-8 5.1c-.66.39-1.5-.09-1.5-.86V2.9Z"></path>' +
         "</svg><span>Judge Tour</span>";
-      label.style.left = "104px";
+      label.style.left = "134px";
       label.style.gap = "8px";
     }
     github.parentNode.insertBefore(tab, github);
