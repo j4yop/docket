@@ -123,14 +123,30 @@
     if (state.sessionToken && Date.now() / 1000 < state.sessionExpires - 30) {
       return state.sessionToken;
     }
-    const response = await fetch("/api/session", { cache: "no-store" });
-    const body = await response.json().catch(() => null);
-    if (!response.ok || !body || !body.token) {
-      throw new Error((body && body.detail) || "Could not start a Docket session.");
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const response = await fetch("/api/session", { cache: "no-store" });
+        if (response.status >= 500 && attempt < 2) {
+          await new Promise((resolve) => window.setTimeout(resolve, 600 * (attempt + 1)));
+          continue;
+        }
+        const body = await response.json().catch(() => null);
+        if (!response.ok || !body || !body.token) {
+          throw new Error((body && body.detail) || "Could not start a Docket session.");
+        }
+        state.sessionToken = body.token;
+        state.sessionExpires = Number(body.expires_at) || 0;
+        return state.sessionToken;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) {
+          await new Promise((resolve) => window.setTimeout(resolve, 600 * (attempt + 1)));
+          continue;
+        }
+      }
     }
-    state.sessionToken = body.token;
-    state.sessionExpires = Number(body.expires_at) || 0;
-    return state.sessionToken;
+    throw lastError || new Error("Could not reach Docket. Network request failed.");
   }
 
   const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -165,11 +181,27 @@
 
   async function getSample(sampleId) {
     if (state.samples[sampleId]) return state.samples[sampleId];
-    const response = await fetch(`/api/samples/${encodeURIComponent(sampleId)}`, { cache: "no-store" });
-    if (!response.ok) throw new Error(`Could not load ${sampleId} (HTTP ${response.status}).`);
-    const sample = await response.json();
-    state.samples[sampleId] = sample;
-    return sample;
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const response = await fetch(`/api/samples/${encodeURIComponent(sampleId)}`, { cache: "no-store" });
+        if (response.status >= 500 && attempt < 2) {
+          await new Promise((resolve) => window.setTimeout(resolve, 600 * (attempt + 1)));
+          continue;
+        }
+        if (!response.ok) throw new Error(`Could not load ${sampleId} (HTTP ${response.status}).`);
+        const sample = await response.json();
+        state.samples[sampleId] = sample;
+        return sample;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) {
+          await new Promise((resolve) => window.setTimeout(resolve, 600 * (attempt + 1)));
+          continue;
+        }
+      }
+    }
+    throw lastError || new Error(`Could not load ${sampleId}.`);
   }
 
   function payloadFromSample(sample) {
@@ -368,7 +400,7 @@
       $("tour-status").dataset.state = "held";
       $("tour-note").dataset.state = "error";
       $("tour-note").textContent = `The tour could not start: ${error.message}`;
-      button.textContent = "Retry failed cases";
+      button.textContent = state.retryIds.size ? "Retry failed cases" : "Retry the tour";
     } finally {
       state.running = false;
       button.disabled = false;
