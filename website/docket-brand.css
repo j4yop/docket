@@ -56,3 +56,16 @@ header.dk-header-hidden {
     --nav-gap: 1.5rem !important;
   }
 }
+
+/* Between the lg breakpoint and 1200px the six-item nav needs tighter spacing
+   so it stays clear of the fixed GitHub tab. */
+@media (min-width: 1024px) and (max-width: 1199px) {
+  header nav[data-header-nav] {
+    --nav-gap: 0.5rem !important;
+  }
+  header nav[data-header-nav] a {
+    font-size: 13px !important;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+}

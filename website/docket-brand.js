@@ -12,6 +12,7 @@
     "How it Works": "#how-docket-works",
     Scenarios: "#scenarios",
     API: "#api",
+    "Judge Tour": "/tour",
   };
   var NAV_ITEMS = [
     { label: "Problem", href: SECTION_HREFS.Problem },
@@ -19,6 +20,7 @@
     { label: "How it Works", href: SECTION_HREFS["How it Works"] },
     { label: "Scenarios", href: SECTION_HREFS.Scenarios },
     { label: "API", href: SECTION_HREFS.API },
+    { label: "Judge Tour", href: SECTION_HREFS["Judge Tour"] },
   ];
   var MOBILE_NAV_ITEMS = [
     { label: "Problem", href: SECTION_HREFS.Problem },
@@ -26,6 +28,7 @@
     { label: "How it Works", href: SECTION_HREFS["How it Works"] },
     { label: "Scenarios", href: SECTION_HREFS.Scenarios },
     { label: "API", href: SECTION_HREFS.API },
+    { label: "Judge Tour", href: SECTION_HREFS["Judge Tour"], primary: true },
     { label: "GitHub", href: GITHUB, external: true, primary: true },
     { label: "Open console", href: CONSOLE, primary: true },
   ];
@@ -62,7 +65,7 @@
     var nav = document.querySelector('nav[data-header-nav="true"]');
     var ul = nav && nav.querySelector("ul");
     if (!ul) return;
-    if (navLabels(ul) === "Problem|Product|How it Works|Scenarios|API") {
+    if (navLabels(ul) === "Problem|Product|How it Works|Scenarios|API|Judge Tour") {
       Array.prototype.forEach.call(ul.querySelectorAll("a"), function (link) {
         var href = SECTION_HREFS[link.textContent.trim()];
         if (href && link.getAttribute("href") !== href) link.setAttribute("href", href);
@@ -110,7 +113,7 @@
     if (root) applyMobileBrand(root);
     var ul = root && root.querySelector("ul");
     if (!ul) return;
-    if (navLabels(ul) === "Problem|Product|How it Works|Scenarios|API|GitHub|Open console") return;
+    if (navLabels(ul) === "Problem|Product|How it Works|Scenarios|API|Judge Tour|GitHub|Open console") return;
 
     ul.innerHTML = MOBILE_NAV_ITEMS.map(function (item) {
       var primary = item.primary ? " text-primary" : "";

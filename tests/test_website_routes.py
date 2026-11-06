@@ -365,3 +365,10 @@ def test_review_api_lists_assigns_and_resolves(monkeypatch, tmp_path) -> None:
     assert body["audit"]["seq"] == 9
 
     assert client.get("/api/reviews", headers={"X-Docket-Admin": "wrong"}).status_code == 404
+
+
+def test_brand_nav_includes_the_judge_tour() -> None:
+    response = client.get("/docket-brand.js")
+    assert response.status_code == 200
+    assert "Judge Tour" in response.text
+    assert '"/tour"' in response.text
