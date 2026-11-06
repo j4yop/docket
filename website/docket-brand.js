@@ -270,10 +270,10 @@
       // visual center is 134px; shift the same inset frame to stay centered.
       // Scale the inset frame with the wider parallelogram, and center it on
       // the label so the hover graphic does not sit off to one side.
-      overlay.style.left = "44px";
-      overlay.style.top = "22px";
-      overlay.style.width = "180px";
-      overlay.style.height = "38px";
+      overlay.style.left = "56px";
+      overlay.style.top = "26.1061px";
+      overlay.style.width = "156.023px";
+      overlay.style.height = "33px";
     }
     var label = tab.querySelector('[data-docket-cta="github"]');
     if (label) {
