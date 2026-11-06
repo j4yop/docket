@@ -206,7 +206,7 @@ Sequence allocation uses an atomic claim (`allow_overwrite=False` on Blob, `O_EX
 
 ### Judge tour
 
-`/tour` is the submission demo path. The marketing front door at `/` is unchanged. The tour uses the console shell and runs eight real cases in order, showing the live decision, the reason codes, the governing policy, calls, credits, latency and the audit sequence. Latest production run: **8/8 complete, 94 credits, 5.2 s**. The header tab and console link to it; the tour source is [`website/tour.html`](website/tour.html).
+`/tour` is the submission demo path. The marketing front door at `/` is unchanged. The tour uses the console shell and runs eight real cases in order, showing the live decision, the reason codes, the governing policy, calls, credits, latency and the audit sequence. Latest production run: **8/8 complete, 103 credits, 6.1 s**. The header tab and console link to it; the tour source is [`website/tour.html`](website/tour.html).
 
 ---
 

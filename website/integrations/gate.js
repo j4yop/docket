@@ -2158,7 +2158,11 @@
     if (ref) ref.value = doc.approval_reference;
     const hint = refs.docEditor.querySelector(".gate-doc-hint");
     if (hint) {
-      hint.innerHTML = `<span class="gate-trust" data-trust="operator">operator</span> This policy will be attested for the next check as ${esc(doc.approved_by)}. Shared registry approval stays admin-only.`;
+      const effective = doc.seeded ? "seeded" : "operator";
+      const note = doc.seeded
+        ? "This built-in policy is already seeded; the check uses its startup envelope."
+        : `This policy will be attested for the next check as ${esc(doc.approved_by)}.`;
+      hint.innerHTML = `<span class="gate-trust" data-trust="${effective}">${effective}</span> ${note} Shared registry approval stays admin-only.`;
     }
   }
 
