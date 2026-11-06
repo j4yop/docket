@@ -2095,6 +2095,9 @@ footer form button:active { transform: translateY(0) scale(0.99); }
 .gate-glossary dd { margin: 0; font-size: 12px; line-height: 1.5; color: var(--gate-dim); }
 
 @media (max-width: 760px) {
+  .gate-block-head { align-items: flex-start; }
+  .gate-block-head h3 { font-size: 19px; line-height: 1; }
+  .gate-block-head span { white-space: normal; text-align: right; }
   .gate-judge-banner { align-items: stretch; flex-direction: column; }
   .gate-judge-actions .gate-secondary { flex: 1 1 100%; }
   .gate-record-grid { grid-template-columns: 1fr 1fr; }
