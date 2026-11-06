@@ -388,7 +388,33 @@
     }
   }
 
+  function cleanChrome() {
+    const overlay = document.getElementById("docket-mobile-menu");
+    if (overlay) {
+      const clean = () => {
+        for (const duplicate of overlay.querySelectorAll("#docket-menu-main > li")) duplicate.remove();
+        for (const link of overlay.querySelectorAll("a")) {
+          const text = link.textContent.trim().toLowerCase();
+          if (["problem", "product", "how it works", "scenarios", "api"].includes(text)) {
+            link.closest("li")?.remove();
+          }
+        }
+      };
+      clean();
+      if (window.MutationObserver) {
+        new MutationObserver(clean).observe(overlay, { childList: true, subtree: true });
+      }
+    }
+    for (const link of document.querySelectorAll('a[href="#gate-stages"]')) {
+      link.setAttribute("href", "#docket-gate");
+    }
+    for (const link of document.querySelectorAll('a[href="#gate-panel-examples"]')) {
+      link.setAttribute("href", "#tour-sheet");
+    }
+  }
+
   function init() {
+    cleanChrome();
     renderRows();
     $("run-tour").addEventListener("click", runTour);
   }
