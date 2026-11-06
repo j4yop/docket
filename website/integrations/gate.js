@@ -26,6 +26,7 @@
     last: null,
     lastPayload: null,
     mode: "case",
+    necessity: null,
   };
 
   let refs = {};
@@ -122,6 +123,12 @@
       policiesBlock: $("gate-policies-block"),
       policiesMeta: $("gate-policies-meta"),
       policies: $("gate-policies"),
+      record: $("gate-record"),
+      recordMeta: $("gate-record-meta"),
+      flagship: $("gate-flagship"),
+      necessity: $("gate-necessity"),
+      necessityMeta: $("gate-necessity-meta"),
+      necessityStatus: $("gate-necessity-status"),
       auditNote: $("gate-audit-note"),
       ablateEndpoint: $("gate-ablate-endpoint"),
       ablateRun: $("gate-ablate-run"),
@@ -160,6 +167,7 @@
     renderRecent();
     checkHealth();
     loadSamples();
+    loadNecessity();
     initMotion();
   }
 
@@ -389,6 +397,8 @@
     }
 
     refs.run.addEventListener("click", run);
+    refs.flagship.addEventListener("click", runFlagship);
+    refs.necessity.addEventListener("click", onNecessityClick);
     document.addEventListener("keydown", (event) => {
       if (!(event.metaKey || event.ctrlKey) || event.key !== "Enter") return;
       event.preventDefault();
@@ -937,6 +947,7 @@
     renderCoverage(result);
     renderConflicts(result);
     renderRerank(result);
+    renderDecisionRecord(result);
     renderDrawers(result, payload);
     applyDocOutcomes();
 
@@ -1152,6 +1163,55 @@
             .join("")}
         </ul>
       </div>`;
+  }
+
+  function renderDecisionRecord(result) {
+    if (!refs.record) return;
+    const audit = result.audit || {};
+    const review = result.review || {};
+    const envelopes = result.policy_envelopes || [];
+    const decision = String(result.decision || "hold").toLowerCase();
+    const auditText = audit.error
+      ? "Ledger unavailable"
+      : audit.seq
+        ? `seq ${audit.seq} · ${audit.storage} · ${String(audit.hash || "").slice(0, 12)}…`
+        : "Simulation · not recorded";
+    const reviewText = review.id
+      ? `${review.status || "open"} · ${review.id}`
+      : decision === "publish"
+        ? "Released"
+        : "Not opened";
+    const releaseText = decision === "publish"
+      ? "Released"
+      : review.id
+        ? "Awaiting human release or send-back"
+        : "No release record";
+    refs.recordMeta.textContent = audit.seq ? `audit #${audit.seq}` : "not recorded";
+    const policyItems = envelopes.length
+      ? envelopes.map((envelope) => `<li>${esc(envelope.title || "Policy")} · ${esc(envelope.approval_type || "approved")} · ${esc(String(envelope.content_hash || "").slice(0, 12))}…</li>`).join("")
+      : "<li>No signed policy envelopes.</li>";
+    const reviewRecord = review.id
+      ? `<div class="gate-record-review">
+          <b>Review record</b>
+          <p><span>Question</span>${esc(result.question || "")}</p>
+          <p><span>Draft</span>${esc(result.draft || "")}</p>
+          <p><span>Reasons</span>${esc((result.reasons || []).join(" · "))}</p>
+          <div class="gate-record-actions">
+            <button type="button" class="gate-secondary" disabled>Release answer</button>
+            <button type="button" class="gate-secondary" disabled>Send back</button>
+            <span>Admin token required</span>
+          </div>
+        </div>`
+      : "";
+    refs.record.innerHTML = `
+      <div class="gate-record-grid">
+        <div class="gate-record-cell"><b>Audit</b><span>${esc(auditText)}</span></div>
+        <div class="gate-record-cell"><b>Review</b><span>${esc(reviewText)}</span></div>
+        <div class="gate-record-cell"><b>Release state</b><span>${esc(releaseText)}</span></div>
+        <div class="gate-record-cell"><b>Links</b><span><a href="/ledger">Ledger</a> · <a href="#gate-review-block">Queue</a></span></div>
+      </div>
+      <div class="gate-record-policies"><b>Signed policies</b><ul>${policyItems}</ul></div>
+      ${reviewRecord}`;
   }
 
   function renderPolicies(result) {
@@ -1851,7 +1911,7 @@
   }
 
   async function loadSample(id) {
-    if (!id) return;
+    if (!id) return false;
     try {
       const response = await fetch(`/api/samples/${encodeURIComponent(id)}`, { cache: "no-store" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -1886,9 +1946,121 @@
       setMode("case", "Example loaded — edit any field.");
       setStatus("input", "Ready", "");
       setStatus("verdict", "Idle", "");
+      return true;
     } catch (error) {
       showError(`Could not load that example. ${error.message}`);
+      return false;
     }
+  }
+
+  async function runFlagship() {
+    if (state.busy) return;
+    const loaded = await loadSample("precedence-recency");
+    if (loaded) await run();
+  }
+
+  function proofBadge(decision) {
+    const value = String(decision || "").toLowerCase();
+    return `<span class="necessity-decision" data-decision="${esc(value)}">${esc(value ? value.toUpperCase() : "—")}</span>`;
+  }
+
+  function proofSummary(summary) {
+    if (!summary) return '<span class="necessity-empty">—</span>';
+    const signal = (summary.signal && summary.signal.label) || "";
+    return `${proofBadge(summary.decision)}<span class="necessity-signal">${esc(signal)}</span>`;
+  }
+
+  function proofDelta(result) {
+    if (!result || result.mode === "measure" || !result.ablated) return "Record / evidence only";
+    const before = result.baseline || {};
+    const after = result.ablated || {};
+    if (String(before.decision) !== String(after.decision)) {
+      return `${String(before.decision || "").toUpperCase()} → ${String(after.decision || "").toUpperCase()}`;
+    }
+    const first = (before.signal && before.signal.label) || "";
+    const second = (after.signal && after.signal.label) || "";
+    return first !== second ? `${first} → ${second}` : "No observable change";
+  }
+
+  function renderNecessity(data) {
+    if (!refs.necessity) return;
+    const proofs = (data && data.proofs) || [];
+    if (!proofs.length) {
+      refs.necessity.innerHTML = '<div class="gate-necessity-loading">No recorded proofs.</div>';
+      return;
+    }
+    if (refs.necessityMeta) {
+      const when = data.recorded_at ? new Date(data.recorded_at).toLocaleString() : "live";
+      refs.necessityMeta.textContent = `recorded ${when}`;
+    }
+    refs.necessity.innerHTML = proofs.map((proof) => {
+      const result = proof.result || {};
+      const measure = result.mode === "measure";
+      const live = proof.live ? '<span class="necessity-live">live</span>' : "";
+      const without = measure
+        ? '<span class="necessity-empty">Not ablated</span>'
+        : proofSummary(result.ablated);
+      return `<div class="necessity-card" data-endpoint="${esc(proof.endpoint)}">
+        <div class="necessity-card-head">
+          <b>${esc(proof.label)}${live}</b>
+          <span>${esc(proof.role)}</span>
+          <button type="button" class="gate-link necessity-run" data-proof="${esc(proof.endpoint)}">${measure ? "Measure" : "Re-run"}</button>
+        </div>
+        <p class="necessity-case">Proof case · ${esc(proof.proof_case)}</p>
+        <div class="necessity-result">
+          <span class="necessity-side"><em>With</em>${proofSummary(result.baseline)}</span>
+          <span class="necessity-arrow" aria-hidden="true">→</span>
+          <span class="necessity-side"><em>Without</em>${without}</span>
+        </div>
+        <p class="necessity-delta">${esc(proof.delta || proofDelta(result))}</p>
+      </div>`;
+    }).join("");
+  }
+
+  async function loadNecessity() {
+    try {
+      const response = await fetch("/integrations/necessity.json?v=20261106a", { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      state.necessity = await response.json();
+      renderNecessity(state.necessity);
+    } catch (error) {
+      if (refs.necessity) {
+        refs.necessity.innerHTML = '<div class="gate-necessity-loading">Recorded evidence is unavailable. Use the advanced counterfactual below, or re-run a check.</div>';
+      }
+      if (refs.necessityStatus) refs.necessityStatus.textContent = "Recorded evidence could not load.";
+    }
+  }
+
+  async function rerunProof(endpoint, button) {
+    const proof = ((state.necessity && state.necessity.proofs) || []).find((item) => item.endpoint === endpoint);
+    if (!proof || !proof.payload || button.disabled) return;
+    button.disabled = true;
+    const original = button.textContent;
+    button.textContent = "Running…";
+    if (refs.necessityStatus) refs.necessityStatus.textContent = `Running the ${proof.label} proof…`;
+    try {
+      const response = await authFetch("/api/prove", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.assign({}, proof.payload, { endpoint })),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error((body && (body.detail || body.error)) || `HTTP ${response.status}`);
+      proof.result = body;
+      proof.delta = proofDelta(body);
+      proof.live = true;
+      renderNecessity(state.necessity);
+      if (refs.necessityStatus) refs.necessityStatus.textContent = `${proof.label} re-ran live. No audit record was written.`;
+    } catch (error) {
+      if (refs.necessityStatus) refs.necessityStatus.textContent = `${proof.label} proof failed: ${error.message}`;
+      button.disabled = false;
+      button.textContent = original;
+    }
+  }
+
+  function onNecessityClick(event) {
+    const button = event.target.closest("button[data-proof]");
+    if (button) rerunProof(button.dataset.proof, button);
   }
 
   /* --------------------------------------------------------- import/export */

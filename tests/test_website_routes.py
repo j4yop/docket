@@ -131,6 +131,100 @@ def test_ablate_skips_the_endpoint_without_recording(monkeypatch) -> None:
     assert "not written to the audit ledger" in body["ablation"]["note"]
 
 
+def test_prove_requires_a_session() -> None:
+    response = client.post("/api/prove", json={**_check_payload(), "endpoint": "guard"})
+    assert response.status_code == 401
+
+
+def test_prove_rejects_an_unknown_endpoint() -> None:
+    response = client.post(
+        "/api/prove",
+        json={**_check_payload(), "endpoint": "authority"},
+        headers=_session_headers(),
+    )
+    assert response.status_code == 400
+
+
+def test_prove_runs_a_baseline_and_one_counterfactual(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+    seen = []
+
+    async def fake_run_check(req, emit=None, ablate=None, record=True):
+        seen.append({"ablate": ablate, "record": record})
+        ablated = bool(ablate)
+        return {
+            "decision": "hold" if ablated else "publish",
+            "reasons": ["proof"],
+            "codes": [],
+            "credits": 0,
+            "api_calls": 0,
+            "latency_ms": 0,
+            "headline": "",
+            "authority": {"governing": {"title": "Policy"}},
+            "guard": None if ablated else {"verdict": "injection"},
+        }
+
+    monkeypatch.setattr(module, "run_check", fake_run_check)
+    response = client.post(
+        "/api/prove",
+        json={**_check_payload(), "endpoint": "guard"},
+        headers=_session_headers(),
+    )
+    assert response.status_code == 200
+    assert len(seen) == 2
+    assert {item["record"] for item in seen} == {False}
+    assert {str(item["ablate"]) for item in seen} == {"None", "{'guard'}"}
+    body = response.json()
+    assert body["mode"] == "ablate"
+    assert body["baseline"]["decision"] == "publish"
+    assert body["ablated"]["decision"] == "hold"
+    assert body["baseline"]["signal"]["label"] == "Injection detected"
+    assert body["ablated"]["signal"]["label"] == "No injection gate"
+
+
+def test_prove_measures_protect_without_ablating(monkeypatch) -> None:
+    import importlib
+
+    module = importlib.import_module("app")
+    seen = []
+
+    async def fake_run_check(req, emit=None, ablate=None, record=True):
+        seen.append({"ablate": ablate, "record": record})
+        return {
+            "decision": "rewrite",
+            "reasons": ["proof"],
+            "codes": [],
+            "credits": 0,
+            "api_calls": 0,
+            "latency_ms": 0,
+            "headline": "",
+            "authority": {"governing": {"title": "Policy"}},
+            "protect": {"entity_count": 2},
+        }
+
+    monkeypatch.setattr(module, "run_check", fake_run_check)
+    response = client.post(
+        "/api/prove",
+        json={**_check_payload(), "endpoint": "protect"},
+        headers=_session_headers(),
+    )
+    assert response.status_code == 200
+    assert seen == [{"ablate": None, "record": False}]
+    body = response.json()
+    assert body["mode"] == "measure"
+    assert body["ablated"] is None
+    assert body["baseline"]["signal"]["label"] == "2 PII entities redacted"
+
+
+def test_console_includes_the_necessity_proof_table() -> None:
+    response = client.get("/console")
+    assert response.status_code == 200
+    assert 'id="gate-necessity"' in response.text
+    assert "What each endpoint changes" in response.text
+
+
 def test_check_holds_when_the_policy_registry_fails(monkeypatch) -> None:
     import importlib
 

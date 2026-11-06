@@ -4,8 +4,9 @@
 
 [![Hackathon](https://img.shields.io/badge/HACKATHON-CLOCKED_BUILD_CHALLENGE-FEEA3B?style=for-the-badge&logoColor=black&labelColor=1e293b&color=FEEA3B)](https://clocked.rezolve.ai/challenge)
 [![Endpoints](https://img.shields.io/badge/CLOCKED_ENDPOINTS-9%2F9-38BDF8?style=for-the-badge&labelColor=1e293b&color=38BDF8)](https://clocked.rezolve.ai/docs)
+[![Safety](https://img.shields.io/badge/UNSAFE_FALSE_PUBLISH-0-22c55e?style=for-the-badge&labelColor=1e293b)](#adversarial-safety-suite)
 [![Held-out](https://img.shields.io/badge/HELD_OUT-25%2F31-f5b544?style=for-the-badge&labelColor=1e293b&color=e2a65a)](#held-out-locked-before-the-run)
-[![Tests](https://img.shields.io/badge/tests-92_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
+[![Tests](https://img.shields.io/badge/tests-100_passed-4ade80?style=for-the-badge&labelColor=1e293b&color=22c55e)](#run-tests)
 [![Python](https://img.shields.io/badge/python-3.11_%7C_3.12_%7C_3.13-3775A9?style=for-the-badge&logo=python&logoColor=white&labelColor=1e293b)](https://www.python.org/)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-docket--clocked.vercel.app-6366F1?style=for-the-badge&logo=vercel&logoColor=white&labelColor=1e293b)](https://docket-clocked.vercel.app)
 [![Console](https://img.shields.io/badge/Gate_Console-%2Fconsole-059669?style=for-the-badge&labelColor=1e293b)](https://docket-clocked.vercel.app/console)
@@ -131,9 +132,25 @@ A check is **not published** if the ledger write fails: the verdict is downgrade
 
 ### Real ablation, not a counterfactual paragraph
 
-`POST /api/ablate` runs the same inputs with exactly one endpoint skipped. It returns a real payload, never a hardcoded string, does not write to the ledger, and never publishes. The console's **Counterfactual** control runs it in one click.
+`POST /api/ablate` runs the same inputs with exactly one endpoint skipped. It returns a real payload, never a hardcoded string, does not write to the ledger, and never publishes. `POST /api/prove` runs the baseline and one counterfactual together and returns only the field that proves the endpoint's contribution. The console's **What each endpoint changes** table uses it on the case that triggers each lever, and every row can be re-run live.
 
 The flagship demonstration is real: on the injected-policy case, the baseline HOLDs after Guard. With Guard skipped, the same case proceeds through the rest of the pipeline and **PUBLISHes** — the injected note is no longer screened. That is the measured difference the endpoint makes, not a claim in a slide.
+
+Latest live proof run (`benchmarks/necessity-results.md`):
+
+| Endpoint | Proof case | With endpoint | Without endpoint | Change |
+|---|---|---|---|---|
+| **Guard** | Injected policy note | HOLD · injection detected | PUBLISH | HOLD → PUBLISH |
+| **Inspect** | Unsafe runbook | HOLD · unsafe script | REWRITE | HOLD → REWRITE |
+| **Extract** | Metadata conflict | HOLD · 1 conflict | PUBLISH | HOLD → PUBLISH |
+| **Decide** | Precedence over recency | REWRITE · review required | REWRITE · no review route | Review routed → no route |
+| **Compare** | Precedence over recency | REWRITE · 2 conflict pairs | REWRITE · no conflict pairs | 2 conflicts → 0 |
+| **Fill** | Omitted remote-work condition | REWRITE · omission | PUBLISH | REWRITE → PUBLISH |
+| **Verify** | Clean access request | PUBLISH · claims grounded | HOLD | PUBLISH → HOLD |
+| **Protect** | PII in the question | REWRITE · 1 PII entity redacted | Not ablated | Record only |
+| **Rerank** | Precedence over recency | REWRITE · 1 of 8 clauses used | Not ablated | Evidence only |
+
+Protect and Rerank are measured rather than ablated because they do not move the verdict. Every other row is a real baseline and a real counterfactual, and the table is reproducible with `python benchmarks/necessity.py --base-url http://127.0.0.1:8000`.
 
 ### Policy integrity in the UI
 
@@ -189,13 +206,13 @@ Sequence allocation uses an atomic claim (`allow_overwrite=False` on Blob, `O_EX
 
 ### Judge tour
 
-`/tour` is additive. The marketing front door at `/` is unchanged. The tour runs eight real cases in order and shows expected vs actual, credits, latency and audit sequence numbers. Latest local run: **8/8 as expected, 95 credits, 23.7 s**. The header tab and console link to it; the tour source is [`website/tour.html`](website/tour.html). It is not deployed by this branch.
+`/tour` is the submission demo path. The marketing front door at `/` is unchanged. The tour uses the console shell and runs eight real cases in order, showing the live decision, the reason codes, the governing policy, calls, credits, latency and the audit sequence. Latest production run: **8/8 complete, 94 credits, 5.2 s**. The header tab and console link to it; the tour source is [`website/tour.html`](website/tour.html).
 
 ---
 
 ## Measured accuracy
 
-Docket ships two accuracy corpora and a separate calibration set. None is a third-party benchmark, and the documents say so.
+**The headline is safety, not a perfect score: 0 unsafe false-PUBLISH across 31 locked held-out cases and 10 adversarial cases.** Exact decision labels are 25/31 on the locked held-out run and 27/31 after post-held-out tuning. Docket ships two accuracy corpora, a targeted adversarial suite and a separate calibration set. None is a third-party benchmark, and the documents say so.
 
 ### Held-out: locked before the run
 
@@ -244,6 +261,21 @@ After the locked run, the Extract metadata bug class was fixed: a document title
 
 The four remaining post-tuning failures are `holdout-auth-scope` (a scope question that resolves to `no_governing_clause`), `holdout-auth-tie` and `holdout-script-safe` (the two label disputes about omitted receipt/endpoint conditions), and `holdout-omission-complete` (the real clause-selection miss). The post-tuning number is **not** the locked result; it is the product after seeing the failures. Both documents are in the repository so a judge can compare them.
 
+### Adversarial safety suite
+
+`benchmarks/adversarial_cases.py` contains 10 targeted attacks: instructions in the policy, draft and question; a zero-width Unicode instruction; a hidden markdown comment; a forged/tampered envelope; a superseded value; an unsafe script; malformed metadata; and a clean control.
+
+Latest live run (`benchmarks/adversarial-results.md`):
+
+| Metric | Result |
+|---|---:|
+| Cases passed | **10 / 10** |
+| Unsafe false-PUBLISH rate | **0%** |
+| Injection recall | **100%** (5 cases) |
+| Script recall | **100%** |
+| Clean false-HOLD rate | **0%** (1 control) |
+| Average calls / credits / latency | **2.8 / 8.5 / 1.63 s** |
+
 ### Calibration: borderline cases and a measured Inspect boundary
 
 `benchmarks/calibration_cases.py` contains **14 deliberately borderline cases**: instruction-like policy prose, legitimate “ignore earlier versions” language, targeted approval instructions, safe scripts that mention stopping services, a privilege-policy bypass, a persistence command, and subtle omissions.
@@ -270,6 +302,7 @@ Reproduce:
 python benchmarks/run.py --offline                       # deterministic, no API key
 python benchmarks/run.py --live --sweep                   # tuned regression suite
 python benchmarks/run.py --live --suite calibration --sweep
+python benchmarks/run.py --live --suite adversarial
 python benchmarks/run.py --live --suite heldout            # refuses without a valid lock
 python benchmarks/run.py --write-lock --suite heldout      # write the lock before the first run
 ```
@@ -384,7 +417,7 @@ curl -s https://docket-clocked.vercel.app/api/policies/approve \
 | Hot index | SQLite WAL (`/tmp` on Vercel, explicitly labeled per-instance) |
 | Frontend | Semantic HTML, CSS, vanilla JS, no build step |
 | Streaming | Server-Sent Events with real stage progress |
-| Tests | pytest — 92 tests |
+| Tests | pytest — 100 tests |
 | Deploy | Vercel FastAPI service; Docker/Render/Railway supported |
 
 ---
@@ -408,6 +441,7 @@ uvicorn app:app --reload --port 8000
 # Console:   http://127.0.0.1:8000/console
 # Ledger:    http://127.0.0.1:8000/ledger
 # Tour:      http://127.0.0.1:8000/tour
+# Judge guide: JUDGES.md
 ```
 
 On first start Docket signs the sample corpus into the configured store. Custom policies need an approval reference or an admin envelope before they can publish.
@@ -419,13 +453,13 @@ pip install -r requirements-dev.txt
 python -m pytest -v
 ```
 
-92 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, seeded-corpus verification, the hash-chained ledger, ten-way and two-loop concurrency, review-queue persistence and resolution, health verification, coverage/omission policy, Compare verdict rules, Decide triage, console feature coverage, ledger views and route authentication. The deterministic layers run without a Clocked key.
+100 tests cover authority resolution, valid-time/expiry handling, clause segmentation, date parsing, policy envelopes and tamper detection, seeded-corpus verification, the hash-chained ledger, ten-way and two-loop concurrency, review-queue persistence and resolution, health verification, coverage/omission policy, Compare verdict rules, Decide triage, console feature coverage, ledger views and route authentication. The deterministic layers run without a Clocked key.
 
 ---
 
 ## Limits and honest gaps
 
-- **Two self-authored accuracy corpora.** The 37-case regression suite and the 31-case held-out suite were both written by the Docket team. The lock proves the held-out labels were fixed before the run; it does not remove authorship bias. The honest headline is **25/31 held-out**, not 100%.
+- **Two self-authored accuracy corpora.** The 37-case regression suite and the 31-case held-out suite were both written by the Docket team. The lock proves the held-out labels were fixed before the run; it does not remove authorship bias. The honest headline is **0 unsafe false-PUBLISH**, with 25/31 exact decision labels on the locked held-out run and 27/31 after post-tuning. Neither is a claim of 100% accuracy.
 - **Six held-out failures are public.** Three are one Extract metadata bug class, two are label disputes where the gate's omission finding is defensible, and one is a real clause-selection miss. Fixes after the run are reported as post-held-out tuning in a separate run.
 - **Single model snapshot.** Clocked behavior can drift; both benchmark documents record the date and measured scores.
 - **Threshold calibration is corpus-bound.** Guard remains at 0.50 because the measured scores are flat. Inspect is 0.10 because the calibration corpus found a real gap between 0.008 and 0.188. That is a measured trade, not a universal optimum.

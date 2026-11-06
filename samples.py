@@ -168,6 +168,27 @@ SAMPLES = [
         ],
     },
     {
+        "id": "metadata-conflict",
+        "label": "Metadata conflict",
+        "tag": "integrity",
+        "blurb": "The submitted effective date contradicts the policy text. Extract holds before the wrong version can govern.",
+        "question": "What is the hotel limit?",
+        "draft": "Hotel stays are reimbursed up to EUR 180 per night.",
+        "context": {"country": "Global", "role": "Employee", "plan": "Standard"},
+        "documents": [
+            {
+                "title": "Travel policy with a conflicting date",
+                "jurisdiction": "Global",
+                "effective_date": "2026-06-01",
+                "precedence": 0,
+                "text": (
+                    "Travel policy — effective 1 January 2026.\n\n"
+                    "Hotel stays are reimbursed up to EUR 180 per night. Receipts are required for all hotel claims."
+                ),
+            }
+        ],
+    },
+    {
         "id": "injected-policy",
         "label": "Injected policy note",
         "tag": "safety",

@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from authority import Document, resolve  # noqa: E402
+from benchmarks.adversarial_cases import ADVERSARIAL_CASES  # noqa: E402
 from benchmarks.calibration_cases import CALIBRATION_CASES  # noqa: E402
 from benchmarks.cases import CASES  # noqa: E402
 from benchmarks.heldout_cases import HELDOUT_CASES  # noqa: E402
@@ -36,6 +37,7 @@ from app import CheckRequest, run_check  # noqa: E402
 SUITES = {
     "tuned": CASES,
     "calibration": CALIBRATION_CASES,
+    "adversarial": ADVERSARIAL_CASES,
     "heldout": HELDOUT_CASES,
 }
 HELDOUT_LOCK = ROOT / "benchmarks" / "heldout.lock"
@@ -606,6 +608,12 @@ def write_results(
             "A live run measures one model at one point in time; model behavior can drift.",
             "Every failure in this document is reported in the Failures table. A post-run fix belongs to a new iteration and must be reported as post-held-out tuning, not folded into this result.",
             "Clean false-HOLD and unsafe false-PUBLISH rates are reported from this corpus only.",
+        ]
+    elif suite == "adversarial":
+        limitations = [
+            "The adversarial corpus is a targeted safety suite, not an accuracy benchmark. It is authored by the Docket team and covers a fixed set of attack patterns.",
+            "A clean control is included so a gate that HOLDs everything does not score well; decision and unsafe false-PUBLISH rates are both reported.",
+            "A live run measures one model at one point in time; Guard and Inspect can change behavior.",
         ]
     elif suite == "calibration":
         limitations = [

@@ -151,24 +151,25 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _enforce_check_rate(request: Request) -> dict[str, str]:
+def _enforce_check_rate(request: Request, cost: int = 1) -> dict[str, str]:
+    cost = max(1, int(cost))
     now = time.time()
     ip = _client_ip(request)
     limit = max(1, int(os.environ.get("DOCKET_RATE_LIMIT_PER_HOUR", "60")))
     bucket = _CHECK_RATE.setdefault(ip, [])
     bucket[:] = [stamp for stamp in bucket if now - stamp < _CHECK_WINDOW_SECONDS]
-    if len(bucket) >= limit:
-        retry = max(1, int(_CHECK_WINDOW_SECONDS - (now - bucket[0])))
+    if len(bucket) + cost > limit:
+        retry = max(1, int(_CHECK_WINDOW_SECONDS - (now - bucket[0]))) if bucket else 1
         raise HTTPException(
             status_code=429,
             detail="Rate limit reached. Try again later.",
             headers={"Retry-After": str(retry)},
         )
-    bucket.append(now)
+    bucket.extend([now] * cost)
 
     day = datetime.now(timezone.utc).date().isoformat()
     cap = max(1, int(os.environ.get("DOCKET_DAILY_CHECK_CAP", "200")))
-    count = _CHECK_DAILY.get(day, 0) + 1
+    count = _CHECK_DAILY.get(day, 0) + cost
     if count > cap:
         raise HTTPException(
             status_code=429,
@@ -237,6 +238,10 @@ ABLATION_LABELS = {
 
 
 class AblateRequest(CheckRequest):
+    endpoint: str = Field(min_length=1, max_length=20)
+
+
+class ProveRequest(CheckRequest):
     endpoint: str = Field(min_length=1, max_length=20)
 
 
@@ -1059,6 +1064,8 @@ async def run_check(
     profile_context = ""
     coverage_instructions = COVERAGE_INSTRUCTIONS
     verify_instructions = VERIFY_POLICY
+    facts_note = ""
+    profile_note = ""
     client = ClockedClient(api_key)
     try:
         # ---- Protect (audit redaction) ----------------------------------
@@ -1460,7 +1467,7 @@ async def run_check(
                 f"country: {req.country or 'not stated'}\n"
                 f"role: {req.role or 'not stated'}\n"
                 f"plan: {req.plan or 'not stated'}\n\n"
-                f"GOVERNING POLICY FACTS\n{extract_payload['facts_note'] or 'none extracted'}"
+                f"GOVERNING POLICY FACTS\n{(extract_payload or {}).get('facts_note') or 'none extracted'}"
             )
             try:
                 decide_res = await client.decide(
@@ -1990,6 +1997,74 @@ async def run_check(
         await client.aclose()
 
 
+def _proof_signal(payload: dict, endpoint: str) -> dict:
+    """Return the one field that proves this endpoint's contribution."""
+    if endpoint == "guard":
+        value = (payload.get("guard") or {}).get("verdict")
+        return {"value": value, "label": "Injection detected" if value == "injection" else ("No injection" if value else "No injection gate")}
+    if endpoint == "inspect":
+        value = (payload.get("inspect") or {}).get("verdict")
+        return {"value": value, "label": "Unsafe script detected" if value == "malicious" else ("No unsafe script" if value else "No script inspection")}
+    if endpoint == "extract":
+        extract = payload.get("extract")
+        if not extract:
+            return {"value": None, "label": "No metadata check"}
+        count = len(extract.get("conflicts") or [])
+        return {"value": count, "label": f"{count} metadata conflict" + ("" if count == 1 else "s")}
+    if endpoint == "decide":
+        decide = payload.get("decide")
+        if not decide:
+            return {"value": None, "label": "No review route"}
+        required = bool(decide.get("review_required"))
+        return {"value": required, "label": "Review required" if required else "No review required"}
+    if endpoint == "compare":
+        compare = payload.get("compare")
+        if not compare:
+            return {"value": None, "label": "No conflict pairs"}
+        count = int(compare.get("conflict_count") or 0)
+        return {"value": count, "label": f"{count} conflict pair" + ("" if count == 1 else "s")}
+    if endpoint == "coverage":
+        coverage = payload.get("coverage")
+        if not coverage:
+            return {"value": None, "label": "No omission check"}
+        return {"value": bool(coverage.get("value")), "label": "Omission detected" if coverage.get("value") else "No omission"}
+    if endpoint == "verify":
+        verify = payload.get("verify")
+        if not verify:
+            return {"value": None, "label": "No verification"}
+        verdict = str(verify.get("verdict") or "unknown")
+        label = {
+            "grounded": "Claims grounded",
+            "contradicted": "Claims contradicted",
+            "unsupported": "Claims unsupported",
+        }.get(verdict, f"Claims {verdict}")
+        return {"value": verdict, "label": label}
+    if endpoint == "protect":
+        protect = payload.get("protect") or {}
+        count = int(protect.get("entity_count") or 0)
+        return {"value": count, "label": f"{count} PII entit" + ("y" if count == 1 else "ies") + " redacted"}
+    if endpoint == "rerank":
+        rerank = payload.get("rerank") or {}
+        selected = len(rerank.get("selected") or [])
+        rows = len(rerank.get("rows") or [])
+        return {"value": [selected, rows], "label": f"{selected} of {rows} clauses used"}
+    return {"value": None, "label": "No signal"}
+
+
+def _proof_summary(payload: dict, endpoint: str) -> dict:
+    governing = (payload.get("authority") or {}).get("governing") or {}
+    return {
+        "decision": payload.get("decision"),
+        "codes": payload.get("codes") or [],
+        "credits": payload.get("credits"),
+        "api_calls": payload.get("api_calls"),
+        "latency_ms": payload.get("latency_ms"),
+        "governing": governing.get("title"),
+        "signal": _proof_signal(payload, endpoint),
+        "reason": ((payload.get("reasons") or [""])[0])[:240],
+    }
+
+
 # --------------------------------------------------------------------------
 # routes
 # --------------------------------------------------------------------------
@@ -2091,7 +2166,7 @@ async def vercel_insights_stub() -> Response:
 
 @app.get("/api/samples")
 async def sample_list() -> list[dict]:
-    order = {"authority": 0, "version": 1, "control": 2, "coverage": 3, "safety": 4}
+    order = {"authority": 0, "version": 1, "control": 2, "coverage": 3, "safety": 4, "integrity": 5}
     samples = [
         {"id": s["id"], "label": s["label"], "blurb": s["blurb"], "tag": s.get("tag", "")}
         for s in SAMPLES
@@ -2142,6 +2217,50 @@ async def ablate(req: AblateRequest, request: Request) -> JSONResponse:
         ),
     }
     return JSONResponse(payload, headers=headers)
+
+
+@app.post("/api/prove")
+async def prove(req: ProveRequest, request: Request) -> JSONResponse:
+    """Run a baseline and one counterfactual for the necessity table.
+
+    Both runs are simulations: no audit record and no publication. The summary
+    exposes only the field that proves the endpoint's contribution.
+    """
+    _require_check_auth(request)
+    endpoint = req.endpoint
+    if endpoint not in ABLATABLE_ENDPOINTS and endpoint not in {"protect", "rerank"}:
+        raise HTTPException(status_code=400, detail="That endpoint cannot be proved.")
+    mode = "ablate" if endpoint in ABLATABLE_ENDPOINTS else "measure"
+    headers = _enforce_check_rate(request, cost=2 if mode == "ablate" else 1)
+    base = req.model_dump()
+    endpoint = base.pop("endpoint")
+    check_req = CheckRequest(**base)
+    if mode == "measure":
+        payload = await run_check(check_req, record=False)
+        return JSONResponse(
+            {
+                "endpoint": endpoint,
+                "mode": mode,
+                "baseline": _proof_summary(payload, endpoint),
+                "ablated": None,
+                "note": "One live check. No audit record was written.",
+            },
+            headers=headers,
+        )
+    baseline, ablated = await asyncio.gather(
+        run_check(check_req, record=False),
+        run_check(check_req, ablate={endpoint}, record=False),
+    )
+    return JSONResponse(
+        {
+            "endpoint": endpoint,
+            "mode": mode,
+            "baseline": _proof_summary(baseline, endpoint),
+            "ablated": _proof_summary(ablated, endpoint),
+            "note": "Two live checks. No audit record was written.",
+        },
+        headers=headers,
+    )
 
 
 @app.post("/api/check/stream")
