@@ -10,7 +10,7 @@
 1. Open `/tour` and press **Run the tour**.
 2. Watch eight live cases complete in about 6 seconds: precedence, version, omission, clean control, injection, unsafe runbook, unapproved policy, tampered policy.
 3. Open an **audit seq** link to verify the hash-chained record in `/ledger`.
-4. Open `/console`, press **Run flagship France case**, then inspect the verdict, the decision record and the “What each endpoint changes” table. Re-run any proof row to see the same result live.
+4. Open `/console`, press **Run flagship France case**, then inspect the verdict, the decision record, the review record and the “What each endpoint changes” table. Claim or send back the review with its scoped capability, and re-run any proof row to see the same result live.
 
 ## Two-minute demo script
 
